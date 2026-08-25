@@ -1,0 +1,1518 @@
+{
+  "prova": {
+    "modulos": [
+      {
+        "nome": "Banco de Dados",
+        "capacidades_avaliadas": [
+          {
+            "id": "C1",
+            "descricao": "Instalar e configurar banco de dados"
+          },
+          {
+            "id": "C2",
+            "descricao": "Aplicar técnicas de segurança e tratamento de dados"
+          },
+          {
+            "id": "C3",
+            "descricao": "Aplicar técnicas de normalização e padronização de dados"
+          },
+          {
+            "id": "C4",
+            "descricao": "Aplicar técnicas de versionamento de software"
+          },
+          {
+            "id": "C5",
+            "descricao": "Seguir recomendações técnicas na aplicação da linguagem de definição e manipulação de dados"
+          },
+          {
+            "id": "C6",
+            "descricao": "Aplicar técnicas de modelagem de dados"
+          },
+          {
+            "id": "C7",
+            "descricao": "Aplicar técnicas de levantamento de requisitos de armazenamento de dados"
+          },
+          {
+            "id": "C8",
+            "descricao": "Determinar técnicas de manipulação de dados requeridas pelo projeto"
+          },
+          {
+            "id": "C9",
+            "descricao": "Determinar o tipo do banco de dados empregado"
+          }
+        ],
+        "questoes": [
+          {
+            "numero": 1,
+            "dificuldade": "Fácil",
+            "capacidade": "C5",
+            "contexto": "Em uma empresa de desenvolvimento web na área de banco de dados, o desenvolvedor precisa criar a tabela \"clientes\" com os campos id, nome e email, e depois ajustar o tipo do campo email para VARCHAR(120) por causa de um novo padrão do cadastro.",
+            "comando": "De que forma o DDL pode ser usado para criar a tabela e depois alterar o tipo do campo email?",
+            "alternativas": {
+              "a": "ALTER TABLE clientes ADD COLUMN email VARCHAR(120); CREATE TABLE clientes (id INT PRIMARY KEY, nome VARCHAR(80), email VARCHAR(120));",
+              "b": "CREATE TABLE clientes (id INT PRIMARY KEY, nome VARCHAR(80), email VARCHAR(120)); ALTER TABLE clientes ALTER COLUMN email TYPE VARCHAR(120);",
+              "c": "CREATE TABLE clientes (id INT PRIMARY KEY, nome VARCHAR(80), email VARCHAR(120)); ALTER TABLE clientes ALTER COLUMN email TYPE VARCHAR(120);",
+              "d": "CREATE INDEX clientes_email ON clientes(email); ALTER TABLE clientes ALTER COLUMN email TYPE VARCHAR(120);"
+            },
+            "resposta_correta": "c"
+          },
+          {
+            "numero": 2,
+            "dificuldade": "Fácil",
+            "capacidade": "C8",
+            "contexto": "Em uma empresa de gestão de serviços na área de banco de dados, a equipe precisa listar pedidos com valor total a partir de 500 para compor um relatório de faturamento do mês. A tabela \"pedidos\" possui os campos id, cliente_id e valor_total.",
+            "comando": "Como deve ser montada a condição no SELECT para retornar pedidos com valor_total maior ou igual a 500?",
+            "alternativas": {
+              "a": "SELECT * FROM pedidos WHERE valor_total >= 500;",
+              "b": "SELECT * FROM pedidos WHERE valor_total > 500;",
+              "c": "SELECT * FROM pedidos WHERE valor_total <= 500;",
+              "d": "SELECT * FROM pedidos WHERE valor_total = 500;"
+            },
+            "resposta_correta": "a"
+          },
+          {
+            "numero": 3,
+            "dificuldade": "Fácil",
+            "capacidade": "C6",
+            "contexto": "Em uma indústria de e-commerce na área de banco de dados, o sistema registra Clientes e Pedidos. Um cliente pode ter vários pedidos, mas cada pedido pertence a um único cliente. O cadastro já existe e agora será modelado para garantir a relação no banco.",
+            "comando": "Qual procedimento de modelagem aplica a chave estrangeira para representar o relacionamento 1:N entre Clientes e Pedidos?",
+            "alternativas": {
+              "a": "Criar a FK pedido_id na tabela Clientes referenciando Pedidos(id), pois clientes podem ter vários pedidos.",
+              "b": "Criar a FK cliente_id na tabela Pedidos referenciando Clientes(id), mantendo que cada pedido aponte para um cliente.",
+              "c": "Criar uma tabela associativa Clientes_Pedidos com FK para Clientes e Pedidos, pois todo relacionamento 1:N exige tabela associativa.",
+              "d": "Adicionar a FK cliente_id em Clientes referenciando Pedidos(id) para manter a integridade entre as tabelas."
+            },
+            "resposta_correta": "b"
+          },
+          {
+            "numero": 4,
+            "dificuldade": "Fácil",
+            "capacidade": "C2",
+            "contexto": "Em uma empresa de suporte ao usuário na área de banco de dados, foi identificado que relatórios sensíveis estão sendo consultados por usuários sem perfil adequado. O administrador precisa restringir as consultas e manter registro de acessos para auditoria.",
+            "comando": "De que forma o controle de acesso pode atender ao requisito de auditoria no acesso a relatórios sensíveis?",
+            "alternativas": {
+              "a": "Alterar apenas o layout dos relatórios para dificultar o uso indevido, sem ajustar permissões.",
+              "b": "Remover a auditoria do sistema para reduzir o volume de logs e manter apenas a segurança por senhas.",
+              "c": "Conceder permissões amplas de administrador para todos os usuários e desativar o registro de acessos.",
+              "d": "Conceder permissões mínimas de leitura ao usuário e habilitar auditoria para registrar tentativas e consultas realizadas."
+            },
+            "resposta_correta": "d"
+          },
+          {
+            "numero": 5,
+            "dificuldade": "Médio",
+            "capacidade": "C5",
+            "contexto": "Em uma empresa de hospedagem na área de banco de dados, o time criou as tabelas de \"clientes\" e \"pedidos\" em um banco PostgreSQL. Agora, o responsável precisa conceder ao usuário do sistema apenas permissão de SELECT nas tabelas para consulta do painel, sem permitir alterações.",
+            "comando": "De que forma o comando de permissão pode ser aplicado para permitir apenas SELECT nas tabelas clientes e pedidos?",
+            "alternativas": {
+              "a": "GRANT INSERT, UPDATE ON clientes, pedidos TO usuario_sistema;",
+              "b": "GRANT ALL PRIVILEGES ON clientes, pedidos TO usuario_sistema;",
+              "c": "REVOKE ALL ON clientes, pedidos FROM usuario_sistema;",
+              "d": "GRANT SELECT ON clientes, pedidos TO usuario_sistema;"
+            },
+            "resposta_correta": "d"
+          },
+          {
+            "numero": 6,
+            "dificuldade": "Médio",
+            "capacidade": "C3",
+            "contexto": "Em uma indústria de logística na área de banco de dados, a equipe criou uma tabela \"entregas\" com colunas id_entrega, id_cliente, nome_cliente, telefone_cliente, id_pedido e numero_pedido. Em testes, percebeu-se repetição de telefone e nome quando há múltiplos pedidos para o mesmo cliente.",
+            "comando": "De que forma a normalização pode reduzir a repetição descrita no cenário?",
+            "alternativas": {
+              "a": "Separar Cliente em uma tabela própria e manter telefone e nome em Clientes, referenciando por id_cliente na tabela Entregas.",
+              "b": "Manter todas as informações na tabela Entregas, pois a repetição melhora a velocidade das consultas, e padronizar apenas os nomes das colunas.",
+              "c": "Criar uma única tabela com colunas nome_cliente e telefone_cliente repetidas em grupos para cada pedido, mantendo id_cliente e id_pedido.",
+              "d": "Remover o campo telefone_cliente e manter apenas nome_cliente na tabela Entregas, preservando id_pedido e id_cliente."
+            },
+            "resposta_correta": "a"
+          },
+          {
+            "numero": 7,
+            "dificuldade": "Médio",
+            "capacidade": "C6",
+            "contexto": "Em uma empresa de assinaturas na área de banco de dados, o analista desenhou o MER com entidades Clientes e Pedidos. O diagrama indica que um Cliente pode realizar vários Pedidos, e cada Pedido deve apontar para exatamente um Cliente. Ainda assim, o diagrama foi implementado com a FK do lado de Clientes.",
+            "comando": "Por que a FK do lado de Clientes contraria o relacionamento 1:N descrito no cenário?",
+            "alternativas": {
+              "a": "Porque relacionamentos 1:N exigem tabela associativa para funcionar corretamente.",
+              "b": "Porque a FK deve ficar na tabela do lado N, e no cenário o lado N é Pedidos.",
+              "c": "Porque a FK só pode ser usada em relacionamentos 1:1 e não em 1:N.",
+              "d": "Porque a FK precisa existir apenas em tabelas que possuem atributos compostos."
+            },
+            "resposta_correta": "b"
+          },
+          {
+            "numero": 8,
+            "dificuldade": "Difícil",
+            "capacidade": "C9",
+            "contexto": "Em uma empresa de comércio eletrônico na área de banco de dados, o sistema precisa armazenar Clientes, Pedidos e Itens do Pedido com integridade referencial entre eles. Consultas exigem filtros por intervalo de valores, junções entre tabelas e consistência transacional durante a criação de pedidos.",
+            "comando": "Por que o modelo relacional atende melhor ao cenário descrito em comparação com uma abordagem sem integridade transacional?",
+            "alternativas": {
+              "a": "Porque foi projetado para substituir totalmente transações por atualizações imediatas sem controle de consistência.",
+              "b": "Porque dispensa chaves estrangeiras e elimina a necessidade de junções, simplificando consultas complexas.",
+              "c": "Porque permite relacionamentos com chaves estrangeiras, consultas com JOIN e suporte a transações para manter consistência na criação de pedidos.",
+              "d": "Porque é indicado apenas quando não há requisitos de integridade entre entidades e quando os dados não dependem de relacionamentos."
+            },
+            "resposta_correta": "c"
+          },
+          {
+            "numero": 9,
+            "dificuldade": "Difícil",
+            "capacidade": "C8",
+            "contexto": "Em uma indústria de serviços na área de banco de dados, ao registrar um pedido, o sistema precisa: inserir um registro em pedidos com status \"ABERTO\", inserir os itens correspondentes em itens_pedido e, em seguida, atualizar o estoque do produto. Essa sequência deve ser executada de forma consistente para evitar estoque divergente.",
+            "comando": "De que forma a manipulação de dados pode ser estruturada para manter a consistência descrita no cenário?",
+            "alternativas": {
+              "a": "Executar apenas um INSERT em pedidos e deixar que o estoque seja ajustado manualmente depois, sem atualizar itens_pedido.",
+              "b": "Criar um procedimento armazenado que execute INSERT em pedidos e itens_pedido e UPDATE no estoque, tratando a sequência como uma única operação lógica.",
+              "c": "Usar somente um UPDATE no estoque com base em um valor fixo, dispensando a gravação de pedidos e itens_pedido na base.",
+              "d": "Realizar INSERT em pedidos, mas substituir INSERT em itens_pedido por DELETE para remover itens inexistentes e manter o estoque correto."
+            },
+            "resposta_correta": "b"
+          },
+          {
+            "numero": 10,
+            "dificuldade": "Difícil",
+            "capacidade": "C1",
+            "contexto": "Em uma empresa de desenvolvimento na área de banco de dados, a instalação do PostgreSQL em um servidor foi concluída, mas o sistema da aplicação não consegue conectar. O time verificou que a autenticação por senha funciona localmente, porém a conexão remota é bloqueada por configuração de rede e regras de acesso do servidor.",
+            "comando": "Como deve ser ajustada a configuração do servidor para permitir conexões remotas do banco pela aplicação?",
+            "alternativas": {
+              "a": "Habilitar a escuta em endereços apropriados e ajustar as regras de acesso/autenticação para o host da aplicação, mantendo o método de autenticação configurado para senhas.",
+              "b": "Desativar completamente a autenticação e liberar qualquer origem na rede, para eliminar falhas de login.",
+              "c": "Apagar as tabelas do banco para forçar a aplicação a reconectar e recriar o esquema automaticamente.",
+              "d": "Alterar apenas o nome do usuário do PostgreSQL na aplicação, sem mudar configurações de rede ou autenticação do servidor."
+            },
+            "resposta_correta": "a"
+          },
+          {
+            "numero": 11,
+            "dificuldade": "Fácil",
+            "capacidade": "C5",
+            "contexto": "Em uma empresa de desenvolvimento de e-commerce na área de banco de dados, o estagiário precisa criar as tabelas Clientes e Pedidos em um SGBD relacional, garantindo que cada pedido referencie obrigatoriamente um cliente existente.",
+            "comando": "De que forma o SQL DDL pode ser usado para criar a coluna cliente_id em Pedidos como chave estrangeira para Clientes(id)?",
+            "alternativas": {
+              "a": "ALTER TABLE Pedidos ADD cliente_id INT REFERENCES Clientes(id);",
+              "b": "CREATE TABLE Pedidos(cliente_id INT, FOREIGN KEY(cliente_id) Clientes(id));",
+              "c": "CREATE TABLE Pedidos(cliente_id INT, FOREIGN KEY(cliente_id) REFERENCES Clientes(id));",
+              "d": "CREATE TABLE Pedidos(cliente_id INT, REFERENCES Clientes(id) ON PEDIDO);"
+            },
+            "resposta_correta": "c"
+          },
+          {
+            "numero": 12,
+            "dificuldade": "Fácil",
+            "capacidade": "C3",
+            "contexto": "Em uma empresa de logística na área de banco de dados, o analista identificou que a tabela Entregas armazena endereço completo do cliente em cada linha, mesmo quando o cliente tem vários pedidos.",
+            "comando": "Em que consiste a correção mais direta para reduzir redundância nesse cenário ao aplicar normalização e padronização?",
+            "alternativas": {
+              "a": "Separar endereço em uma tabela própria e referenciar pelo identificador do cliente, mantendo consistência.",
+              "b": "Manter o endereço completo em Entregas para facilitar consultas, mesmo com repetição entre linhas.",
+              "c": "Duplicar o endereço em colunas adicionais na mesma tabela para evitar junções em relatórios.",
+              "d": "Converter o endereço para texto longo único em Entregas, padronizando apenas a formatação do campo."
+            },
+            "resposta_correta": "a"
+          },
+          {
+            "numero": 13,
+            "dificuldade": "Médio",
+            "capacidade": "C2",
+            "contexto": "Em uma empresa de serviços digitais na área de banco de dados, a equipe criou um usuário leitor para o relatório de vendas, mas alguns registros foram alterados manualmente durante testes e o responsável precisa reduzir o risco de novas alterações indevidas.",
+            "comando": "Como deve ser ajustado o controle de acesso para preservar a integridade dos dados sem impedir a consulta do relatório?",
+            "alternativas": {
+              "a": "Revogar permissões de escrita e manter apenas SELECT, registrando tentativas por auditoria de acesso.",
+              "b": "Conceder permissões de INSERT e UPDATE ao usuário leitor para manter a flexibilidade durante a consulta.",
+              "c": "Criar uma nova tabela de cópia e conceder acesso total para o usuário leitor, evitando impacto na tabela original.",
+              "d": "Alterar a estrutura da tabela para armazenar relatórios como dados permanentes, eliminando a necessidade de SELECT."
+            },
+            "resposta_correta": "a"
+          },
+          {
+            "numero": 14,
+            "dificuldade": "Médio",
+            "capacidade": "C6",
+            "contexto": "Em uma empresa de varejo na área de banco de dados, o time modelou o MER para um sistema de pedidos: um cliente pode ter vários pedidos, e cada pedido pertence a exatamente um cliente.",
+            "comando": "De que forma a modelagem MER deve ser refletida na estrutura relacional para implementar esse relacionamento 1:N?",
+            "alternativas": {
+              "a": "Criar uma FK em Clientes apontando para Pedidos, pois o lado Clientes é o que possui muitos registros.",
+              "b": "Criar uma FK em Pedidos referenciando Clientes, usando cliente_id como chave estrangeira para Clientes(id).",
+              "c": "Criar uma tabela associativa entre Clientes e Pedidos com duas FKs, pois todo relacionamento 1:N exige tabela associativa.",
+              "d": "Criar colunas repetidas de dados do cliente dentro de Pedidos, sem chave estrangeira, para manter o vínculo."
+            },
+            "resposta_correta": "b"
+          },
+          {
+            "numero": 15,
+            "dificuldade": "Difícil",
+            "capacidade": "C4",
+            "contexto": "Em uma empresa de automação industrial na área de banco de dados, foram criados scripts SQL para ajustar o schema: primeiro adicionaram uma coluna em Pedidos e depois criaram uma FK para Clientes. Após um rollback parcial em ambiente de testes, o time precisa aplicar as mudanças na ordem correta para evitar falhas na migração.",
+            "comando": "Como deve ser organizada a sequência dos scripts versionados para que as dependências do schema sejam atendidas após rollback parcial?",
+            "alternativas": {
+              "a": "Reaplicar primeiro o script que cria a FK, depois o script que adiciona a coluna, e por fim gerar um novo script de correção manual.",
+              "b": "Executar os scripts em ordem alfabética dos arquivos, independentemente das dependências entre tabelas e colunas.",
+              "c": "Reaplicar apenas o script final de FK, pois ele recria automaticamente as colunas necessárias quando executado.",
+              "d": "Reaplicar o script que adiciona a coluna em Pedidos, em seguida o script que cria a FK, mantendo histórico no versionamento."
+            },
+            "resposta_correta": "d"
+          }
+        ]
+      },
+      {
+        "nome": "Lógica de Programação",
+        "capacidades_avaliadas": [
+          {
+            "id": "C1",
+            "descricao": "Aplicar técnicas de programação na elaboração de algoritmos inerentes aos sistemas de TI"
+          },
+          {
+            "id": "C2",
+            "descricao": "Aplicar linguagens de programação para elaborar programas e sistemas de TI"
+          },
+          {
+            "id": "C3",
+            "descricao": "Reconhecer os paradigmas de programação de computadores"
+          },
+          {
+            "id": "C4",
+            "descricao": "Reconhecer os paradigmas de programação de computadores"
+          }
+        ],
+        "questoes": [
+          {
+            "numero": 1,
+            "dificuldade": "Médio",
+            "capacidade": "C1",
+            "contexto": "Em uma empresa de desenvolvimento de sistemas na área de automação de testes, um estagiário precisa gerar um algoritmo em Portugol para validar um código de acesso. O sistema deve solicitar tentativas até que o usuário informe um código correto ou até a quantidade máxima de tentativas seja atingida, registrando a mensagem final ao sair do laço.",
+            "comando": "De que forma o laço deve ser controlado para permitir repetição até o código correto ou até o limite de tentativas?",
+            "alternativas": {
+              "a": "Usar se no início, pois assim o programa decide uma única vez e encerra sem repetir",
+              "b": "Usar enquanto com condição de continuação baseada em tentativas restantes e código ainda incorreto",
+              "c": "Usar enquanto apenas com a condição de código correto, pois o limite de tentativas não interfere",
+              "d": "Usar do enquanto, pois garante que o teste do limite de tentativas ocorra antes da primeira tentativa"
+            },
+            "resposta_correta": "b"
+          },
+          {
+            "numero": 2,
+            "dificuldade": "Médio",
+            "capacidade": "C2",
+            "contexto": "Em uma empresa de e-commerce na área de manutenção de carrinhos, o programador recebeu o requisito para calcular o tipo de frete com base em uma variável chamada categoria. No Portugol, a categoria pode ser 1, 2 ou 3, e cada valor deve levar a um cálculo diferente; caso não corresponda, deve haver um tratamento padrão antes de seguir o restante do programa.",
+            "comando": "Como deve ser estruturado o fluxo para tratar cada categoria e incluir um caso padrão quando a categoria não for prevista?",
+            "alternativas": {
+              "a": "Usar switch/case sem caso padrão, pois valores fora dos cases devem continuar com o cálculo anterior",
+              "b": "Utilizar apenas se/senão encadeado, pois switch/case não controla múltiplas alternativas com clareza",
+              "c": "Utilizar switch/case com cases para 1, 2 e 3 e incluir um caso padrão para valores fora do conjunto",
+              "d": "Trocar o switch por um laço enquanto, pois a categoria é sempre atualizada dentro do ciclo"
+            },
+            "resposta_correta": "c"
+          },
+          {
+            "numero": 3,
+            "dificuldade": "Médio",
+            "capacidade": "C3",
+            "contexto": "Em uma indústria de software na área de validação de requisitos, foi revisado um algoritmo em Portugol para classificar um número inteiro como par ou ímpar. O código usa resto por meio do operador % e, em seguida, combina condições com o operador lógico OR para decidir a mensagem exibida ao usuário.",
+            "comando": "Por que a condição baseada em n % 2 com operador OR pode produzir classificação incorreta em alguns casos?",
+            "alternativas": {
+              "a": "Porque OR aceita que qualquer subcondição seja verdadeira, fazendo a mensagem de paridade ser acionada mesmo quando o resto não indica par",
+              "b": "Porque o operador % sempre retorna 1 quando n é negativo, impedindo qualquer verificação de paridade",
+              "c": "Porque se/senão em Portugol só avalia a primeira condição do OR e ignora as demais, gerando erro",
+              "d": "Porque o operador OR não pode ser usado com expressões aritméticas, causando falha de compilação"
+            },
+            "resposta_correta": "a"
+          },
+          {
+            "numero": 4,
+            "dificuldade": "Médio",
+            "capacidade": "C4",
+            "contexto": "Em uma empresa de serviços na área de suporte técnico, um técnico precisa automatizar a coleta de dados de um cliente em um formulário. O algoritmo deve pedir o nome do cliente e só parar quando o usuário informar um valor válido; se o sistema já receber um valor inicial inválido, ele ainda deve solicitar novamente. O comportamento esperado exige que a leitura ocorra pelo menos uma vez.",
+            "comando": "Qual alternativa representa o fluxo de execução que garante leitura pelo menos uma vez e repetição até o valor ser aceito?",
+            "alternativas": {
+              "a": "Executar do enquanto: ler o valor, validar e continuar enquanto a validação indicar inválido",
+              "b": "Executar enquanto: validar antes da primeira leitura e entrar no laço apenas se o valor inicial for inválido",
+              "c": "Executar se/senão: se for inválido, encerrar o programa; se for válido, repetir a leitura até ficar inválido",
+              "d": "Executar switch/case: escolher um caso com base no status inicial e não repetir a leitura em nenhum cenário"
+            },
+            "resposta_correta": "a"
+          },
+          {
+            "numero": 5,
+            "dificuldade": "Fácil",
+            "capacidade": "C1",
+            "contexto": "Em uma indústria de automação na área de monitoramento, o algoritmo precisa informar se um sensor está em estado par ou ímpar a partir de um valor inteiro recebido. O valor deve ser avaliado usando o operador % para verificar a paridade antes de escolher a mensagem exibida.",
+            "comando": "Como deve ser feita a verificação de paridade usando o operador % em Portugol?",
+            "alternativas": {
+              "a": "Testar se n % 2 é diferente de 0 e, com isso, concluir que sempre é ímpar",
+              "b": "Testar se n % 2 é igual a 1 para par, pois resto 1 indica paridade",
+              "c": "Testar se n % 2 é igual a 2 para par, pois o resto de divisão por 2 pode ser 2",
+              "d": "Calcular r = n % 2 e testar se r é igual a 0 para par"
+            },
+            "resposta_correta": "d"
+          },
+          {
+            "numero": 6,
+            "dificuldade": "Fácil",
+            "capacidade": "C2",
+            "contexto": "Em uma empresa de sistemas web na área de validação de formulários, um desenvolvedor precisa retornar uma mensagem de status conforme um código inteiro recebido. Os códigos possíveis são 0, 1 e 2, e cada um deve mapear para uma mensagem diferente, usando Portugol para a lógica do algoritmo.",
+            "comando": "De que forma o fluxo pode ser implementado para mapear códigos 0, 1 e 2 para mensagens distintas?",
+            "alternativas": {
+              "a": "Usar enquanto com condição fixa verdadeira para sempre, pois o código sempre mudará no loop",
+              "b": "Usar se/senão apenas com comparação de mensagem, pois o código inteiro não participa do fluxo",
+              "c": "Usar switch/case com cases para 0, 1 e 2, atribuindo a variável mensagem em cada case",
+              "d": "Usar do enquanto para executar duas vezes e depois parar sem necessidade de validação do código"
+            },
+            "resposta_correta": "c"
+          },
+          {
+            "numero": 7,
+            "dificuldade": "Fácil",
+            "capacidade": "C3",
+            "contexto": "Em uma equipe de desenvolvimento de software na área de regras de negócio, o analista descreveu uma condição para liberar um acesso: o usuário deve atender a pelo menos um de dois critérios. A lógica foi registrada em Portugol usando o operador lógico OR entre duas expressões relacionais.",
+            "comando": "Para que serve o operador lógico OR ao combinar duas condições relacionais em Portugol?",
+            "alternativas": {
+              "a": "Retornar verdadeiro somente quando o resultado de cada condição for um número inteiro",
+              "b": "Retornar verdadeiro apenas quando as duas condições forem falsas",
+              "c": "Retornar verdadeiro apenas quando as duas condições forem verdadeiras ao mesmo tempo",
+              "d": "Retornar verdadeiro quando pelo menos uma das duas condições for verdadeira"
+            },
+            "resposta_correta": "d"
+          },
+          {
+            "numero": 8,
+            "dificuldade": "Difícil",
+            "capacidade": "C1",
+            "contexto": "Em uma indústria de logística na área de roteirização, um algoritmo recebe dois valores: um identificador de rota e um número de volumes. A regra é: se volumes for par, aplicar um ajuste A; se ímpar, aplicar ajuste B; e então selecionar o tratamento final conforme o identificador de rota usando switch/case. O problema relatado é que algumas rotas ímpares estão recebendo ajuste A, indicando possível erro no fluxo de decisão.",
+            "comando": "Qual causa provável relaciona a combinação do teste de paridade com o switch/case que pode levar rotas ímpares a receber ajuste A?",
+            "alternativas": {
+              "a": "Usar switch/case sem caso padrão, pois valores fora do domínio sempre forçam ajuste A em qualquer rota",
+              "b": "Montar a condição de paridade com lógica invertida ou com OR, fazendo o ramo de ajuste A ser executado quando o resto não indica par",
+              "c": "Definir o ajuste A antes de calcular o resto do operador %, fazendo o ajuste nunca ser alterado pelo teste",
+              "d": "Colocar o switch/case antes do teste de paridade, pois o switch sempre executa apenas um case e ignora o restante"
+            },
+            "resposta_correta": "b"
+          },
+          {
+            "numero": 9,
+            "dificuldade": "Difícil",
+            "capacidade": "C2",
+            "contexto": "Em uma empresa de suporte à infraestrutura na área de redes, um algoritmo precisa validar uma configuração digitada pelo usuário: o valor deve ser um inteiro positivo. O algoritmo deve continuar solicitando até receber um valor válido. Além disso, o programa deve exibir uma mensagem de erro quando o valor digitado for inválido, mas só depois da primeira tentativa, mantendo o comportamento de leitura inicial garantida.",
+            "comando": "De que forma o fluxo pode ser implementado para garantir primeira leitura e repetição até o valor ser válido, exibindo erro a cada tentativa inválida?",
+            "alternativas": {
+              "a": "Usar enquanto para testar a validade antes de ler, e se inválido apenas encerrar sem exibir mensagem",
+              "b": "Usar do enquanto para ler o valor, se inválido exibir erro e continuar enquanto continuar inválido",
+              "c": "Usar se/senão único, pois a validação ocorre uma vez e depois o algoritmo termina sempre",
+              "d": "Usar switch/case com cases para inválido e válido, repetindo em loop apenas quando válido for digitado"
+            },
+            "resposta_correta": "b"
+          },
+          {
+            "numero": 10,
+            "dificuldade": "Difícil",
+            "capacidade": "C4",
+            "contexto": "Em uma empresa de monitoramento industrial na área de painéis, um desenvolvedor montou um algoritmo para processar eventos. Ele usa enquanto para percorrer uma lista de eventos e, para cada evento, aplica um switch/case que define o tipo de tratamento. Foi observado que o processamento termina antes de percorrer todos os eventos, sugerindo que a condição de parada do enquanto foi montada com base em variável atualizada dentro do switch.",
+            "comando": "Por qual razão a condição do enquanto pode encerrar cedo ao processar eventos com switch/case?",
+            "alternativas": {
+              "a": "Porque a condição de parada depende de uma variável alterada no switch, fazendo o while perder a referência do total de eventos",
+              "b": "Porque switch/case executa todos os cases ao mesmo tempo e, por isso, altera a lista completa",
+              "c": "Porque a variável usada no while não muda dentro do switch, então o laço sempre se mantém ativo",
+              "d": "Porque enquanto não avalia a condição de parada após cada iteração, mantendo o processamento estável"
+            },
+            "resposta_correta": "a"
+          },
+          {
+            "numero": 11,
+            "dificuldade": "Fácil",
+            "capacidade": "C1",
+            "contexto": "Em uma empresa de e-commerce na área de automação de testes, um estagiário precisa criar um algoritmo em Portugol para contar quantos números de 1 a N são pares. O N é informado pelo usuário e o algoritmo deve usar repetição do tipo enquanto, avaliando a paridade a cada passo.",
+            "comando": "De que forma o algoritmo deve verificar se um valor é par para considerar a contagem?",
+            "alternativas": {
+              "a": "Usar a expressão (numero % 2) == 0 para identificar números pares",
+              "b": "Usar a expressão (numero % 2) == 1 para identificar números pares",
+              "c": "Usar a expressão numero / 2 == 0 para identificar números pares",
+              "d": "Usar a expressão (numero + 2) % 2 == 0 para identificar números pares"
+            },
+            "resposta_correta": "a"
+          },
+          {
+            "numero": 12,
+            "dificuldade": "Médio",
+            "capacidade": "C1",
+            "contexto": "Em uma indústria de automação na área de manutenção de sistemas, o técnico precisa definir a lógica de um painel que recebe um código de ação (1 a 3). Dependendo do código, o algoritmo deve executar um dos comportamentos e, para qualquer outro valor, deve seguir um caso padrão. O fluxo será descrito em Portugol usando switch/case.",
+            "comando": "Como o fluxo de execução deve tratar um código de ação fora de 1, 2 e 3 no switch/case?",
+            "alternativas": {
+              "a": "Forçar a execução do case 1 sempre que o código não corresponder aos demais",
+              "b": "Encerrar o algoritmo imediatamente sem executar nenhum bloco quando o código não corresponder",
+              "c": "Executar o bloco default para o caso padrão quando o código não corresponder a nenhum case",
+              "d": "Aplicar o se/senão dentro do switch para repetir o mesmo case até o código ficar válido"
+            },
+            "resposta_correta": "c"
+          },
+          {
+            "numero": 13,
+            "dificuldade": "Médio",
+            "capacidade": "C2",
+            "contexto": "Em uma empresa de serviços digitais na área de suporte técnico, um algoritmo precisa solicitar ao usuário a confirmação de um termo antes de continuar. A validação deve ocorrer pelo menos uma vez, e a pergunta deve se repetir enquanto a resposta for diferente de 'S'. O controle deve ser implementado com do while para garantir a primeira execução.",
+            "comando": "De que forma o do while deve ser usado para garantir que a confirmação seja solicitada ao menos uma vez?",
+            "alternativas": {
+              "a": "Testar a condição antes de executar a leitura e só então entrar no bloco",
+              "b": "Executar o bloco de leitura primeiro e depois testar a condição de repetição no final",
+              "c": "Usar um while comum sem leitura inicial e definir a condição como sempre verdadeira",
+              "d": "Colocar a condição no começo do algoritmo e remover a leitura do usuário"
+            },
+            "resposta_correta": "b"
+          },
+          {
+            "numero": 14,
+            "dificuldade": "Fácil",
+            "capacidade": "C3",
+            "contexto": "Em uma indústria de logística na área de programação de rotas, um algoritmo seleciona uma estratégia com base no tipo de entrega. O código usa switch/case para escolher entre 'A', 'B' e 'C'. Após a escolha, o algoritmo entra em um laço enquanto para processar a lista de endereços até que não existam mais itens.",
+            "comando": "O que indica, no fluxo, a transição do switch/case para a repetição enquanto?",
+            "alternativas": {
+              "a": "A seleção do comportamento ocorre antes do laço, e o laço apenas processa os itens após a decisão",
+              "b": "O laço enquanto decide a estratégia, e o switch/case apenas repete a execução do laço",
+              "c": "O switch/case é executado a cada iteração do laço enquanto para reavaliar a estratégia",
+              "d": "A condição do enquanto é definida dentro de cada case, sem influência do estado externo"
+            },
+            "resposta_correta": "a"
+          },
+          {
+            "numero": 15,
+            "dificuldade": "Difícil",
+            "capacidade": "C4",
+            "contexto": "Em uma empresa de monitoramento na área de segurança de sistemas, um estagiário precisa validar um código de usuário antes de liberar acesso a um relatório. O algoritmo deve permitir continuidade somente quando o código tiver tamanho entre 5 e 8 caracteres, e quando não for vazio. A validação será feita com se/senão e, caso falhe, o algoritmo deve repetir a leitura usando enquanto até obter um código válido.",
+            "comando": "Qual condição lógica deve ser usada no se para aceitar o código quando a regra exige tamanho entre 5 e 8 e também não vazio?",
+            "alternativas": {
+              "a": "aceita se (tamanho >= 5 OR tamanho <= 8) AND (codigo <> \"\")",
+              "b": "aceita se (tamanho >= 5 AND tamanho <= 8) OR (codigo <> \"\")",
+              "c": "aceita se (tamanho < 5 OR tamanho > 8) AND (codigo <> \"\")",
+              "d": "aceita se (tamanho >= 5 AND tamanho <= 8) AND (codigo <> \"\")"
+            },
+            "resposta_correta": "d"
+          }
+        ]
+      },
+      {
+        "nome": "Introdução à Tecnologia da Informação e Comunicação",
+        "capacidades_avaliadas": [
+          {
+            "id": "CT1",
+            "descricao": "Compreender e aplicar conceitos básicos de tecnologia da informação e comunicação no contexto profissional."
+          },
+          {
+            "id": "CT2",
+            "descricao": "Utilizar equipamentos e mobiliários ergonômicos para garantir segurança e conforto no uso de computadores."
+          },
+          {
+            "id": "CB1",
+            "descricao": "Analisar ambientes de trabalho diversos, incluindo horários comerciais, alternativos, turnos, plantões e jornadas flexíveis."
+          },
+          {
+            "id": "CT3",
+            "descricao": "Identificar tendências tecnológicas e organizacionais, como Big Data, desenvolvimento de aplicações web, computação em nuvem e tecnologias móveis."
+          },
+          {
+            "id": "CT4",
+            "descricao": "Aplicar conceitos de qualidade de software, rastreamento de requisitos e sistemas de controle para mitigação de riscos de segurança da informação."
+          },
+          {
+            "id": "CS1",
+            "descricao": "Desenvolver postura crítica e adaptativa frente às mudanças tecnológicas e organizacionais no ambiente de trabalho."
+          }
+        ],
+        "questoes": [
+          {
+            "numero": 1,
+            "dificuldade": "Fácil",
+            "capacidade": "CT1",
+            "contexto": "Em uma empresa de serviços de TI na área de suporte ao usuário, a equipe precisa preparar um relatório mensal no Word e enviar para o cliente. O documento deve manter o layout ao abrir em computadores com versões diferentes do software.",
+            "comando": "Como deve ser preparado o documento para reduzir problemas de formatação ao compartilhar?",
+            "alternativas": {
+              "a": "Usar estilos do Word e evitar formatação manual direta em cada parágrafo",
+              "b": "Converter o arquivo para PDF e manter somente imagens sem texto",
+              "c": "Inserir o conteúdo como texto colado sem verificar estilos e espaçamentos",
+              "d": "Salvar sempre em formato proprietário antigo sem atualizar o arquivo"
+            },
+            "resposta_correta": "a"
+          },
+          {
+            "numero": 2,
+            "dificuldade": "Fácil",
+            "capacidade": "CT1",
+            "contexto": "Em uma empresa de desenvolvimento web na área de documentação técnica, um técnico precisa aplicar o mesmo estilo de título e espaçamento em várias seções do Word. O documento já possui um exemplo correto em uma seção anterior.",
+            "comando": "De que forma a formatação do exemplo pode ser copiada para outras seções no Word?",
+            "alternativas": {
+              "a": "Recriando manualmente fonte, tamanho, espaçamento e recuos em cada seção",
+              "b": "Selecionando o texto com a formatação desejada e usando o Pincel de Formatação",
+              "c": "Inserindo uma nova caixa de texto para cada título e ajustando manualmente",
+              "d": "Alterando apenas o tema do documento para substituir toda a formatação"
+            },
+            "resposta_correta": "b"
+          },
+          {
+            "numero": 3,
+            "dificuldade": "Médio",
+            "capacidade": "CT1",
+            "contexto": "Em uma indústria de logística na área de controle de estoque, a planilha de pedidos possui uma coluna com a quantidade entregue. O responsável quer destacar automaticamente as linhas em que a quantidade entregue ficou abaixo de 50 unidades, para auditoria.",
+            "comando": "Como deve ser configurada a formatação condicional para destacar os valores abaixo de 50?",
+            "alternativas": {
+              "a": "Criar uma regra do tipo 'Menor que' e informar 50 como valor de referência",
+              "b": "Criar uma regra do tipo 'Maior que' e informar 50 como valor de referência",
+              "c": "Aplicar uma regra do tipo 'Entre' e informar 50 e 50 como limites",
+              "d": "Aplicar uma regra do tipo 'Igual a' e informar 50 como valor de referência"
+            },
+            "resposta_correta": "a"
+          },
+          {
+            "numero": 4,
+            "dificuldade": "Médio",
+            "capacidade": "CT1",
+            "contexto": "Em uma empresa de contabilidade na área de relatórios, o analista criou fórmulas que somam vendas por mês. Ao inserir uma nova coluna para 'Desconto', algumas fórmulas passaram a somar faixas erradas, alterando o total apresentado.",
+            "comando": "Qual causa mais provável explica o erro nas fórmulas após inserir uma coluna?",
+            "alternativas": {
+              "a": "A inserção de coluna ter apagado o histórico de cálculos da planilha",
+              "b": "Referências relativas das células terem sido ajustadas automaticamente ao inserir a coluna",
+              "c": "A formatação condicional ter substituído as fórmulas por valores fixos",
+              "d": "O Excel ter limitado o número de colunas, interrompendo a soma"
+            },
+            "resposta_correta": "b"
+          },
+          {
+            "numero": 5,
+            "dificuldade": "Médio",
+            "capacidade": "CT2",
+            "contexto": "Em uma empresa de suporte técnico na área de atendimento ao usuário, um estagiário utiliza o computador por longos períodos. Há queixa de desconforto no punho e no pescoço, e a bancada apresenta altura inadequada para a cadeira.",
+            "comando": "De que forma o mobiliário deve ser ajustado para reduzir desconforto postural no uso do computador?",
+            "alternativas": {
+              "a": "Manter a cadeira fixa e elevar apenas o teclado com apoio improvisado para alcançar a tela",
+              "b": "Ajustar a altura da cadeira e a posição da tela para manter punhos neutros e olhar alinhado",
+              "c": "Aproximar a tela o máximo possível e deixar a cadeira mais baixa para reduzir esforço nos ombros",
+              "d": "Desconsiderar a altura e apoiar os antebraços diretamente na borda da mesa durante a digitação"
+            },
+            "resposta_correta": "b"
+          },
+          {
+            "numero": 6,
+            "dificuldade": "Difícil",
+            "capacidade": "CT3",
+            "contexto": "Em uma empresa de desenvolvimento de aplicações web na área de implantação, o time precisa acessar arquivos de projeto a partir de diferentes locais e horários. Alguns membros trabalham em turnos alternativos e não podem depender de cópias locais sincronizadas manualmente.",
+            "comando": "Por que a computação em nuvem atende melhor ao cenário descrito?",
+            "alternativas": {
+              "a": "Porque reduz a capacidade de armazenamento para forçar uso apenas de dispositivos locais",
+              "b": "Porque substitui completamente a necessidade de internet para acesso aos projetos em qualquer local",
+              "c": "Porque elimina a necessidade de permissões e dispensa políticas de segurança para compartilhamento",
+              "d": "Porque centraliza o acesso aos arquivos e permite colaboração com atualização controlada entre usuários"
+            },
+            "resposta_correta": "d"
+          },
+          {
+            "numero": 7,
+            "dificuldade": "Difícil",
+            "capacidade": "CT4",
+            "contexto": "Em uma equipe de TI na área de sistemas internos, foi detectado que um formulário web passou a aceitar campos fora do padrão esperado. O time precisa reduzir o risco de falhas e garantir que mudanças futuras sigam requisitos e controles definidos.",
+            "comando": "Por qual razão o rastreamento de requisitos contribui para mitigar riscos de segurança nesse cenário?",
+            "alternativas": {
+              "a": "Porque permite verificar quais requisitos foram afetados e se os controles associados foram mantidos após mudanças",
+              "b": "Porque substitui testes funcionais e dispensa validação de entradas pelo sistema",
+              "c": "Porque garante que qualquer alteração terá zero impacto, independentemente de validações e revisões",
+              "d": "Porque faz o sistema ignorar inconsistências para evitar que usuários percebam falhas"
+            },
+            "resposta_correta": "a"
+          },
+          {
+            "numero": 8,
+            "dificuldade": "Médio",
+            "capacidade": "CB1",
+            "contexto": "Em uma central de atendimento na área de TI, alguns técnicos atuam em plantões noturnos e outros em horários comerciais. Um procedimento de triagem por telefone foi alterado e precisa ser aplicado sem atrasar o registro de ocorrências em qualquer turno.",
+            "comando": "Como a análise do ambiente de trabalho ajuda a ajustar o procedimento para turnos diferentes?",
+            "alternativas": {
+              "a": "Eliminando etapas de registro para reduzir o uso de formulários e acelerar apenas o atendimento",
+              "b": "Mantendo o procedimento idêntico em todos os turnos, pois o tempo de execução é sempre o mesmo",
+              "c": "Considerando diferenças de tempo, disponibilidade e fluxo de comunicação para adequar etapas e evitar retrabalho",
+              "d": "Trocando o procedimento apenas no turno comercial, deixando os plantões com a versão anterior"
+            },
+            "resposta_correta": "c"
+          },
+          {
+            "numero": 9,
+            "dificuldade": "Fácil",
+            "capacidade": "CS1",
+            "contexto": "Em uma empresa de infraestrutura na área de redes, a equipe recebeu uma atualização do sistema de monitoramento. Alguns alertas passaram a ser exibidos em novos formatos, exigindo que os técnicos interpretem as informações antes de agir.",
+            "comando": "O que confirma uma postura crítica e adaptativa ao lidar com essa mudança?",
+            "alternativas": {
+              "a": "Solicitar apenas a opinião de colegas, sem consultar documentação do sistema",
+              "b": "Ignorar os novos formatos e continuar acionando procedimentos antigos sem verificação",
+              "c": "Agir imediatamente com base no primeiro alerta exibido, sem conferir mudanças de layout",
+              "d": "Validar a interpretação dos novos alertas em documentação e testes antes de executar ações corretivas"
+            },
+            "resposta_correta": "d"
+          },
+          {
+            "numero": 10,
+            "dificuldade": "Difícil",
+            "capacidade": "CT3",
+            "contexto": "Em uma empresa de comércio eletrônico na área de marketing digital, a equipe coleta dados de navegação e compra em grande volume. O objetivo é identificar padrões para personalizar campanhas em dispositivos móveis, respeitando a capacidade de processamento do time.",
+            "comando": "De que forma o conceito de Big Data pode ser aplicado para apoiar a personalização descrita?",
+            "alternativas": {
+              "a": "Substituindo a análise por decisões baseadas apenas em preferências individuais dos atendentes",
+              "b": "Limitando a coleta a poucas amostras para reduzir o volume e evitar análise estatística",
+              "c": "Analisando grandes volumes de dados para encontrar padrões e segmentar usuários para campanhas móveis",
+              "d": "Armazenando dados sem processamento para manter registros históricos e dispensar inferências"
+            },
+            "resposta_correta": "c"
+          }
+        ]
+      },
+      {
+        "nome": "Codificação para Back-End",
+        "capacidades_avaliadas": [
+          {
+            "id": "C1",
+            "descricao": "Aplicar técnicas de levantamento de demandas do cliente"
+          },
+          {
+            "id": "C2",
+            "descricao": "Aplicar técnicas de levantamento de requisitos"
+          },
+          {
+            "id": "C3",
+            "descricao": "Aplicar princípios de metodologias ágeis para desenvolvimento de projetos"
+          },
+          {
+            "id": "C4",
+            "descricao": "Aplicar técnicas de versionamento de software"
+          },
+          {
+            "id": "C5",
+            "descricao": "Seguir recomendações técnicas na aplicação da linguagem de programação"
+          },
+          {
+            "id": "C6",
+            "descricao": "Seguir recomendações técnicas na aplicação de framework"
+          },
+          {
+            "id": "C7",
+            "descricao": "Aplicar técnicas de versionamento de software"
+          }
+        ],
+        "questoes": [
+          {
+            "numero": 1,
+            "dificuldade": "Médio",
+            "capacidade": "C5",
+            "contexto": "Em uma empresa de e-commerce na área de back-end, o desenvolvedor precisa exibir o valor do frete com duas casas decimais. O banco retorna um número em ponto flutuante, por exemplo 12.3456, e a API deve retornar 12.35 para o campo \"frete\" ao consumir o endpoint.",
+            "comando": "De que forma o valor deve ser arredondado em PHP para resultar em 12.35 ao usar duas casas decimais?",
+            "alternativas": {
+              "a": "$resp = $$'frete' => round($frete, 0)$$;",
+              "b": "$resp = $$'frete' => round($frete, 2)$$;",
+              "c": "$resp = $$'frete' => ceil($frete, 2)$$;",
+              "d": "$resp = $$'frete' => floor($frete, 2)$$;"
+            },
+            "resposta_correta": "b"
+          },
+          {
+            "numero": 2,
+            "dificuldade": "Fácil",
+            "capacidade": "C4",
+            "contexto": "Em uma empresa de desenvolvimento de API na área de back-end, a equipe ajustou a formatação de valores numéricos no PHP. Antes do deploy, o líder pediu para registrar a mudança no repositório para rastrear quem alterou o comportamento do endpoint de cálculo.",
+            "comando": "Qual comando do Git registra a mudança no histórico local do repositório?",
+            "alternativas": {
+              "a": "git status --untracked-files=all",
+              "b": "git push origin main",
+              "c": "git merge main",
+              "d": "git commit -m \"Ajuste de arredondamento\""
+            },
+            "resposta_correta": "d"
+          },
+          {
+            "numero": 3,
+            "dificuldade": "Médio",
+            "capacidade": "C2",
+            "contexto": "Em uma indústria de serviços financeiros na área de back-end, o time vai implementar um endpoint que retorna valores de taxa com arredondamento. Durante a reunião, o cliente informa que o sistema deve apresentar a taxa com duas casas decimais, mas não detalha como tratar valores como 1.005.",
+            "comando": "Quais requisitos devem ser levantados para definir corretamente o arredondamento no PHP?",
+            "alternativas": {
+              "a": "Regra de arredondamento, quantidade de casas decimais e critério para casos-limite como 1.005",
+              "b": "Apenas o formato visual da tela e a cor do componente que exibe a taxa",
+              "c": "Somente o tempo de carregamento da página sem relação com o cálculo do valor",
+              "d": "A linguagem preferida do front-end e a infraestrutura de rede do navegador do usuário"
+            },
+            "resposta_correta": "a"
+          },
+          {
+            "numero": 4,
+            "dificuldade": "Fácil",
+            "capacidade": "C3",
+            "contexto": "Em uma empresa de software na área de back-end, o time trabalha com sprints de duas semanas. Após priorizar correções, foi identificado que o endpoint de cálculo usa round() com casas decimais diferentes do acordado. O líder precisa organizar o trabalho para resolver isso dentro da próxima sprint.",
+            "comando": "Como a equipe deve organizar a correção dentro da sprint, considerando o fluxo ágil?",
+            "alternativas": {
+              "a": "Aguardar o final do projeto para corrigir, pois mudanças só são aceitas após o deploy completo",
+              "b": "Adicionar a correção como item do backlog, estimar e planejar a execução na sprint atual",
+              "c": "Trocar a implementação sem registrar tarefa, evitando atualização de backlog para não atrasar",
+              "d": "Implementar a correção diretamente em produção, dispensando validação durante a sprint"
+            },
+            "resposta_correta": "b"
+          },
+          {
+            "numero": 5,
+            "dificuldade": "Médio",
+            "capacidade": "C6",
+            "contexto": "Em uma empresa de APIs na área de back-end, a aplicação usa um framework PHP para expor endpoints. Em um endpoint de consulta, o valor retornado para \"total\" está com mais casas decimais do que o esperado. O desenvolvedor precisa ajustar o cálculo antes de montar a resposta HTTP.",
+            "comando": "De que forma o framework pode receber um valor já arredondado para ser retornado na resposta do endpoint?",
+            "alternativas": {
+              "a": "Calcular no controlador usando round($total, 2) e então montar o JSON com o valor arredondado",
+              "b": "Arredondar apenas no front-end, pois o back-end sempre envia o valor final com precisão automática",
+              "c": "Aplicar round no nome da rota do endpoint, para alterar a serialização dos números",
+              "d": "Remover a variável do total e deixar o framework preencher automaticamente com duas casas decimais"
+            },
+            "resposta_correta": "a"
+          },
+          {
+            "numero": 6,
+            "dificuldade": "Difícil",
+            "capacidade": "C7",
+            "contexto": "Em uma empresa de desenvolvimento na área de back-end, o time criou uma branch para corrigir a formatação de números no PHP. Após revisões, decidiu incorporar a correção na branch principal mantendo o histórico. O repositório já possui commits na branch de correção que precisam ser integrados.",
+            "comando": "De que forma a branch de correção deve ser integrada à branch principal mantendo a integração por merge no Git?",
+            "alternativas": {
+              "a": "git checkout main e depois git merge <branch-da-correção>",
+              "b": "git checkout <branch-da-correção> e depois git rebase main",
+              "c": "git reset --hard main para apagar a branch de correção",
+              "d": "git fetch e depois git pull sem escolher a branch de destino"
+            },
+            "resposta_correta": "a"
+          },
+          {
+            "numero": 7,
+            "dificuldade": "Fácil",
+            "capacidade": "C1",
+            "contexto": "Em uma indústria de logística na área de back-end, o cliente solicita que o sistema apresente valores de peso em quilogramas com arredondamento. No primeiro contato, o cliente menciona apenas que precisa de \"valores mais legíveis\" e não informa a precisão desejada no contrato.",
+            "comando": "Quais informações devem ser obtidas para transformar a demanda em direcionamento técnico para o back-end?",
+            "alternativas": {
+              "a": "A preferência de layout do relatório e a fonte usada na impressão do documento",
+              "b": "Precisão exigida (casas decimais), regra de arredondamento e exemplo de entrada e saída esperadas",
+              "c": "Somente a quantidade de usuários simultâneos, sem relação com o cálculo do peso",
+              "d": "A configuração do navegador do usuário para exibir números com separador"
+            },
+            "resposta_correta": "b"
+          },
+          {
+            "numero": 8,
+            "dificuldade": "Difícil",
+            "capacidade": "C5",
+            "contexto": "Em uma empresa de automação na área de back-end, uma API de precificação usa PHP para calcular descontos. O valor base é 99.99 e o desconto percentual é 10%. O desenvolvedor monta $precoFinal = $base - ($base * $percentual/100) e precisa retornar o resultado com duas casas decimais no JSON.",
+            "comando": "Qual expressão em PHP deve ser usada para retornar o preço final arredondado com duas casas decimais no endpoint?",
+            "alternativas": {
+              "a": "$precoFinal = round($base - ($base * $percentual / 100), 20);",
+              "b": "$precoFinal = round($base, 2) - round($base * $percentual / 100, 2);",
+              "c": "$precoFinal = round($base - ($base * $percentual / 100));",
+              "d": "$precoFinal = round($base - ($base * $percentual / 100), 2);"
+            },
+            "resposta_correta": "d"
+          },
+          {
+            "numero": 9,
+            "dificuldade": "Difícil",
+            "capacidade": "C2",
+            "contexto": "Em uma empresa de saúde na área de back-end, o sistema registra medições e disponibiliza relatórios via API. O requisito do cliente afirma apenas que \"os valores devem ser arredondados\". Para evitar divergências entre relatórios, o time precisa especificar como o arredondamento deve ocorrer para diferentes campos do formulário.",
+            "comando": "Que tipo de especificação deve ser detalhada no levantamento para garantir consistência do arredondamento na API?",
+            "alternativas": {
+              "a": "Somente a autorização de perfis de usuários, sem impacto no formato numérico retornado",
+              "b": "Apenas a descrição do banco de dados, sem definir o comportamento do cálculo no servidor",
+              "c": "Critérios por campo: casas decimais, regra de arredondamento e política para valores limítrofes",
+              "d": "O padrão de exibição do relatório no navegador, dispensando a lógica server-side"
+            },
+            "resposta_correta": "c"
+          },
+          {
+            "numero": 10,
+            "dificuldade": "Médio",
+            "capacidade": "C6",
+            "contexto": "Em uma empresa de plataformas web na área de back-end, o framework PHP serializa arrays retornados pelos controllers para JSON. Em um endpoint de estatísticas, o controller monta um array com médias calculadas e o framework apenas converte para JSON. O cliente espera médias com uma casa decimal.",
+            "comando": "Como o controller deve preparar os valores antes de retornar para o framework serializar corretamente com uma casa decimal?",
+            "alternativas": {
+              "a": "Deixar o framework decidir a precisão, retornando o valor bruto do cálculo",
+              "b": "Aplicar round($valor, 0) para remover casas decimais e manter a mesma média",
+              "c": "Aplicar round($valor, 1) em cada média ao montar o array de retorno",
+              "d": "Usar floor($valor, 1) para garantir que sempre haja uma casa decimal no JSON"
+            },
+            "resposta_correta": "c"
+          }
+        ]
+      },
+      {
+        "nome": "Codificação para Front-End",
+        "capacidades_avaliadas": [
+          {
+            "id": "C1",
+            "descricao": "Seguir recomendações técnicas na aplicação da linguagem de marcação"
+          },
+          {
+            "id": "C2",
+            "descricao": "Seguir recomendações técnicas na aplicação de folhas de estilos (css)"
+          },
+          {
+            "id": "C3",
+            "descricao": "Aplicar técnicas de versionamento de software"
+          },
+          {
+            "id": "C4",
+            "descricao": "Seguir recomendações técnicas na aplicação da linguagem de programação"
+          },
+          {
+            "id": "C5",
+            "descricao": "Aplicar técnicas de versionamento de software"
+          },
+          {
+            "id": "C6",
+            "descricao": "Seguir recomendações técnicas na aplicação de frameworks"
+          },
+          {
+            "id": "C7",
+            "descricao": "Aplicar técnicas de versionamento de software"
+          }
+        ],
+        "questoes": [
+          {
+            "numero": 1,
+            "dificuldade": "Médio",
+            "capacidade": "C1",
+            "contexto": "Em uma empresa de desenvolvimento web na área de interface para clientes, o time precisa criar um botão “Atualizar” que dispare uma ação no front-end e fique acessível para leitores de tela. O botão deve estar dentro de um formulário e usar um tipo de submissão compatível com o comportamento desejado.",
+            "comando": "Qual valor do atributo type no elemento button atende a um comportamento de disparo sem depender de submissão automática do formulário?",
+            "alternativas": {
+              "a": "button com type=\"reset\" para limpar os campos do formulário",
+              "b": "button com type=\"submit\" para disparar a ação do front-end",
+              "c": "button com type=\"button\" para evitar submissão do formulário",
+              "d": "button sem atributo type para manter o comportamento padrão do navegador"
+            },
+            "resposta_correta": "c"
+          },
+          {
+            "numero": 2,
+            "dificuldade": "Médio",
+            "capacidade": "C4",
+            "contexto": "Em uma indústria de e-commerce na área de integração front-end, o desenvolvedor precisa buscar o total de itens em um endpoint e usar o valor recebido para atualizar um elemento da página. O endpoint retorna JSON no formato {\"quantidade\": \"12\"} e o código deve extrair o campo quantidade antes do cálculo.",
+            "comando": "De que forma o código deve obter o valor quantity a partir do retorno do fetch() para então usá-lo no front-end?",
+            "alternativas": {
+              "a": "Chamar fetch(), usar then para response.json() e acessar data.quantidade",
+              "b": "Chamar fetch(), usar then para response.text() e acessar response.quantidade",
+              "c": "Chamar fetch(), usar then para response.json() e acessar response.quantidade",
+              "d": "Chamar fetch(), usar then para response.json() e acessar data[\"quantidade\"] sem converter"
+            },
+            "resposta_correta": "a"
+          },
+          {
+            "numero": 3,
+            "dificuldade": "Fácil",
+            "capacidade": "C2",
+            "contexto": "Em uma empresa de manutenção de sites na área de interface, o layout de um botão “Atualizar” está sem destaque visual. O designer definiu que o botão deve ter borda fina, preenchimento interno e espaçamento externo para ficar consistente com os demais componentes.",
+            "comando": "Como deve ser aplicado o CSS para dar ao botão uma borda e espaçamento interno suficientes para o destaque solicitado?",
+            "alternativas": {
+              "a": "Aplicar padding apenas no container e deixar o botão sem estilos de borda",
+              "b": "Definir apenas font-size na classe do botão para criar borda e preenchimento",
+              "c": "Usar somente background-color e remover padding para manter o layout compacto",
+              "d": "Definir border e padding na classe do botão e ajustar margin para o espaçamento"
+            },
+            "resposta_correta": "d"
+          },
+          {
+            "numero": 4,
+            "dificuldade": "Fácil",
+            "capacidade": "C4",
+            "contexto": "Em uma indústria de serviços digitais na área de front-end, existe um campo de quantidade (input) e um botão “Somar”. Ao clicar, o sistema deve somar a quantidade digitada com um valor fixo configurado no script e exibir o resultado em um parágrafo.",
+            "comando": "Qual trecho de lógica usa DOM e parseInt() para somar o valor do input a um número fixo?",
+            "alternativas": {
+              "a": "const q=parseInt(document.querySelector('#q').value); const r=q+\"5\"; document.querySelector('#out').innerHTML=r;",
+              "b": "const q=document.querySelector('#q').value; const r=q+5; document.querySelector('#out').textContent=r;",
+              "c": "const q=parseInt(document.querySelector('#out').textContent); const r=q+5; document.querySelector('#q').value=r;",
+              "d": "const q=parseInt(document.querySelector('#q').value); const r=q+5; document.querySelector('#out').textContent=r;"
+            },
+            "resposta_correta": "d"
+          },
+          {
+            "numero": 5,
+            "dificuldade": "Fácil",
+            "capacidade": "C3",
+            "contexto": "Em uma empresa de desenvolvimento de software na área de versionamento, a equipe ajustou a cor do botão e corrigiu o cálculo do total exibido após a resposta do fetch. Antes de enviar o código para o repositório remoto, o líder precisa orientar a prática de commits para facilitar a revisão.",
+            "comando": "De que forma os commits devem ser organizados para registrar mudanças relacionadas e permitir rastreio durante a revisão?",
+            "alternativas": {
+              "a": "Manter alterações sem commit até a entrega final para evitar histórico detalhado",
+              "b": "Fazer um único commit grande com todas as alterações e mensagem genérica",
+              "c": "Separar commits por mudanças lógicas, com mensagens descritivas para cada conjunto de alterações",
+              "d": "Usar commit com mensagens vazias para reduzir ruído no histórico do repositório"
+            },
+            "resposta_correta": "c"
+          },
+          {
+            "numero": 6,
+            "dificuldade": "Médio",
+            "capacidade": "C6",
+            "contexto": "Em uma empresa de criação de interfaces na área de frameworks, o desenvolvedor usa uma abordagem com componentes e precisa estilizar um botão para que tenha aparência consistente. Ele criou um componente do botão e quer aplicar estilos por classe, garantindo que o CSS seja aplicado ao elemento certo no render.",
+            "comando": "Como a classe CSS deve ser aplicada no componente para que o estilo alcance o botão renderizado no DOM?",
+            "alternativas": {
+              "a": "Vincular a classe ao componente pai, deixando o botão sem classe para herdar estilos",
+              "b": "Vincular a classe ao elemento do botão no componente, usando o atributo className",
+              "c": "Definir o estilo inline apenas no estado, sem atribuir classe ao elemento do botão",
+              "d": "Aplicar a classe no método de busca de dados, para que o botão receba estilos após fetch"
+            },
+            "resposta_correta": "b"
+          },
+          {
+            "numero": 7,
+            "dificuldade": "Difícil",
+            "capacidade": "C5",
+            "contexto": "Em uma empresa de desenvolvimento colaborativo na área de front-end, dois desenvolvedores editaram o mesmo arquivo: um ajustou o HTML do botão e outro alterou a lógica do clique em JavaScript. Ao tentar integrar as mudanças, o sistema de versionamento gerou conflito. O líder precisa decidir a estratégia para analisar e resolver o conflito com segurança.",
+            "comando": "O que deve ser verificado para decidir como resolver o conflito sem perder as alterações corretas de cada parte?",
+            "alternativas": {
+              "a": "Apagar todo o arquivo conflitado e reconstruir apenas com base no último commit do repositório",
+              "b": "Comparar as seções conflitantes no arquivo e entender quais trechos correspondem ao HTML e quais correspondem ao JavaScript",
+              "c": "Ignorar os marcadores de conflito e fazer commit direto, assumindo que o navegador corrigirá a inconsistência",
+              "d": "Substituir o arquivo conflitado pelo conteúdo da branch que tem mais commits, sem revisar o que foi alterado"
+            },
+            "resposta_correta": "b"
+          },
+          {
+            "numero": 8,
+            "dificuldade": "Difícil",
+            "capacidade": "C4",
+            "contexto": "Em uma empresa de automação de atendimento na área de front-end, ao clicar no botão “Somar”, o sistema faz fetch para obter um valor e soma com outro número fixo. O endpoint retorna {\"valor\": \"7\"}. Em produção, o resultado exibido está vindo como “75” em vez de “12”, indicando problema na etapa de conversão e soma.",
+            "comando": "Qual causa mais provável explica o resultado “75” em vez de “12” nesse cenário?",
+            "alternativas": {
+              "a": "O valor do JSON foi tratado como string e concatenado com o número fixo",
+              "b": "O DOM não foi atualizado com textContent após a soma",
+              "c": "O fetch não executou porque o botão não possui evento de clique",
+              "d": "A função parseInt() foi removida e, por isso, o endpoint retornou outro JSON"
+            },
+            "resposta_correta": "a"
+          },
+          {
+            "numero": 9,
+            "dificuldade": "Médio",
+            "capacidade": "C1",
+            "contexto": "Em uma empresa de desenvolvimento de portais na área de front-end, a equipe precisa criar um botão que leva o usuário para uma página de “Detalhes” sem acionar submissão de formulário. O componente atual está usando um elemento inadequado, causando navegação inesperada em algumas telas.",
+            "comando": "Para que serve usar o elemento apropriado para navegação em vez de usar button quando o objetivo é mudar de página?",
+            "alternativas": {
+              "a": "Garantir semântica correta e comportamento de navegação compatível com links",
+              "b": "Evitar a necessidade de JavaScript para qualquer interação do usuário",
+              "c": "Impedir que o navegador registre a navegação no histórico",
+              "d": "Substituir automaticamente a necessidade de tratamento de eventos no front-end"
+            },
+            "resposta_correta": "a"
+          },
+          {
+            "numero": 10,
+            "dificuldade": "Difícil",
+            "capacidade": "C7",
+            "contexto": "Em uma empresa de produto digital na área de manutenção, o repositório apresenta histórico com commits pequenos, porém sem referência a requisitos. Em uma nova entrega, o time precisa garantir que mudanças em botão HTML e lógica de soma com fetch possam ser rastreadas até o requisito original, para auditoria interna.",
+            "comando": "Por qual razão a prática de associar commits a requisitos e documentar mudanças melhora a rastreabilidade em auditoria?",
+            "alternativas": {
+              "a": "Porque reduz o tamanho do repositório ao remover histórico de commits antigos",
+              "b": "Porque permite relacionar cada alteração ao requisito e ao momento do versionamento, facilitando evidências",
+              "c": "Porque impede conflitos futuros ao bloquear alterações em arquivos do mesmo componente",
+              "d": "Porque substitui testes automatizados, tornando desnecessária validação do comportamento em execução"
+            },
+            "resposta_correta": "b"
+          }
+        ]
+      },
+      {
+        "nome": "Testes de Back-End",
+        "capacidades_avaliadas": [
+          {
+            "id": "C1",
+            "descricao": "Elaborar plano de testes de sistemas para web"
+          },
+          {
+            "id": "C2",
+            "descricao": "Executar testes de acordo com o plano proposto"
+          },
+          {
+            "id": "C3",
+            "descricao": "Aplicar boas práticas na execução dos testes"
+          },
+          {
+            "id": "C4",
+            "descricao": "Executar testes de funcionamento da sistemas para web"
+          },
+          {
+            "id": "C5",
+            "descricao": "Planejar roadmap de atualização do sistema web de acordo com escopo e necessidades do projeto"
+          },
+          {
+            "id": "C6",
+            "descricao": "Aplicar atualizações de sistema de acordo com escopo e necessidades do projeto"
+          },
+          {
+            "id": "C7",
+            "descricao": "Executar manutenções de acordo com o plano do projeto"
+          },
+          {
+            "id": "C8",
+            "descricao": "Aplicar rotinas de verificações dos sistemas web"
+          },
+          {
+            "id": "C9",
+            "descricao": "Planejar rotinas de verificações dos sistemas web"
+          }
+        ],
+        "questoes": [
+          {
+            "numero": 1,
+            "dificuldade": "Fácil",
+            "capacidade": "C1",
+            "contexto": "Em uma empresa de desenvolvimento de software na área de back-end, o time criou uma API de login com autenticação por token e precisa definir um caso de teste unitário para o método que valida credenciais recebidas no corpo da requisição.",
+            "comando": "De que forma o caso de teste deve registrar as entradas e a saída esperada para autenticação válida?",
+            "alternativas": {
+              "a": "Definir que a saída esperada é mensagem genérica de erro sem token, mesmo quando as credenciais são corretas",
+              "b": "Registrar somente o nome do usuário e esperar status 500 para confirmar falha do serviço durante o login",
+              "c": "Informar e-mail e senha válidos e registrar status 200 com token retornado e usuário associado ao token",
+              "d": "Usar apenas um teste sem entradas, verificando somente se o método foi chamado durante o login"
+            },
+            "resposta_correta": "c"
+          },
+          {
+            "numero": 2,
+            "dificuldade": "Fácil",
+            "capacidade": "C2",
+            "contexto": "Em uma indústria de serviços digitais na área de back-end, a equipe tem um plano de testes com um caso unitário de autenticação que deve ser executado sempre que a regra de senha for alterada no serviço de login.",
+            "comando": "Como deve ser executado o caso de teste unitário de autenticação previsto no plano quando surgem falhas no pipeline?",
+            "alternativas": {
+              "a": "Substituir manualmente o código de autenticação durante a execução e repetir sem atualizar a documentação do teste",
+              "b": "Rodar o caso de teste do login no ambiente de integração, registrar logs e comparar o resultado obtido com o esperado do caso",
+              "c": "Executar apenas testes de interface do usuário, ignorando o serviço unitário de autenticação no back-end",
+              "d": "Executar o caso uma única vez sem registrar evidências, pois o pipeline já indica a causa da falha"
+            },
+            "resposta_correta": "b"
+          },
+          {
+            "numero": 3,
+            "dificuldade": "Médio",
+            "capacidade": "C3",
+            "contexto": "Em uma empresa de e-commerce na área de back-end, o serviço de login é testado com mocks para o repositório de usuários. Antes de implementar os testes unitários, o responsável precisa revisar o fluxo de autenticação para evitar suposições equivocadas.",
+            "comando": "Para que serve um teste de mesa antes de escrever os casos de teste de autenticação unitária?",
+            "alternativas": {
+              "a": "Confirmar o passo a passo do fluxo e alinhar entradas, saídas e condições de contorno esperadas antes da automação",
+              "b": "Garantir que a API será executada em produção com o mesmo conjunto de dados do teste",
+              "c": "Substituir a definição do resultado esperado do caso, evitando a necessidade de critérios de aceitação",
+              "d": "Eliminar a necessidade de mocks, pois o teste de mesa valida dependências externas automaticamente"
+            },
+            "resposta_correta": "a"
+          },
+          {
+            "numero": 4,
+            "dificuldade": "Médio",
+            "capacidade": "C4",
+            "contexto": "Em uma indústria de fintech na área de back-end, o método de autenticação unitária recebe e-mail e senha e retorna um objeto com token ou erro. O desenvolvedor precisa validar o comportamento sem inspecionar detalhes internos do método.",
+            "comando": "Qual verificação deve ser feita para observar o comportamento do método de autenticação em teste de caixa preta?",
+            "alternativas": {
+              "a": "Verificar diretamente o conteúdo do banco de dados após cada chamada, sem usar retornos esperados do método",
+              "b": "Inspecionar variáveis internas do método para confirmar se a senha foi comparada em tempo constante",
+              "c": "Comparar o retorno do método para entradas válidas e inválidas com os status e mensagens definidos no caso de teste",
+              "d": "Confirmar que o log de depuração foi gravado no servidor, pois isso substitui a verificação do retorno"
+            },
+            "resposta_correta": "c"
+          },
+          {
+            "numero": 5,
+            "dificuldade": "Difícil",
+            "capacidade": "C5",
+            "contexto": "Em uma empresa de SaaS na área de back-end, o sistema de login utiliza um algoritmo de hashing legado. O projeto prevê atualização para um algoritmo mais seguro, mas o time precisa planejar o roadmap de testes para cobrir impactos no fluxo de autenticação e evitar regressões.",
+            "comando": "De que forma o roadmap de atualização deve considerar os casos de teste de autenticação para reduzir risco de regressão?",
+            "alternativas": {
+              "a": "Concentrar a atualização apenas no front-end e manter os casos unitários de autenticação sem alterações, pois o back-end não muda",
+              "b": "Sequenciar a execução de testes unitários e de integração ligados ao login antes e depois da troca do algoritmo, incluindo cenários válidos e inválidos",
+              "c": "Realizar apenas testes manuais de login após a mudança, dispensando a suíte automatizada por ser mais lenta",
+              "d": "Adiar a criação de novos casos unitários até a liberação em produção, usando somente logs para validar o comportamento"
+            },
+            "resposta_correta": "b"
+          },
+          {
+            "numero": 6,
+            "dificuldade": "Médio",
+            "capacidade": "C6",
+            "contexto": "Em uma empresa de gestão de usuários na área de back-end, foi definida uma atualização no serviço de login para padronizar as mensagens de erro quando a autenticação falha. O time precisa aplicar a atualização sem quebrar os testes existentes.",
+            "comando": "Como a aplicação da atualização deve ser acompanhada para manter aderência aos casos de teste de autenticação já documentados?",
+            "alternativas": {
+              "a": "Aplicar a mudança e não executar testes até o próximo ciclo, mantendo apenas a documentação como evidência",
+              "b": "Aplicar a mudança e remover os casos de teste antigos, pois novas mensagens tornam a suíte obsoleta",
+              "c": "Aplicar a mudança e validar apenas o status HTTP, sem conferir mensagem e estrutura do retorno",
+              "d": "Aplicar a mudança e executar a suíte unitária de autenticação, verificando se o retorno de erro segue os critérios do caso"
+            },
+            "resposta_correta": "d"
+          },
+          {
+            "numero": 7,
+            "dificuldade": "Difícil",
+            "capacidade": "C7",
+            "contexto": "Em uma indústria de serviços de saúde na área de back-end, uma correção de manutenção foi aplicada no endpoint de login para tratar timeouts do provedor de autenticação. Após a correção, o time precisa validar que o comportamento de falha segue o plano de manutenção.",
+            "comando": "Por que as verificações de manutenção devem incluir testes de autenticação para credenciais inválidas e para falha de provedor?",
+            "alternativas": {
+              "a": "Porque o plano de manutenção dispensa critérios de aceitação, bastando confirmar que ocorreu uma tentativa de login",
+              "b": "Porque testes de autenticação servem apenas para validar sucesso, e falhas são verificadas somente por monitoramento em produção",
+              "c": "Porque credenciais inválidas não exercitam o código alterado no timeout do provedor, tornando o teste redundante",
+              "d": "Porque a correção pode alterar o fluxo de erro e a resposta esperada, afetando a consistência do caso de teste e a previsibilidade do sistema"
+            },
+            "resposta_correta": "d"
+          },
+          {
+            "numero": 8,
+            "dificuldade": "Fácil",
+            "capacidade": "C8",
+            "contexto": "Em uma empresa de plataforma educacional na área de back-end, foi identificado que o login unitário retorna token mesmo quando a senha está incorreta. O responsável precisa aplicar uma rotina de verificações para confirmar o que está falhando no fluxo.",
+            "comando": "Qual evidência indica que a verificação do caso de teste de autenticação falhou?",
+            "alternativas": {
+              "a": "A execução do teste registra que o método foi chamado, mesmo que o retorno não seja verificado",
+              "b": "O retorno do método para senha incorreta apresenta token e status compatível com autenticação bem-sucedida",
+              "c": "O log do servidor mostra tentativa de autenticação, ainda que a resposta do método seja ignorada",
+              "d": "A interface do sistema exibe mensagem de erro genérica ao usuário, sem relação com o retorno do método"
+            },
+            "resposta_correta": "b"
+          },
+          {
+            "numero": 9,
+            "dificuldade": "Difícil",
+            "capacidade": "C9",
+            "contexto": "Em uma empresa de serviços corporativos na área de back-end, o sistema de login passa por mudanças frequentes. O coordenador precisa planejar rotinas de verificações automatizadas para autenticação unitária, garantindo detecção precoce de regressões.",
+            "comando": "Em que consiste uma rotina de verificações que aumenta a detecção precoce de regressões no caso de autenticação unitária?",
+            "alternativas": {
+              "a": "Executar automaticamente a suíte de login a cada alteração, com casos de sucesso e falha, e registrar evidências para comparação entre execuções",
+              "b": "Rodar os testes apenas quando o usuário final reportar problema, usando o histórico de incidentes como evidência principal",
+              "c": "Limitar a rotina a um único teste de sucesso, evitando cenários de falha para reduzir o tempo total de execução",
+              "d": "Realizar a verificação somente em ambiente local e sem padronizar critérios de comparação, pois cada execução é independente"
+            },
+            "resposta_correta": "a"
+          },
+          {
+            "numero": 10,
+            "dificuldade": "Médio",
+            "capacidade": "C2",
+            "contexto": "Em uma empresa de API REST na área de back-end, a suíte de testes unitários do login está organizada por arquivos e depende de configuração de ambiente. Em um commit recente, o token passou a ter formato diferente e alguns testes falharam.",
+            "comando": "Como deve ser ajustada a execução dos testes para autenticação unitária após mudança no formato do token?",
+            "alternativas": {
+              "a": "Atualizar o esperado do caso e reexecutar a suíte no mesmo ambiente configurado, garantindo que a validação do token siga o novo formato",
+              "b": "Ignorar as falhas e manter os testes como estão, pois o formato do token não impacta o comportamento do método",
+              "c": "Apagar a configuração de ambiente e executar os testes apenas com valores fixos no código, sem validar retorno",
+              "d": "Executar somente testes de integração do endpoint e excluir a suíte unitária do login para evitar inconsistência"
+            },
+            "resposta_correta": "a"
+          }
+        ]
+      },
+      {
+        "nome": "Fundamentos de UI / UX",
+        "capacidades_avaliadas": [
+          {
+            "id": "C1",
+            "descricao": "Reconhecer formas geométricas para produção de interfaces"
+          },
+          {
+            "id": "C2",
+            "descricao": "Empregar técnicas de processos de criação na concepção de interfaces e experiência do usuário"
+          },
+          {
+            "id": "C3",
+            "descricao": "Identificar princípios básicos e contexto histórico de Design"
+          },
+          {
+            "id": "C4",
+            "descricao": "Identificar conceito de direito autoral no processo de criação de produtos gráficos"
+          }
+        ],
+        "questoes": [
+          {
+            "numero": 1,
+            "dificuldade": "Médio",
+            "capacidade": "C1",
+            "contexto": "Em uma empresa de e-commerce na área de experiência do usuário, a equipe precisa ajustar filtros de busca em uma tela de catálogo. Os rótulos dos filtros ficam sobrepostos quando a pessoa seleciona opções longas, e a área de leitura do texto diminui. O layout atual usa alinhamento inconsistente entre rótulo e campo.",
+            "comando": "De que forma o alinhamento e o espaçamento podem ser ajustados para manter rótulos claros nos filtros?",
+            "alternativas": {
+              "a": "Manter rótulos centralizados e reduzir o espaçamento vertical para caber mais opções na mesma linha",
+              "b": "Aumentar o tamanho da fonte apenas nos campos, mantendo rótulos sem padronização de posição",
+              "c": "Alinhar rótulos à esquerda, padronizar o espaçamento entre rótulo e campo e usar largura consistente",
+              "d": "Colocar rótulos como placeholders dentro dos campos e remover a área dedicada ao texto"
+            },
+            "resposta_correta": "c"
+          },
+          {
+            "numero": 2,
+            "dificuldade": "Médio",
+            "capacidade": "C2",
+            "contexto": "Em uma empresa de serviços digitais na área de design de interfaces, um protótipo de filtros apresenta rótulos pouco descritivos. Durante um teste com usuários, surgem conflitos: parte do time quer abreviar rótulos para economizar espaço, enquanto outra parte quer manter frases completas. O objetivo é reduzir dúvidas na seleção de filtros sem causar excesso de texto.",
+            "comando": "De que forma a equipe pode aplicar coleta de feedbacks para decidir entre rótulos abreviados e frases completas nos filtros?",
+            "alternativas": {
+              "a": "Coletar feedback dos usuários com tarefas de seleção, medir entendimento e ajustar rótulos até reduzir confusões recorrentes",
+              "b": "Aplicar o feedback apenas com o time interno, comparando preferências pessoais e mantendo a versão final sem novos testes",
+              "c": "Usar feedback somente após a entrega, registrando reclamações gerais e mantendo os rótulos abreviados para padronizar o visual",
+              "d": "Substituir rótulos por ícones e confiar que a familiaridade do público elimina dúvidas, dispensando validação com usuários"
+            },
+            "resposta_correta": "a"
+          },
+          {
+            "numero": 3,
+            "dificuldade": "Fácil",
+            "capacidade": "C3",
+            "contexto": "Em uma agência de design na área de criação de interfaces, a equipe discute por que rótulos em filtros devem ser consistentes e descrever a ação do usuário. Em reuniões, alguns profissionais citam que esse tipo de preocupação surgiu com abordagens centradas no usuário e com a consolidação de práticas de usabilidade.",
+            "comando": "Por que rótulos claros em filtros se relacionam ao desenvolvimento histórico do Design centrado no usuário?",
+            "alternativas": {
+              "a": "Porque a evolução histórica do Design priorizou exclusivamente a padronização industrial, sem considerar necessidades do usuário",
+              "b": "Porque o Design centrado no usuário prioriza reduzir a carga de interpretação, tornando os elementos da interface mais compreensíveis",
+              "c": "Porque rótulos claros surgiram apenas com o uso de fontes tipográficas específicas, independentemente do contexto de uso",
+              "d": "Porque a clareza do rótulo depende apenas de cores, e a função do filtro não influencia a compreensão"
+            },
+            "resposta_correta": "b"
+          },
+          {
+            "numero": 4,
+            "dificuldade": "Fácil",
+            "capacidade": "C4",
+            "contexto": "Em uma empresa de marketing digital na área de produtos gráficos, a designer precisa criar uma ilustração para a página de filtros de um aplicativo. Ela encontrou um arquivo em um repositório com licença Creative Commons e quer reutilizar no layout mantendo a conformidade legal do projeto.",
+            "comando": "Em que consiste o conceito de direito autoral ao reutilizar um produto gráfico licenciado em Creative Commons?",
+            "alternativas": {
+              "a": "É o conjunto de direitos que define como a obra pode ser reutilizada conforme a licença, incluindo condições como atribuição",
+              "b": "É a permissão para copiar qualquer conteúdo sem atribuição, desde que o arquivo esteja disponível online",
+              "c": "É a exigência de registrar a obra em cartório antes de qualquer reutilização em interface",
+              "d": "É a regra de que apenas o autor original pode adaptar a obra, independentemente da licença"
+            },
+            "resposta_correta": "a"
+          },
+          {
+            "numero": 5,
+            "dificuldade": "Difícil",
+            "capacidade": "C1",
+            "contexto": "Em uma empresa de tecnologia na área de UI, o time implementou filtros com caixas de seleção e campos de texto. Em algumas telas, os rótulos dos filtros parecem “deslocados” em relação aos campos, embora o código use a mesma estrutura. O problema aparece quando o usuário altera o zoom do navegador e muda o tamanho do texto do sistema.",
+            "comando": "Qual a causa provável do desalinhamento visual entre rótulos e campos nos filtros quando há mudança de zoom e tamanho de texto?",
+            "alternativas": {
+              "a": "Excesso de espaçamento entre rótulo e campo, o que força o alinhamento por proximidade",
+              "b": "Ausência de repetição de elementos, pois cada filtro foi projetado com formatos diferentes para evitar consistência",
+              "c": "Uso de formas geométricas com tamanhos fixos em unidades absolutas, sem considerar escalabilidade do layout",
+              "d": "Manutenção de alinhamento à esquerda, que elimina qualquer efeito do zoom e do tamanho de texto"
+            },
+            "resposta_correta": "c"
+          },
+          {
+            "numero": 6,
+            "dificuldade": "Difícil",
+            "capacidade": "C2",
+            "contexto": "Em uma empresa de fintech na área de UX, foi observado que usuários hesitam ao usar filtros de “tipo de transação” e “período”. Em entrevistas rápidas, eles relatam que “entendem o filtro, mas não sabem por onde começar”. O protótipo já possui rótulos, porém a ordem e a sequência de interação não refletem as etapas da jornada.",
+            "comando": "Onde está a falha de UX que impede o início da interação com os filtros descritos no cenário?",
+            "alternativas": {
+              "a": "Na ausência de rótulos, pois sem rótulo o usuário não consegue identificar nenhuma opção do filtro",
+              "b": "Na escolha de fontes, pois a legibilidade tipográfica determina a ordem correta de uso dos filtros",
+              "c": "Na falta de cores, pois a usabilidade depende exclusivamente de contraste para orientar o começo da interação",
+              "d": "Na desconexão entre a sequência de interação do protótipo e as etapas da jornada do usuário para chegar ao objetivo"
+            },
+            "resposta_correta": "d"
+          },
+          {
+            "numero": 7,
+            "dificuldade": "Médio",
+            "capacidade": "C3",
+            "contexto": "Em uma equipe de UI na área de design de interfaces, foi solicitado que rótulos em filtros fossem mais “visíveis” para usuários em ambientes com pouca iluminação. O time discutiu se deveria alterar apenas cores ou também a estrutura do rótulo e sua relação com o campo. O objetivo é manter clareza e reduzir ambiguidades na seleção.",
+            "comando": "Como a teoria das cores se relaciona à clareza dos rótulos em filtros sem substituir a função informativa do texto?",
+            "alternativas": {
+              "a": "A teoria das cores substitui o texto por contraste, tornando rótulos dispensáveis para entendimento",
+              "b": "A teoria das cores complementa a legibilidade do texto, mas a clareza depende da relação entre rótulo e campo",
+              "c": "A teoria das cores é irrelevante para rótulos, pois apenas tamanho de fonte determina a compreensão",
+              "d": "A teoria das cores deve ser aplicada apenas em botões, pois filtros não se beneficiam de contraste"
+            },
+            "resposta_correta": "b"
+          },
+          {
+            "numero": 8,
+            "dificuldade": "Fácil",
+            "capacidade": "C2",
+            "contexto": "Em uma empresa de criação de produtos digitais na área de prototipagem, o designer precisa validar rapidamente a posição dos rótulos em filtros antes de desenvolver a interface. O time tem pouco tempo e quer testar fluxo e leitura com usuários internos.",
+            "comando": "De que forma o protótipo pode ser criado para validar rótulos em filtros com baixo custo e rapidez?",
+            "alternativas": {
+              "a": "Produzir um storyboard e um protótipo de papel focado em rótulos e campos, testando a leitura com usuários internos",
+              "b": "Criar um mock-up digital final com todas as interações, evitando iterações para acelerar o cronograma",
+              "c": "Usar apenas anotações textuais sobre os filtros, sem representar layout, para evitar retrabalho",
+              "d": "Desenvolver diretamente a tela em produção, aguardando feedback apenas após liberar para todos os usuários"
+            },
+            "resposta_correta": "a"
+          },
+          {
+            "numero": 9,
+            "dificuldade": "Difícil",
+            "capacidade": "C4",
+            "contexto": "Em uma editora digital na área de criação de produtos gráficos, o responsável precisa decidir se uma ilustração pode ser usada em um material de interface. Existe disputa interna sobre “quem criou primeiro” e se o material tem registro. Para fundamentar a escolha, a equipe considera o conceito de anterioridade e como isso afeta a proteção do conteúdo.",
+            "comando": "Por que o conceito de anterioridade é relevante para a verificação de direito autoral em disputas sobre criação de ilustrações?",
+            "alternativas": {
+              "a": "Porque anterioridade define que a proteção depende apenas de cor e estilo, não de autoria ou data",
+              "b": "Porque anterioridade elimina a necessidade de qualquer análise de licença ou de registros formais",
+              "c": "Porque anterioridade garante que qualquer obra criada depois possa ser utilizada livremente, sem restrições",
+              "d": "Porque anterioridade ajuda a demonstrar a data de criação e, com isso, sustentar quem detém a proteção autoral"
+            },
+            "resposta_correta": "d"
+          },
+          {
+            "numero": 10,
+            "dificuldade": "Fácil",
+            "capacidade": "C2",
+            "contexto": "Em uma equipe de desenvolvimento web na área de UX, há um pedido para melhorar filtros de listagem. Em reunião, surgiram conflitos sobre o que deve ser incluído na primeira versão: rótulos claros, ordem dos campos, e também alteração de layout completo. O time precisa definir o que entra no escopo para evitar retrabalho.",
+            "comando": "Para que serve a determinação de escopo ao planejar melhorias em filtros de interface?",
+            "alternativas": {
+              "a": "Serve para substituir a coleta de feedbacks, decidindo tudo apenas com opiniões do time",
+              "b": "Serve para definir limites do que será feito na primeira versão, evitando que itens fora do objetivo sejam incluídos",
+              "c": "Serve para remover a necessidade de validação de usabilidade, pois o protótipo já garante resultado",
+              "d": "Serve para expandir o projeto, adicionando mudanças de layout completo para aumentar a percepção de qualidade"
+            },
+            "resposta_correta": "b"
+          }
+        ]
+      },
+      {
+        "nome": "Versionamento e Colaboração",
+        "capacidades_avaliadas": [
+          {
+            "id": "C1",
+            "descricao": "Desenvolver visão sistêmica de compartilhamento e evolução de códigos."
+          },
+          {
+            "id": "C2",
+            "descricao": "Reconhecer o sequencial de versões de códigos"
+          },
+          {
+            "id": "C3",
+            "descricao": "Utilizar ferramentas de versionamento em projeto de TI"
+          }
+        ],
+        "questoes": [
+          {
+            "numero": 1,
+            "dificuldade": "Médio",
+            "capacidade": "C1",
+            "contexto": "Em uma empresa de desenvolvimento de software na área de versionamento, dois desenvolvedores alteraram o mesmo módulo e cada um fez commits locais. Após a primeira sincronização, a equipe percebeu que o histórico do repositório remoto não reflete a ordem esperada de evolução do código.",
+            "comando": "Como deve ser conduzida a sincronização para manter a evolução do código alinhada no repositório remoto?",
+            "alternativas": {
+              "a": "Fazer push do commit local diretamente para a branch principal, sem revisar o histórico remoto.",
+              "b": "Apagar o repositório local e clonar novamente, mantendo os commits locais sem registro no remoto.",
+              "c": "Aplicar rebase para reorganizar os commits locais conforme o histórico remoto e depois executar o push.",
+              "d": "Criar uma branch nova a cada commit e manter as alterações sem enviar ao repositório remoto."
+            },
+            "resposta_correta": "c"
+          },
+          {
+            "numero": 2,
+            "dificuldade": "Fácil",
+            "capacidade": "C2",
+            "contexto": "Em uma empresa de desenvolvimento de sistemas na área de versionamento, o líder da equipe solicitou a um estagiário que registrasse uma alteração no repositório. O estagiário fez o arquivo mudar no diretório de trabalho e deseja criar um novo ponto de evolução no histórico.",
+            "comando": "Qual sequência descreve corretamente o registro de uma alteração no Git para formar um novo ponto no histórico?",
+            "alternativas": {
+              "a": "Editar o arquivo, executar git commit e depois usar git push para salvar no histórico local.",
+              "b": "Executar git commit sem revisar as alterações, depois executar git status para registrar o ponto no histórico.",
+              "c": "Executar git push antes de editar o arquivo para que o histórico local seja atualizado automaticamente.",
+              "d": "Editar o arquivo, executar git status para confirmar mudanças e então executar git commit."
+            },
+            "resposta_correta": "d"
+          },
+          {
+            "numero": 3,
+            "dificuldade": "Médio",
+            "capacidade": "C3",
+            "contexto": "Em uma indústria de serviços digitais na área de desenvolvimento, a equipe utiliza um repositório remoto para colaboração. Após criar uma branch para uma correção, a desenvolvedora precisa disponibilizar suas alterações para que outros integrem na mesma linha de trabalho.",
+            "comando": "De que forma a branch com commits locais deve ser enviada ao repositório remoto para colaboração?",
+            "alternativas": {
+              "a": "Executar git push <nome-do-remoto> <nome-da-branch> para publicar a branch com os commits locais.",
+              "b": "Executar git commit --amend para forçar o envio ao remoto e, em seguida, rodar git push.",
+              "c": "Executar git push sem informar branch, para que o Git escolha automaticamente a branch correta do histórico local.",
+              "d": "Executar git pull antes de qualquer push, para que o repositório remoto copie automaticamente os commits locais."
+            },
+            "resposta_correta": "a"
+          },
+          {
+            "numero": 4,
+            "dificuldade": "Difícil",
+            "capacidade": "C1",
+            "contexto": "Em uma empresa de e-commerce na área de versionamento, a equipe usa branchs para desenvolvimento e tags para marcos de lançamento. Em uma revisão, o time verificou que uma tag de release foi apontada para commits que pertencem ao desenvolvimento em vez do commit de estabilização.",
+            "comando": "Por que a tag de release pode ter sido associada ao ponto errado do histórico e como isso afeta a evolução do código?",
+            "alternativas": {
+              "a": "Porque tags dependem apenas do nome do arquivo alterado; ao criar a tag, o Git escolhe automaticamente o commit mais recente do diretório de trabalho.",
+              "b": "Porque o repositório remoto altera a posição das tags; ao fazer fetch, o Git reordena tags para refletir a última atualização.",
+              "c": "Porque branches determinam automaticamente o destino das tags; ao mesclar a branch, a tag é movida para o commit da branch principal.",
+              "d": "Porque a tag foi criada sem selecionar a referência correta; dessa forma, ela passa a marcar um commit que não corresponde ao marco de estabilização."
+            },
+            "resposta_correta": "d"
+          },
+          {
+            "numero": 5,
+            "dificuldade": "Fácil",
+            "capacidade": "C2",
+            "contexto": "Em uma empresa de integração contínua na área de versionamento, o responsável precisa explicar à equipe a diferença de propósito entre branchs e tags. Um integrante confundiu a finalidade de cada recurso ao observar um histórico com várias referências.",
+            "comando": "Em que consiste a diferença de uso entre branchs e tags no Git para organizar a evolução do código?",
+            "alternativas": {
+              "a": "Branchs são referências fixas para releases, enquanto tags são referências móveis para desenvolvimento contínuo.",
+              "b": "Branchs representam linhas de desenvolvimento com alterações ao longo do tempo; tags marcam pontos específicos do histórico.",
+              "c": "Branchs servem apenas para armazenar arquivos ignorados; tags controlam permissões de acesso ao repositório.",
+              "d": "Branchs e tags têm o mesmo papel; a escolha entre elas depende apenas de preferências do usuário."
+            },
+            "resposta_correta": "b"
+          },
+          {
+            "numero": 6,
+            "dificuldade": "Difícil",
+            "capacidade": "C3",
+            "contexto": "Em uma empresa de automação industrial na área de desenvolvimento, um programador fez commit com um arquivo que deveria ser ignorado no projeto. Após perceber o erro, ele precisa corrigir o histórico local antes de enviar a alteração para o repositório remoto.",
+            "comando": "De que forma o commit com o arquivo indesejado pode ser corrigido localmente antes do push?",
+            "alternativas": {
+              "a": "Executar git commit --amend após remover o arquivo e atualizar o .gitignore, mantendo o commit corrigido no histórico local.",
+              "b": "Remover o arquivo, ajustar o .gitignore, e então criar um novo commit que reflita a correção.",
+              "c": "Usar git push para desfazer automaticamente o commit no remoto, sem alterar o histórico local.",
+              "d": "Rodar git pull para sobrepor o commit local com o remoto, garantindo que o arquivo indesejado seja removido do histórico."
+            },
+            "resposta_correta": "a"
+          },
+          {
+            "numero": 7,
+            "dificuldade": "Médio",
+            "capacidade": "C1",
+            "contexto": "Em uma equipe de desenvolvimento na área de versionamento, após um sprint, o time precisa orientar um novo integrante sobre como acompanhar a evolução do projeto em um repositório compartilhado. O integrante observa apenas commits locais e não consegue explicar por que os demais não veem as mudanças.",
+            "comando": "Para que serve o repositório remoto no processo de compartilhamento e evolução do código?",
+            "alternativas": {
+              "a": "Para armazenar apenas arquivos ignorados, evitando que o histórico local seja consultado pela equipe.",
+              "b": "Para permitir que commits locais sejam enviados e acessados por outras pessoas, centralizando a evolução compartilhada.",
+              "c": "Para substituir o commit local, registrando automaticamente o histórico sem necessidade de commit.",
+              "d": "Para apagar automaticamente o histórico local após cada push, garantindo que não haja divergência."
+            },
+            "resposta_correta": "b"
+          },
+          {
+            "numero": 8,
+            "dificuldade": "Fácil",
+            "capacidade": "C3",
+            "contexto": "Em uma empresa de criação de portais na área de desenvolvimento, um estagiário precisa configurar o Git para que seus commits tenham autoria registrada corretamente antes de iniciar o versionamento de um projeto.",
+            "comando": "Como deve ser configurado o nome e o e-mail usados nos commits no Git?",
+            "alternativas": {
+              "a": "Executar git config --global user.name e git config --global user.email com os dados do usuário.",
+              "b": "Definir o nome e e-mail apenas no navegador, para que o Git leia automaticamente as credenciais do login web.",
+              "c": "Usar git push com a opção --author para gravar o nome e e-mail diretamente no commit.",
+              "d": "Criar uma branch chamada config e nela registrar o nome e e-mail em um arquivo de texto."
+            },
+            "resposta_correta": "a"
+          },
+          {
+            "numero": 9,
+            "dificuldade": "Difícil",
+            "capacidade": "C2",
+            "contexto": "Em uma empresa de soluções web na área de versionamento, durante uma revisão, o time observou que um commit foi criado antes de uma correção de bug. Posteriormente, a correção foi feita e um novo commit foi registrado. O histórico ficou com dois commits em ordem que não representa a intenção original.",
+            "comando": "Qual leitura do histórico explica melhor por que a intenção do desenvolvimento ficou desorganizada após os commits?",
+            "alternativas": {
+              "a": "Porque commit registra apenas o conteúdo do diretório de trabalho e ignora a sequência temporal do histórico.",
+              "b": "Porque a criação de tags automaticamente reorganiza commits para refletir o objetivo do bugfix, independentemente da ordem.",
+              "c": "Porque os commits refletem a sequência de execução: o primeiro commit foi registrado antes da correção, gerando evolução não alinhada à intenção.",
+              "d": "Porque o repositório remoto ajusta a ordem dos commits ao fazer push, garantindo que a intenção fique sempre correta."
+            },
+            "resposta_correta": "c"
+          },
+          {
+            "numero": 10,
+            "dificuldade": "Fácil",
+            "capacidade": "C3",
+            "contexto": "Em uma empresa de criação de aplicativos na área de desenvolvimento, o projeto gera arquivos de build que mudam frequentemente e não devem ser versionados. Em uma nova tarefa, o aluno quer evitar que esses arquivos apareçam como modificações constantes no status do repositório.",
+            "comando": "Para que serve o arquivo .gitignore no fluxo de versionamento?",
+            "alternativas": {
+              "a": "Para impedir que commits sejam feitos, garantindo que o repositório fique sempre limpo sem histórico.",
+              "b": "Para definir quais arquivos não devem ser rastreados pelo Git, evitando que arquivos gerados apareçam em mudanças.",
+              "c": "Para substituir o git commit, registrando automaticamente alterações sem necessidade de confirmação.",
+              "d": "Para reorganizar a ordem dos commits no histórico, mantendo a evolução sempre cronológica por intenção."
+            },
+            "resposta_correta": "b"
+          }
+        ]
+      }
+    ]
+  }
+}
