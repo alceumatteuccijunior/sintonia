@@ -49,9 +49,9 @@ include 'includes/header.php';
                         </p>
                     </div>
                     <?php if ($_SESSION['user_role'] === 'teacher'): ?>
-                    <button class="mt-4 md:mt-0 bg-senai-blue text-white px-5 py-2.5 rounded-xl font-semibold shadow-[0_4px_15px_-3px_rgba(26,66,138,0.4)] hover:shadow-[0_8px_20px_-3px_rgba(26,66,138,0.5)] hover:-translate-y-0.5 transition-all flex items-center gap-2">
+                    <a href="class_create.php" class="mt-4 md:mt-0 bg-senai-blue text-white px-5 py-2.5 rounded-xl font-semibold shadow-[0_4px_15px_-3px_rgba(26,66,138,0.4)] hover:shadow-[0_8px_20px_-3px_rgba(26,66,138,0.5)] hover:-translate-y-0.5 transition-all flex items-center gap-2">
                         <i class="ph-bold ph-plus"></i> Nova Turma
-                    </button>
+                    </a>
                     <?php endif; ?>
                 </div>
 
