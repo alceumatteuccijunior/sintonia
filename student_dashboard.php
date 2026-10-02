@@ -93,7 +93,7 @@ include 'includes/header.php';
             <div class="w-8 h-8 rounded-lg bg-senai-orange text-white flex items-center justify-center shadow-sm">
                 <i class="ph-bold ph-student"></i>
             </div>
-            <span class="font-bold text-slate-800 text-lg tracking-tight">Sintonia Aluno</span>
+            <span class="font-bold text-slate-800 text-lg tracking-tight">aiS Aluno</span>
         </div>
         
         <div class="flex items-center gap-4">

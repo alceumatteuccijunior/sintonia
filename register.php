@@ -55,7 +55,7 @@ include 'includes/header.php';
                 <i class="ph-fill ph-student text-3xl"></i>
             </div>
             <h1 class="text-2xl font-bold text-slate-800 tracking-tight">Cadastro de Aluno</h1>
-            <p class="text-slate-500 font-medium text-sm mt-2">Crie sua conta no Sintonia.</p>
+            <p class="text-slate-500 font-medium text-sm mt-2">Crie sua conta no aiS.</p>
         </div>
 
         <?php if ($error): ?>

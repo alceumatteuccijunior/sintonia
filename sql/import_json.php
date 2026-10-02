@@ -1,6 +1,6 @@
 <?php
 // sql/import_json.php
-// Script para importar o banco de questões inicial (JSON) para o banco de dados Sintonia
+// Script para importar o banco de questões inicial (JSON) para o banco de dados aiS
 
 require_once '../config.php';
 
@@ -8,7 +8,7 @@ echo "<!DOCTYPE html>
 <html lang='pt-BR'>
 <head>
     <meta charset='UTF-8'>
-    <title>Importação - Sintonia</title>
+    <title>Importação - aiS</title>
     <style>
         body { font-family: 'Inter', sans-serif; background: #F8FAFC; color: #333; padding: 40px; }
         .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }

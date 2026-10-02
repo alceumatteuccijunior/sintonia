@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sintonia - Assistente Pedagógico SENAI</title>
+    <title>aiS - Assistente Pedagógico SENAI</title>
 
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com?plugins=typography"></script>

@@ -33,7 +33,7 @@ include 'includes/header.php';
                 
                 <div class="mb-8">
                     <h1 class="text-3xl font-bold tracking-tight mb-2 text-slate-800">Importação do SAEP</h1>
-                    <p class="text-slate-500 font-medium">Faça o upload da planilha oficial do SAEP para alimentar o Sintonia automaticamente.</p>
+                    <p class="text-slate-500 font-medium">Faça o upload da planilha oficial do SAEP para alimentar o aiS automaticamente.</p>
                 </div>
 
                 <div class="bg-white/80 backdrop-blur-xl border border-white/80 p-8 rounded-3xl shadow-lg relative overflow-hidden">
@@ -46,7 +46,7 @@ include 'includes/header.php';
                             </div>
                             <div>
                                 <h4 class="font-bold text-slate-800 text-sm mb-1">Qual arquivo devo enviar?</h4>
-                                <p class="text-sm text-slate-600 leading-relaxed">Você deve enviar o arquivo <strong>"Desemp. Ind. por Registro.csv"</strong> gerado pelo portal do SAEP. Ao fazer isso, o Sintonia irá automaticamente criar as Turmas, os Alunos, o Caderno de Provas e computar as respostas de cada um, gerando os relatórios avançados!</p>
+                                <p class="text-sm text-slate-600 leading-relaxed">Você deve enviar o arquivo <strong>"Desemp. Ind. por Registro.csv"</strong> gerado pelo portal do SAEP. Ao fazer isso, o aiS irá automaticamente criar as Turmas, os Alunos, o Caderno de Provas e computar as respostas de cada um, gerando os relatórios avançados!</p>
                             </div>
                         </div>
 

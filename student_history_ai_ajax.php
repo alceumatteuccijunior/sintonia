@@ -46,7 +46,7 @@ $postData = [
     'messages' => [
         [
             'role' => 'system',
-            'content' => 'Você é um Assistente Pedagógico (Sintonia). Responda apenas com o texto do relatório executivo, sem introduções extras.'
+            'content' => 'Você é um Assistente Pedagógico (aiS). Responda apenas com o texto do relatório executivo, sem introduções extras.'
         ],
         [
             'role' => 'user',

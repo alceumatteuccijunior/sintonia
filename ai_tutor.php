@@ -80,7 +80,7 @@ include 'includes/header.php';
             </div>
             
             <div class="flex items-center gap-3">
-                <button onclick="openHelpModal('Tutor de IA Pedagógico', 'O Tutor é uma Inteligência Artificial conectada ao seu banco de dados do Sintonia.<br><br><b>O que você pode perguntar:</b><br>- Como está o desempenho geral das minhas turmas?<br>- Quais são as maiores deficiências dos meus alunos?<br>- Crie um plano de aula sobre a capacidade X.<br><br>Ele lembra do histórico da conversa nesta sessão!')" class="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors shadow-inner" title="Como Usar">
+                <button onclick="openHelpModal('Tutor de IA Pedagógico', 'O Tutor é uma Inteligência Artificial conectada ao seu banco de dados do aiS.<br><br><b>O que você pode perguntar:</b><br>- Como está o desempenho geral das minhas turmas?<br>- Quais são as maiores deficiências dos meus alunos?<br>- Crie um plano de aula sobre a capacidade X.<br><br>Ele lembra do histórico da conversa nesta sessão!')" class="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors shadow-inner" title="Como Usar">
                     <i class="ph-bold ph-question text-lg"></i>
                 </button>
             </div>
@@ -139,7 +139,7 @@ include 'includes/header.php';
                                 <i class="ph-fill ph-robot text-4xl relative z-10"></i>
                             </div>
                             <h2 class="text-2xl font-bold text-slate-800 mb-2">Como posso ajudar na sua gestão pedagógica?</h2>
-                            <p class="text-slate-500 font-medium mb-8 max-w-md">Sou uma inteligência artificial treinada no Sintonia e conectada diretamente aos dados das suas turmas e simulados.</p>
+                            <p class="text-slate-500 font-medium mb-8 max-w-md">Sou uma inteligência artificial treinada no aiS e conectada diretamente aos dados das suas turmas e simulados.</p>
                             
                             <!-- Sugestões de Prompts -->
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-3 w-full max-w-2xl">
@@ -200,7 +200,7 @@ include 'includes/header.php';
                             <i class="ph-bold ph-paperclip text-lg"></i>
                         </button>
                         
-                        <textarea id="chat-input" rows="1" placeholder="Pergunte qualquer coisa ao Sintonia..." class="flex-1 bg-transparent border-none focus:ring-0 resize-none py-3 text-slate-700 font-medium no-scrollbar max-h-32" style="min-height: 48px;"></textarea>
+                        <textarea id="chat-input" rows="1" placeholder="Pergunte qualquer coisa ao aiS..." class="flex-1 bg-transparent border-none focus:ring-0 resize-none py-3 text-slate-700 font-medium no-scrollbar max-h-32" style="min-height: 48px;"></textarea>
                         
                         <input type="hidden" id="session-id" value="<?= $session_id ? $session_id : '' ?>">
                         

@@ -1,23 +1,23 @@
-# Sistema Sintonia - Plataforma de Inteligência e Avaliação Educacional
+# Sistema aiS - Plataforma de Inteligência e Avaliação Educacional
 
-## 🎯 O que é o Sintonia?
+## 🎯 O que é o aiS?
 
-O **Sintonia** é uma plataforma corporativa e educacional de Alta Performance desenvolvida em PHP e MySQL (Vanilla), construída para transformar o processo de avaliação, diagnóstico e tomada de decisão em grandes redes de ensino (com forte alinhamento às diretrizes do SENAI e ao modelo SAEP). 
+O **aiS** é uma plataforma corporativa e educacional de Alta Performance desenvolvida em PHP e MySQL (Vanilla), construída para transformar o processo de avaliação, diagnóstico e tomada de decisão em grandes redes de ensino (com forte alinhamento às diretrizes do SENAI e ao modelo SAEP). 
 
-Ele não é apenas um "aplicador de provas", mas sim um **Ecossistema Multi-Tenant de Inteligência Pedagógica e Engajamento**. O Sintonia engloba de forma fluida todo o ciclo de vida da avaliação: desde o armazenamento de questões complexas e composição de simulados (Sprints), até a aplicação rigorosa (anti-cola), a extração de dados analíticos para professores e diretores em múltiplas hierarquias, e um inovador sistema de Gamificação e Duelos (P2P) para engajar os alunos no estudo contínuo.
+Ele não é apenas um "aplicador de provas", mas sim um **Ecossistema Multi-Tenant de Inteligência Pedagógica e Engajamento**. O aiS engloba de forma fluida todo o ciclo de vida da avaliação: desde o armazenamento de questões complexas e composição de simulados (Sprints), até a aplicação rigorosa (anti-cola), a extração de dados analíticos para professores e diretores em múltiplas hierarquias, e um inovador sistema de Gamificação e Duelos (P2P) para engajar os alunos no estudo contínuo.
 
 A interface foca intensamente na usabilidade e estética (Glassmorphism, TailwindCSS, Phosphor Icons), entregando uma experiência "Premium", moderna e 100% responsiva.
 
-## 🚀 Para que serve o Sintonia?
+## 🚀 Para que serve o aiS?
 
-A missão do Sintonia é **erradicar o ponto cego pedagógico** e **potencializar o engajamento**. Suas principais atribuições são:
+A missão do aiS é **erradicar o ponto cego pedagógico** e **potencializar o engajamento**. Suas principais atribuições são:
 
 1. **Gestão do Conhecimento (Banco de Questões):** Armazenar de forma estruturada as questões do modelo SAEP, fragmentando-as rigidamente por Capacidade, Comando, Contexto e Dificuldade.
 2. **Aplicação Segura e em Escala (Sprints):** Permitir que docentes montem avaliações em poucos cliques. O motor de resolução nativo controla cronômetros e monitora perda de foco (abas do navegador) para coibir trapaças.
 3. **Diagnóstico Cirúrgico para Docentes:** Transformar a nota bruta em inteligência acionável. O Raio-X da turma mapeia precisamente em quais "Capacidades" e "Módulos" os estudantes estão falhando.
 4. **Governança Macro para Gestores (Multi-Tenant):** Oferecer à direção uma visão analítica massiva através do Dashboard Global, monitorando a evolução histórica de uma Regional inteira ou Unidade específica.
 5. **Automação Institucional e Inteligência Artificial:** Importar massivamente arquivos base federais (SAEP via CSV) recriando o ambiente escolar instantaneamente, e gerar Planos de Aula Corretivos com a IA.
-6. **Arena Sintonia e Gamificação:** Um hub de engajamento do aluno. Sistema de XP, Níveis, Fotos de Perfil Animadas (GIFs), Ranking (Leaderboard) e a inovadora **Arena de Duelos P2P**, onde os alunos desafiam uns aos outros em simulados para testar conhecimentos.
+6. **Arena aiS e Gamificação:** Um hub de engajamento do aluno. Sistema de XP, Níveis, Fotos de Perfil Animadas (GIFs), Ranking (Leaderboard) e a inovadora **Arena de Duelos P2P**, onde os alunos desafiam uns aos outros em simulados para testar conhecimentos.
 
 ---
 
@@ -116,7 +116,7 @@ O desenvolvimento foi concluído em um fluxo contínuo e orgânico. Abaixo o his
 
 ### ✅ Fase 9: A Revolução do Engajamento (Gamificação P2P)
 - **Sistema de Níveis (Level Up):** Motor inteligente de cálculo de Experiência (XP). Cada acerto do aluno em todo o sistema gera 50 XP, subindo seu nível (Novato -> Proficiente -> Avançado -> Mestre).
-- **Arena Sintonia (Treinamento):** O aluno solicita treinamento e o sistema "pesca" automaticamente 5 questões que o aluno nunca acertou antes para reforço.
+- **Arena aiS (Treinamento):** O aluno solicita treinamento e o sistema "pesca" automaticamente 5 questões que o aluno nunca acertou antes para reforço.
 - **Duelos PvP:** Alunos podem desafiar colegas de turma para Batalhas de Conhecimento. O sistema gera uma Sprint neutra idêntica para ambos e os dois competem pelo melhor tempo e nota.
 - **Ranking Holográfico:** Pódio estilizado destacando Ouro, Prata e Bronze dentro da turma.
 
@@ -126,4 +126,4 @@ O desenvolvimento foi concluído em um fluxo contínuo e orgânico. Abaixo o his
 
 ---
 
-**✨ Sintonia Finalizado e Pronto para Operação de Elite!**
+**✨ aiS Finalizado e Pronto para Operação de Elite!**

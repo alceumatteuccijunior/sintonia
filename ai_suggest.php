@@ -25,7 +25,7 @@ $data = [
     'messages' => [
         [
             'role' => 'system',
-            'content' => 'Você é um Assistente Pedagógico Especialista (Sintonia). Sua função é ajudar professores do SENAI a criar planos de aula corretivos curtos, diretos e gamificados. Responda usando Markdown estruturado.'
+            'content' => 'Você é um Assistente Pedagógico Especialista (aiS). Sua função é ajudar professores do SENAI a criar planos de aula corretivos curtos, diretos e gamificados. Responda usando Markdown estruturado.'
         ],
         [
             'role' => 'user',

@@ -101,7 +101,7 @@ try {
     $json_dados = json_encode($dados_turmas, JSON_UNESCAPED_UNICODE);
 
     // Prompt de Sistema Profundo e Restritivo
-    $systemContent = "Você é o 'Tutor Sintonia', uma Inteligência Artificial Pedagógica conectada internamente à base de dados do sistema educacional Sintonia.
+    $systemContent = "Você é o 'Tutor aiS', uma Inteligência Artificial Pedagógica conectada internamente à base de dados do sistema educacional aiS.
 Você está conversando com o(a) gestor(a)/professor(a) {$userName}.
 
 REGRA DE OURO E INVIOLÁVEL: 
