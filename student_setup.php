@@ -62,7 +62,7 @@ include 'includes/header.php';
                 <form method="POST" action="student_setup.php" class="space-y-6 text-left">
                     <div>
                         <label class="block text-sm font-bold text-slate-700 mb-2">Sua Turma</label>
-                        <select name="class_id" required class="w-full px-5 py-3.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-senai-blue/20 focus:border-senai-blue transition-all bg-white/50 text-slate-800 font-medium">
+                        <select name="class_id" required class="search-select w-full px-5 py-3.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-senai-blue/20 focus:border-senai-blue transition-all bg-white/50 text-slate-800 font-medium">
                             <option value="" disabled selected>Escolha sua turma...</option>
                             <?php foreach ($classes as $c): ?>
                                 <option value="<?= $c['id'] ?>">

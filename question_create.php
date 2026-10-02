@@ -3,7 +3,7 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 session_start();
-if (!isset($_SESSION['user_id']) || $_SESSION['user_role'] !== 'teacher') {
+if (!isset($_SESSION['user_id']) || !in_array($_SESSION['user_role'], ['admin', 'teacher'])) {
     header("Location: index.php");
     exit;
 }
@@ -59,7 +59,7 @@ $modules = $stmt->fetchAll();
 include 'includes/header.php';
 ?>
 
-<div id="app-screen" class="absolute inset-0 z-40 flex flex-col w-full h-full bg-[#F8FAFC]">
+<div id="app-screen" class="absolute inset-0 z-40 flex w-full h-full bg-[#F8FAFC]">
     
     <div class="fixed inset-0 w-full h-full overflow-hidden pointer-events-none z-0">
         <div id="blob1" class="absolute top-[-5%] right-[-5%] w-[500px] h-[500px] bg-senai-cyan/15 rounded-full mix-blend-multiply filter blur-[80px] opacity-70 animate-blob"></div>
@@ -109,7 +109,7 @@ include 'includes/header.php';
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <div class="md:col-span-2">
                                 <label class="block text-sm font-bold text-slate-700 mb-2">Unidade Curricular (Módulo)</label>
-                                <select name="module_id" required class="w-full px-5 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-senai-blue/20 focus:border-senai-blue bg-slate-50/50 font-medium text-slate-700">
+                                <select name="module_id" required class="search-select w-full px-5 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-senai-blue/20 focus:border-senai-blue bg-slate-50/50 font-medium text-slate-700">
                                     <option value="" disabled selected>Selecione...</option>
                                     <?php 
                                     $current_course = '';

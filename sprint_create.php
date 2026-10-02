@@ -1,6 +1,6 @@
 <?php
 session_start();
-if (!isset($_SESSION['user_id']) || $_SESSION['user_role'] !== 'teacher') {
+if (!isset($_SESSION['user_id']) || !in_array($_SESSION['user_role'], ['admin', 'teacher'])) {
     header("Location: index.php");
     exit;
 }
@@ -9,6 +9,12 @@ $pdo = getPDOConnection(true);
 
 $stmtClasses = $pdo->query("SELECT id, name, year, semester FROM classes ORDER BY year DESC, semester DESC, name ASC");
 $classes = $stmtClasses->fetchAll();
+
+$teachers = [];
+if ($_SESSION['user_role'] === 'admin') {
+    $stmtT = $pdo->query("SELECT id, name FROM users WHERE role IN ('teacher', 'admin') ORDER BY name ASC");
+    $teachers = $stmtT->fetchAll();
+}
 
 include 'includes/header.php';
 ?>
@@ -49,8 +55,13 @@ include 'includes/header.php';
                     </div>
                 </div>
 
-                <div class="mb-8 animate-slide-up text-center">
-                    <h1 class="text-3xl font-bold tracking-tight mb-2 text-slate-800">Nova Sprint (Etapa 1)</h1>
+                <div class="mb-8 animate-slide-up text-center flex flex-col items-center justify-center">
+                    <h1 class="text-3xl font-bold tracking-tight mb-2 text-slate-800 flex items-center gap-3">
+                        Nova Sprint (Etapa 1)
+                        <button onclick="openHelpModal('Criar Nova Avaliação (Passo 1)', 'Para aplicar uma prova (Sprint), primeiro escolha a Turma e defina um Nome.<br><br><b>Tempo Limite:</b> Defina o tempo em minutos. Se você quiser que a prova tenha tempo <b>ilimitado</b>, deixe o valor em <b>0</b>.<br><br>Após preencher, clique em Avançar para selecionar as questões.')" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 hover:text-senai-blue hover:bg-blue-50 transition-colors shadow-inner" title="Como Usar">
+                            <i class="ph-bold ph-question text-lg"></i>
+                        </button>
+                    </h1>
                     <p class="text-slate-500 font-medium">Defina a turma, o nome e o tempo limite da avaliação.</p>
                 </div>
 
@@ -67,7 +78,7 @@ include 'includes/header.php';
                             
                             <div>
                                 <label class="block text-sm font-bold text-slate-700 mb-2">Turma Alvo</label>
-                                <select name="class_id" required class="w-full px-5 py-3.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-senai-blue/20 focus:border-senai-blue transition-all bg-white/50 text-slate-800 font-medium">
+                                <select name="class_id" required class="search-select w-full px-5 py-3.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-senai-blue/20 focus:border-senai-blue transition-all bg-white/50 text-slate-800 font-medium">
                                     <option value="" disabled selected>Selecione a turma...</option>
                                     <?php foreach ($classes as $c): ?>
                                         <option value="<?= $c['id'] ?>">
@@ -81,6 +92,21 @@ include 'includes/header.php';
                                 <label class="block text-sm font-bold text-slate-700 mb-2">Nome da Sprint</label>
                                 <input type="text" name="name" required placeholder="Ex: Avaliação Diagnóstica - Módulo 1" class="w-full px-5 py-3.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-senai-blue/20 focus:border-senai-blue transition-all bg-white/50 text-slate-800 font-medium placeholder:text-slate-400">
                             </div>
+
+                            <?php if ($_SESSION['user_role'] === 'admin'): ?>
+                            <div class="p-5 bg-indigo-50 border border-indigo-100 rounded-2xl">
+                                <label class="block text-sm font-bold text-indigo-800 mb-2"><i class="ph-bold ph-chalkboard-teacher"></i> Professor Responsável</label>
+                                <p class="text-[11px] text-indigo-600/70 mb-3 font-medium">Como administrador, você pode atribuir esta Sprint a outro professor.</p>
+                                <select name="teacher_id" class="search-select w-full px-5 py-3.5 rounded-xl border border-indigo-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all bg-white text-indigo-900 font-medium">
+                                    <option value="<?= $_SESSION['user_id'] ?>">Atribuir a mim mesmo</option>
+                                    <?php foreach ($teachers as $t): ?>
+                                        <?php if ($t['id'] != $_SESSION['user_id']): ?>
+                                            <option value="<?= $t['id'] ?>"><?= htmlspecialchars($t['name']) ?></option>
+                                        <?php endif; ?>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <?php endif; ?>
                             
                             <div>
                                 <label class="block text-sm font-bold text-slate-700 mb-2">Tempo Limite (em minutos)</label>

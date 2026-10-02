@@ -89,6 +89,30 @@ $is_first_question = ($current_q_index === 0);
 
 // 4. Salvar resposta (se for POST)
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $selected_option = $_POST['option_id'] ?? null;
+    $q_id_post = $_POST['question_id'] ?? null;
+    $is_ajax = isset($_POST['ajax']);
+
+    // Primeiro garante que a opção atual seja salva (inclusive na ultima questao)
+    if ($selected_option && $q_id_post) {
+        $stmtOpt = $pdo->prepare("SELECT is_correct FROM question_options WHERE id = ?");
+        $stmtOpt->execute([$selected_option]);
+        $is_correct = $stmtOpt->fetchColumn() ? 1 : 0;
+
+        $stmtCheckA = $pdo->prepare("SELECT id FROM student_answers WHERE sprint_id = ? AND question_id = ? AND student_id = ?");
+        $stmtCheckA->execute([$sprint_id, $q_id_post, $student_id]);
+        if ($ans = $stmtCheckA->fetch()) {
+            $pdo->prepare("UPDATE student_answers SET selected_option_id = ?, is_correct = ?, answered_at = NOW() WHERE id = ?")->execute([$selected_option, $is_correct, $ans['id']]);
+        } else {
+            $pdo->prepare("INSERT INTO student_answers (sprint_id, question_id, student_id, selected_option_id, is_correct) VALUES (?, ?, ?, ?, ?)")->execute([$sprint_id, $q_id_post, $student_id, $selected_option, $is_correct]);
+        }
+        
+        if ($is_ajax) {
+            echo json_encode(['status' => 'saved']);
+            exit;
+        }
+    }
+
     if (isset($_POST['finish_sprint'])) {
         $stmtComplete = $pdo->prepare("UPDATE sprint_attempts SET completed_at = NOW() WHERE id = ?");
         $stmtComplete->execute([$attempt['id']]);
@@ -96,37 +120,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
     
-    $selected_option = $_POST['option_id'] ?? null;
-    $q_id_post = $_POST['question_id'] ?? null;
-    
-    if ($selected_option && $q_id_post) {
-        // Verifica se a opção é correta (para já salvar o is_correct)
-        $stmtOpt = $pdo->prepare("SELECT is_correct FROM question_options WHERE id = ?");
-        $stmtOpt->execute([$selected_option]);
-        $is_correct = $stmtOpt->fetchColumn() ? 1 : 0;
-
-        // Salva ou atualiza a resposta
-        $stmtSave = $pdo->prepare("
-            INSERT INTO student_answers (sprint_id, question_id, student_id, selected_option_id, is_correct) 
-            VALUES (?, ?, ?, ?, ?)
-            ON DUPLICATE KEY UPDATE selected_option_id = VALUES(selected_option_id), is_correct = VALUES(is_correct), answered_at = NOW()
-        ");
-        // Precisamos garantir que haja UNIQUE KEY no student_answers para o ON DUPLICATE funcionar, mas como não adicionei no setup, vou fazer select e update manual
-        
-        $stmtCheckA = $pdo->prepare("SELECT id FROM student_answers WHERE sprint_id = ? AND question_id = ? AND student_id = ?");
-        $stmtCheckA->execute([$sprint_id, $q_id_post, $student_id]);
-        if ($ans = $stmtCheckA->fetch()) {
-            $stmtUpd = $pdo->prepare("UPDATE student_answers SET selected_option_id = ?, is_correct = ?, answered_at = NOW() WHERE id = ?");
-            $stmtUpd->execute([$selected_option, $is_correct, $ans['id']]);
-        } else {
-            $stmtIns = $pdo->prepare("INSERT INTO student_answers (sprint_id, question_id, student_id, selected_option_id, is_correct) VALUES (?, ?, ?, ?, ?)");
-            $stmtIns->execute([$sprint_id, $q_id_post, $student_id, $selected_option, $is_correct]);
-        }
+    if (!$is_ajax) {
+        $next = isset($_POST['next_q']) ? $_POST['next_q'] : $current_q_index + 2;
+        header("Location: sprint_solve.php?id=$sprint_id&q=$next");
+        exit;
     }
-    
-    $next = isset($_POST['next_q']) ? $_POST['next_q'] : $current_q_index + 2;
-    header("Location: sprint_solve.php?id=$sprint_id&q=$next");
-    exit;
 }
 
 // 5. Busca os dados da questão atual
@@ -210,7 +208,7 @@ include 'includes/header.php';
                 $btnClass .= " border-slate-200 bg-slate-50 text-slate-400 hover:border-slate-300";
             }
         ?>
-            <a href="sprint_solve.php?id=<?= $sprint_id ?>&q=<?= $i+1 ?>" class="<?= $btnClass ?>">
+            <a href="sprint_solve.php?id=<?= $sprint_id ?>&q=<?= $i+1 ?>" id="nav-bubble-<?= $i ?>" class="<?= $btnClass ?>">
                 <?= $i+1 ?>
             </a>
         <?php endfor; ?>
@@ -226,14 +224,20 @@ include 'includes/header.php';
                 
                 <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 md:p-10">
                     
-                    <div class="flex items-center gap-2 mb-6">
-                        <span class="bg-slate-100 text-slate-500 px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-widest">
-                            Questão <?= $current_q_index + 1 ?>
-                        </span>
-                        <?php if ($saved_option_id): ?>
-                            <span class="text-xs font-bold text-green-500 flex items-center gap-1 bg-green-50 px-2 py-1 rounded-md">
+                    <div class="flex items-center justify-between mb-6 border-b border-slate-100 pb-4">
+                        <div class="flex items-center gap-2">
+                            <span class="bg-slate-100 text-slate-500 px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-widest">
+                                Questão <?= $current_q_index + 1 ?>
+                            </span>
+                            <span id="save-status" class="<?= $saved_option_id ? 'text-green-500 bg-green-50' : 'hidden' ?> text-xs font-bold flex items-center gap-1 px-2 py-1 rounded-md transition-colors">
                                 <i class="ph-bold ph-check"></i> Salva
                             </span>
+                        </div>
+                        <?php if (!empty($question['capacity'])): ?>
+                        <div class="flex items-center gap-2" title="Capacidade Avaliada">
+                            <i class="ph-bold ph-target text-senai-orange"></i>
+                            <span class="text-sm font-bold text-slate-700"><?= htmlspecialchars($question['capacity']) ?></span>
+                        </div>
                         <?php endif; ?>
                     </div>
                     
@@ -256,10 +260,11 @@ include 'includes/header.php';
                             $letter = chr(65 + $index); // A, B, C, D...
                             $checked = ($saved_option_id == $opt['id']) ? 'checked' : '';
                         ?>
-                            <label class="relative flex items-start gap-4 p-5 rounded-2xl border-2 transition-all cursor-pointer group <?= $checked ? 'border-senai-orange bg-orange-50/30' : 'border-slate-200 hover:border-senai-orange/40 bg-white hover:bg-slate-50' ?>">
+                            <label class="radio-card relative flex items-start gap-4 p-5 rounded-2xl border-2 transition-all cursor-pointer group <?= $checked ? 'border-senai-orange bg-orange-50/30' : 'border-slate-200 hover:border-senai-orange/40 bg-white hover:bg-slate-50' ?>">
                                 <div class="flex items-center h-6">
                                     <input type="radio" name="option_id" value="<?= $opt['id'] ?>" required <?= $checked ?> 
-                                        class="w-5 h-5 text-senai-orange border-slate-300 focus:ring-senai-orange focus:ring-offset-0 transition-colors">
+                                        class="w-5 h-5 text-senai-orange border-slate-300 focus:ring-senai-orange focus:ring-offset-0 transition-colors"
+                                        onchange="autoSave(this.value); document.querySelectorAll('.radio-card').forEach(el => { el.classList.remove('border-senai-orange', 'bg-orange-50/30'); el.classList.add('border-slate-200'); }); this.closest('label').classList.replace('border-slate-200', 'border-senai-orange'); this.closest('label').classList.add('bg-orange-50/30');">
                                 </div>
                                 <div class="flex-1">
                                     <span class="absolute left-14 top-1/2 -translate-y-1/2 text-slate-300 font-bold text-4xl opacity-20 pointer-events-none"><?= $letter ?></span>
@@ -286,7 +291,7 @@ include 'includes/header.php';
                     
                     <?php if (!$is_last_question): ?>
                         <button type="submit" class="bg-senai-blue text-white px-8 py-3 rounded-xl font-bold shadow-md hover:bg-[#153673] hover:-translate-y-0.5 transition-all flex items-center gap-2">
-                            Salvar e Avançar <i class="ph-bold ph-arrow-right"></i>
+                            Avançar <i class="ph-bold ph-arrow-right"></i>
                         </button>
                     <?php else: ?>
                         <button type="button" onclick="document.getElementById('modal-finish').classList.remove('hidden')" class="bg-green-600 text-white px-8 py-3 rounded-xl font-bold shadow-md hover:bg-green-700 hover:-translate-y-0.5 transition-all flex items-center gap-2">
@@ -307,7 +312,7 @@ include 'includes/header.php';
             <i class="ph-fill ph-check-circle text-4xl"></i>
         </div>
         <h2 class="text-2xl font-bold text-slate-800 mb-2">Entregar Prova?</h2>
-        <p class="text-slate-500 font-medium text-sm mb-8">Você respondeu <strong class="text-slate-700"><?= $answered_count ?> de <?= $total_questions ?></strong> questões. Tem certeza que deseja finalizar? Não será possível alterar as respostas depois.</p>
+        <p class="text-slate-500 font-medium text-sm mb-8">Você respondeu <strong class="text-slate-700"><span id="answered-count-text"><?= $answered_count ?></span> de <?= $total_questions ?></strong> questões. Tem certeza que deseja finalizar? Não será possível alterar as respostas depois.</p>
         
         <form method="POST" action="sprint_solve.php?id=<?= $sprint_id ?>" class="flex flex-col gap-3">
             <input type="hidden" name="finish_sprint" value="1">
@@ -318,10 +323,73 @@ include 'includes/header.php';
     </div>
 </div>
 
+<!-- Modal Anti-Cola -->
+<div id="modal-anticheat" class="fixed inset-0 z-[60] bg-slate-900/80 backdrop-blur-md hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl scale-100 animate-slide-up border-4 border-red-500">
+        <div class="w-20 h-20 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6">
+            <i class="ph-fill ph-warning-circle text-5xl animate-pulse"></i>
+        </div>
+        <h2 class="text-2xl font-bold text-slate-800 mb-2">Atenção!</h2>
+        <p class="text-slate-600 font-medium text-sm mb-4">Foi detectado que você saiu da aba ou janela da prova.</p>
+        <p class="text-red-500 font-bold mb-8 bg-red-50 py-2 rounded-lg">
+            Aviso <span id="warning-count">0</span> de 3
+        </p>
+        <button type="button" onclick="document.getElementById('modal-anticheat').classList.add('hidden')" class="w-full py-3 rounded-xl font-bold text-white bg-senai-blue shadow-md hover:bg-[#153673] transition-colors">Entendi, voltar para prova</button>
+    </div>
+</div>
+
 <script>
+    let isCurrentQuestionAnswered = <?= $saved_option_id ? 'true' : 'false' ?>;
+
+    // Sistema Auto-Save (Ajax)
+    function autoSave(optionId) {
+        const qId = <?= $current_question_id ?>;
+        const formData = new FormData();
+        formData.append('ajax', '1');
+        formData.append('question_id', qId);
+        formData.append('option_id', optionId);
+
+        // UI Feedback: Mostra que está salvando
+        const statusBadge = document.getElementById('save-status');
+        if (statusBadge) {
+            statusBadge.innerHTML = '<i class="ph-bold ph-spinner animate-spin"></i> Salvando...';
+            statusBadge.classList.replace('text-green-500', 'text-slate-400');
+            statusBadge.classList.replace('bg-green-50', 'bg-slate-100');
+            statusBadge.classList.remove('hidden');
+        }
+
+        fetch('sprint_solve.php?id=<?= $sprint_id ?>&q=<?= $current_q_index + 1 ?>', {
+            method: 'POST',
+            body: formData
+        }).then(res => res.json()).then(data => {
+            if (data.status === 'saved' && statusBadge) {
+                // UI Feedback: Salvo
+                statusBadge.innerHTML = '<i class="ph-bold ph-check"></i> Salva';
+                statusBadge.classList.replace('text-slate-400', 'text-green-500');
+                statusBadge.classList.replace('bg-slate-100', 'bg-green-50');
+                
+                // Colore a bolinha de navegação no topo
+                const navBubble = document.getElementById('nav-bubble-<?= $current_q_index ?>');
+                if (navBubble) {
+                    navBubble.classList.remove('border-senai-blue', 'text-senai-blue', 'bg-white', 'border-slate-200', 'text-slate-400', 'bg-slate-50');
+                    navBubble.classList.add('border-senai-orange', 'bg-senai-orange', 'text-white');
+                }
+
+                // Incrementa contador do modal de finalização de forma inteligente (apenas 1 vez)
+                if (!isCurrentQuestionAnswered) {
+                    isCurrentQuestionAnswered = true;
+                    const countText = document.getElementById('answered-count-text');
+                    if (countText) {
+                        countText.textContent = parseInt(countText.textContent) + 1;
+                    }
+                }
+            }
+        });
+    }
+
     // Se ele clicar no modal de finalizar, precisamos capturar o formulário principal para salvar a ultima resposta junto
     function submitFinal(e) {
-        e.preventDefault();
+        if(e) e.preventDefault();
         const mainForm = document.getElementById('question-form');
         // Adiciona um input hidden de finalizar
         const finishInput = document.createElement('input');
@@ -344,14 +412,7 @@ include 'includes/header.php';
         if (secondsLeft <= 0) {
             clearInterval(timer);
             countdownEl.textContent = "00:00";
-            // Auto submit to finish
-            const mainForm = document.getElementById('question-form');
-            const finishInput = document.createElement('input');
-            finishInput.type = 'hidden';
-            finishInput.name = 'finish_sprint';
-            finishInput.value = '1';
-            mainForm.appendChild(finishInput);
-            mainForm.submit();
+            submitFinal();
             return;
         }
 
@@ -368,6 +429,33 @@ include 'includes/header.php';
             timerIcon.classList.add('text-red-500');
         }
     }, 1000);
+
+    // Sistema Anti-Cola
+    const sprintId = <?= $sprint_id ?>;
+    const storageKey = `sprint_warnings_${sprintId}`;
+    let warningCount = parseInt(sessionStorage.getItem(storageKey) || "0");
+    let isUnloading = false;
+
+    // Detecta quando a página está sendo descarregada (mudando de questão) para não contar como trapaça
+    window.addEventListener('beforeunload', () => {
+        isUnloading = true;
+    });
+
+    window.addEventListener('blur', () => {
+        // Ignora se a prova já acabou ou se a página está mudando de questão
+        if(secondsLeft <= 0 || isUnloading) return;
+        
+        warningCount++;
+        sessionStorage.setItem(storageKey, warningCount);
+        
+        if (warningCount >= 3) {
+            alert("Você excedeu o limite de saídas da tela. Sua prova será finalizada agora.");
+            submitFinal();
+        } else {
+            document.getElementById('warning-count').textContent = warningCount;
+            document.getElementById('modal-anticheat').classList.remove('hidden');
+        }
+    });
 </script>
 
 <?php include 'includes/footer.php'; ?>

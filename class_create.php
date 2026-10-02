@@ -1,6 +1,6 @@
 <?php
 session_start();
-if (!isset($_SESSION['user_id']) || $_SESSION['user_role'] !== 'teacher') {
+if (!isset($_SESSION['user_id']) || !in_array($_SESSION['user_role'], ['admin', 'teacher'])) {
     header("Location: index.php");
     exit;
 }
@@ -18,8 +18,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     if ($name && $course_id && $year && $semester) {
         try {
-            $stmt = $pdo->prepare("INSERT INTO classes (course_id, name, year, semester) VALUES (?, ?, ?, ?)");
-            $stmt->execute([$course_id, $name, $year, $semester]);
+            $unit_id = $_SESSION['unit_id'] ?? null;
+            $stmt = $pdo->prepare("INSERT INTO classes (unit_id, course_id, name, year, semester) VALUES (?, ?, ?, ?, ?)");
+            $stmt->execute([$unit_id, $course_id, $name, $year, $semester]);
             $success = "Turma criada com sucesso!";
             header("refresh:2;url=classes.php"); // Redirect after 2s
         } catch (PDOException $e) {
@@ -88,7 +89,7 @@ include 'includes/header.php';
                         
                         <div>
                             <label class="block text-sm font-bold text-slate-700 mb-2">Curso Vinculado</label>
-                            <select name="course_id" required class="w-full px-5 py-3.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-senai-blue/20 focus:border-senai-blue transition-all bg-white/50 text-slate-800 font-medium">
+                            <select name="course_id" required class="search-select w-full px-5 py-3.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-senai-blue/20 focus:border-senai-blue transition-all bg-white/50 text-slate-800 font-medium">
                                 <option value="" disabled selected>Selecione o curso...</option>
                                 <?php foreach ($courses as $c): ?>
                                     <option value="<?= $c['id'] ?>"><?= htmlspecialchars($c['name']) ?></option>
@@ -99,7 +100,7 @@ include 'includes/header.php';
                             </p>
                         </div>
                         
-                        <div class="grid grid-cols-2 gap-4">
+                        <div class="grid grid-cols-2 gap-4 mt-6">
                             <div>
                                 <label class="block text-sm font-bold text-slate-700 mb-2">Ano</label>
                                 <input type="number" name="year" required value="<?= date('Y') ?>" min="2020" max="2100" class="w-full px-5 py-3.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-senai-blue/20 focus:border-senai-blue transition-all bg-white/50 text-slate-800 font-medium">
@@ -113,9 +114,35 @@ include 'includes/header.php';
                             </div>
                         </div>
 
-                        <div class="pt-4 mt-8 border-t border-slate-100 flex justify-end">
-                            <button type="submit" class="bg-senai-blue text-white px-8 py-3.5 rounded-xl font-semibold shadow-[0_4px_15px_-3px_rgba(26,66,138,0.4)] hover:shadow-[0_8px_20px_-3px_rgba(26,66,138,0.5)] hover:-translate-y-0.5 transition-all flex items-center gap-2 group">
-                                Cadastrar Turma <i class="ph-bold ph-check group-hover:scale-110 transition-transform"></i>
+                        <!-- Aviso Transparente da Unidade (Lotagem) -->
+                        <?php
+                            $teacher_unit_id = $_SESSION['unit_id'] ?? null;
+                            $unit_name = 'Unidade Global (Administração)';
+                            if ($teacher_unit_id) {
+                                $stmtUnit = $pdo->prepare("SELECT u.name as unit_name, r.name as regional_name FROM units u JOIN regionals r ON u.regional_id = r.id WHERE u.id = ?");
+                                $stmtUnit->execute([$teacher_unit_id]);
+                                $uData = $stmtUnit->fetch();
+                                if ($uData) {
+                                    $unit_name = $uData['unit_name'] . ' (' . $uData['regional_name'] . ')';
+                                }
+                            }
+                        ?>
+                        <div class="mt-8 p-5 bg-indigo-50 border border-indigo-100 rounded-2xl flex gap-4 items-center">
+                            <div class="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-500 shrink-0">
+                                <i class="ph-fill ph-map-pin text-2xl"></i>
+                            </div>
+                            <div>
+                                <h4 class="text-xs font-bold text-indigo-800 uppercase tracking-wider mb-1">Local de Vinculação</h4>
+                                <p class="text-sm text-indigo-600/80 font-medium leading-relaxed">
+                                    Esta turma será alocada automaticamente em: <br>
+                                    <strong class="text-indigo-900"><?= htmlspecialchars($unit_name) ?></strong>
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="pt-8 flex justify-end">
+                            <button type="submit" class="bg-senai-blue text-white px-8 py-3.5 rounded-xl font-bold shadow-[0_4px_15px_-3px_rgba(26,66,138,0.4)] hover:shadow-[0_8px_20px_-3px_rgba(26,66,138,0.5)] hover:-translate-y-0.5 transition-all w-full md:w-auto flex items-center gap-2 group">
+                                Criar Turma <i class="ph-bold ph-check group-hover:scale-110 transition-transform"></i>
                             </button>
                         </div>
                     </div>

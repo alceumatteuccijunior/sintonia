@@ -1,0 +1,4 @@
+Nome do host: localhost
+Banco de dados: castelob_sintonia2
+Nome de usuário: castelob_sintonia2
+Senha: huAhbFrMDgNa56yhDvA8

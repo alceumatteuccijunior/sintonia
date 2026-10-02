@@ -37,14 +37,31 @@ try {
 
     // 4. Estrutura das tabelas
     $queries = [
+        "regionals" => "
+            CREATE TABLE IF NOT EXISTS regionals (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(100) UNIQUE NOT NULL
+            ) ENGINE=InnoDB;
+        ",
+        "units" => "
+            CREATE TABLE IF NOT EXISTS units (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                regional_id INT NOT NULL,
+                name VARCHAR(255) NOT NULL,
+                FOREIGN KEY (regional_id) REFERENCES regionals(id) ON DELETE CASCADE,
+                UNIQUE KEY (regional_id, name)
+            ) ENGINE=InnoDB;
+        ",
         "users" => "
             CREATE TABLE IF NOT EXISTS users (
                 id INT AUTO_INCREMENT PRIMARY KEY,
+                unit_id INT NULL,
                 name VARCHAR(255) NOT NULL,
                 email VARCHAR(255) UNIQUE NOT NULL,
                 password VARCHAR(255) NOT NULL,
-                role ENUM('teacher', 'student') NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                role ENUM('admin', 'teacher', 'student') NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (unit_id) REFERENCES units(id) ON DELETE SET NULL
             ) ENGINE=InnoDB;
         ",
         "courses" => "
@@ -62,13 +79,25 @@ try {
                 FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE
             ) ENGINE=InnoDB;
         ",
+        "module_capacities" => "
+            CREATE TABLE IF NOT EXISTS module_capacities (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                module_id INT,
+                capacity_code VARCHAR(50) NOT NULL,
+                description TEXT NOT NULL,
+                FOREIGN KEY (module_id) REFERENCES modules(id) ON DELETE CASCADE,
+                UNIQUE KEY (module_id, capacity_code)
+            ) ENGINE=InnoDB;
+        ",
         "classes" => "
             CREATE TABLE IF NOT EXISTS classes (
                 id INT AUTO_INCREMENT PRIMARY KEY,
+                unit_id INT NULL,
                 course_id INT,
                 name VARCHAR(255) NOT NULL,
                 year INT,
                 semester INT,
+                FOREIGN KEY (unit_id) REFERENCES units(id) ON DELETE CASCADE,
                 FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE
             ) ENGINE=InnoDB;
         ",
@@ -112,6 +141,7 @@ try {
                 name VARCHAR(255) NOT NULL,
                 status ENUM('draft', 'active', 'completed') DEFAULT 'draft',
                 time_limit_minutes INT DEFAULT 0,
+                feedback_released BOOLEAN DEFAULT FALSE,
                 start_time DATETIME NULL,
                 end_time DATETIME NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -123,6 +153,7 @@ try {
             CREATE TABLE IF NOT EXISTS sprint_questions (
                 sprint_id INT,
                 question_id INT,
+                order_num INT,
                 PRIMARY KEY (sprint_id, question_id),
                 FOREIGN KEY (sprint_id) REFERENCES sprints(id) ON DELETE CASCADE,
                 FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE CASCADE

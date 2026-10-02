@@ -1,11 +1,23 @@
 <?php
 // config.php
 // Configurações e conexão com o banco de dados do sistema Sintonia
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
 
 define('DB_HOST', 'localhost');      // Host do MySQL
 define('DB_NAME', 'castelob_sintonia_diag');    // Nome do banco de dados que será criado
 define('DB_USER', 'castelob_sintonia_diag');           // Usuário do MySQL (altere se necessário)
 define('DB_PASS', 'ke6VEY2nd7UJZZtxjfVs');               // Senha do MySQL (altere se necessário)
+define('OPENAI_API_KEY', 'sua_chave_aqui');
+
+// define('DB_HOST', 'localhost');      // Host do MySQL
+// define('DB_NAME', 'castelob_sintonia2');    // Nome do banco de dados que será criado
+// define('DB_USER', 'castelob_sintonia2');           // Usuário do MySQL (altere se necessário)
+// define('DB_PASS', 'huAhbFrMDgNa56yhDvA8');               // Senha do MySQL (altere se necessário)
+// define('OPENAI_API_KEY', 'sua_chave_aqui');
+
+
 
 /**
  * Função para retornar a conexão PDO

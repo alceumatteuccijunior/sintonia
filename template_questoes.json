@@ -1,0 +1,52 @@
+{
+  "prova": {
+    "curso": "Nome do Seu Curso (Ex: Técnico em Informática)",
+    "modulos": [
+      {
+        "nome": "Nome da Unidade Curricular (Ex: Lógica de Programação)",
+        "capacidades_avaliadas": [
+          {
+            "id": "C1",
+            "descricao": "Desenvolver algoritmos usando estruturas de controle"
+          },
+          {
+            "id": "C2",
+            "descricao": "Aplicar tipos de dados de forma adequada"
+          }
+        ],
+        "questoes": [
+          {
+            "numero": 1,
+            "dificuldade": "Fácil",
+            "capacidade": "C1",
+            "contexto": "O professor de lógica solicitou a criação de um laço de repetição que execute pelo menos uma vez, independente da condição de validação.",
+            "comando": "Qual estrutura de repetição deve ser utilizada para atender a essa exigência?",
+            "alternativas": {
+              "A": "while",
+              "B": "for",
+              "C": "do-while",
+              "D": "foreach",
+              "E": "switch"
+            },
+            "resposta_correta": "C"
+          },
+          {
+            "numero": 2,
+            "dificuldade": "Médio",
+            "capacidade": "C2",
+            "contexto": "Um desenvolvedor precisa armazenar a idade de um funcionário para cálculos de aposentadoria no sistema do RH.",
+            "comando": "Qual tipo de dado é o mais adequado e otimizado para armazenar essa informação?",
+            "alternativas": {
+              "A": "String",
+              "B": "Boolean",
+              "C": "Integer",
+              "D": "Float",
+              "E": "Array"
+            },
+            "resposta_correta": "C"
+          }
+        ]
+      }
+    ]
+  }
+}

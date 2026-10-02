@@ -14,6 +14,13 @@
     <!-- Marked.js para Markdown -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
+    <!-- Chart.js para Gráficos -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Tom Select para Selects Pesquisáveis -->
+    <link href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.default.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
+
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
@@ -90,6 +97,14 @@
         .fade-out { opacity: 0; pointer-events: none; }
         .fade-in { opacity: 1; pointer-events: auto; }
 
+        /* Estilização Tom Select para integrar com nosso design */
+        .ts-control { border-radius: 0.75rem !important; border: 1px solid #e2e8f0 !important; padding: 0.75rem 1.25rem !important; min-height: 50px; background-color: rgba(255, 255, 255, 0.5) !important; font-family: 'Inter', sans-serif !important; font-weight: 500 !important; color: #1e293b !important; }
+        .ts-control.focus { border-color: #00B5E2 !important; box-shadow: 0 0 0 2px rgba(0, 181, 226, 0.2) !important; }
+        .ts-dropdown { border-radius: 0.75rem !important; border: 1px solid #e2e8f0 !important; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important; margin-top: 4px !important; z-index: 50 !important; overflow: hidden; padding: 4px; }
+        .ts-dropdown .option { border-radius: 0.5rem; margin-bottom: 2px; padding: 0.5rem 1rem !important; transition: all 0.2s; font-family: 'Inter', sans-serif; font-size: 0.875rem; color: #334155; }
+        .ts-dropdown .active { background-color: #F8FAFC !important; color: #1A428A !important; font-weight: 600; }
+        .ts-wrapper.single .ts-control:after { border-width: 5px 5px 0 5px !important; border-color: #94a3b8 transparent transparent transparent !important; right: 1rem !important; }
+        
         /* Transições do Chat/Home */
         .chat-container { display: none; opacity: 0; transform: translateY(15px); transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1); }
         .chat-container.active { display: flex; opacity: 1; transform: translateY(0); }

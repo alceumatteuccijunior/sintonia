@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Template Slide - SENAI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <!-- Utilizando a fonte Inter, que é limpa e profissional, muito comum em materiais corporativos modernos -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            /* Fundo cinza para destacar o slide no navegador */
+            background-color: #e5e7eb;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        }
+
+        /* Configurações essenciais para exportação em PDF sem bordas brancas e no formato 16:9 correto */
+        @media print {
+            body {
+                background-color: #ffffff;
+                display: block;
+            }
+            .slide-container {
+                box-shadow: none !important;
+                margin: 0 !important;
+                width: 100% !important;
+                height: 100vh !important;
+                page-break-after: always;
+            }
+            /* Força a impressão dos fundos coloridos (crucial para o Chrome/Edge) */
+            * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            @page {
+                size: 1280px 720px; /* Tamanho exato do slide para manter a proporção 16:9 no PDF */
+                margin: 0mm;
+            }
+        }
+
+        .slide-container {
+            /* Resolução HD padrão 16:9 para slides */
+            width: 1280px;
+            height: 720px;
+            background-color: #ffffff;
+            position: relative;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+            overflow: hidden;
+            /* Container de escalabilidade básica para telas menores */
+            max-width: 100vw;
+            max-height: 56.25vw; /* Mantém a proporção 16:9 (720/1280) */
+        }
+
+        .sidebar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 56px; /* Largura da barra lateral */
+            height: 100%;
+            z-index: 10;
+        }
+
+        /* Forma laranja superior com corte diagonal */
+        .shape-orange {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 220px; /* Altura na aresta esquerda */
+            background-color: #F25922; /* Laranja SENAI */
+            /* Polígono: topo-esq, topo-dir, base-dir (mais curta), base-esq (mais longa) */
+            clip-path: polygon(0 0, 100% 0, 100% 150px, 0 100%);
+        }
+
+        /* Forma azul inferior mantendo paralelismo no corte */
+        .shape-blue {
+            position: absolute;
+            top: 170px; /* 150px (base dir da laranja) + 20px (gap) */
+            left: 0;
+            width: 100%;
+            height: calc(100% - 170px);
+            background-color: #0038A8; /* Azul Escuro SENAI */
+            /* Polígono mantendo a mesma inclinação da forma laranja (70px de desnível) */
+            clip-path: polygon(0 70px, 100% 0, 100% 100%, 0 100%);
+        }
+
+        .logo-container {
+            position: absolute;
+            top: 45px;
+            right: 60px;
+            z-index: 20;
+        }
+
+        .logo-container img {
+            height: 48px; /* Altura ajustável da logo */
+            width: auto;
+            object-fit: contain;
+        }
+
+        .content-area {
+            position: absolute;
+            top: 150px;
+            left: 140px; /* Espaço para afastar da barra lateral */
+            right: 140px;
+            bottom: 100px; /* Margem de segurança aumentada na parte inferior para o conteúdo não grudar no rodapé */
+            display: flex;
+            flex-direction: column;
+            z-index: 5;
+        }
+
+        .slide-title {
+            color: #0038A8; /* Azul SENAI */
+            font-size: 52px;
+            font-weight: 800;
+            margin-bottom: 15px;
+            line-height: 1.1;
+            letter-spacing: -1px;
+        }
+
+        .slide-subtitle {
+            color: #F25922; /* Laranja SENAI */
+            font-size: 28px;
+            font-weight: 600;
+            margin-bottom: 40px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .slide-text {
+            color: #4B5563; /* Cinza escuro para melhor legibilidade */
+            font-size: 16px;
+            line-height: 1.6;
+            margin-bottom: 24px;
+        }
+
+        .slide-list {
+            list-style-type: none;
+            margin-left: 0;
+            margin-bottom: 24px;
+        }
+
+        .slide-list li {
+            position: relative;
+            padding-left: 32px;
+            color: #4B5563;
+            font-size: 24px;
+            line-height: 1.6;
+            margin-bottom: 12px;
+        }
+
+        /* Marcadores de lista estilizados com as cores do SENAI */
+        .slide-list li::before {
+            content: "■";
+            position: absolute;
+            left: 0;
+            top: 1px;
+            color: #F25922; /* Laranja SENAI */
+            font-size: 18px;
+        }
+
+        .slide-footer {
+            position: absolute;
+            bottom: 30px;
+            left: 140px;
+            right: 60px;
+            display: flex;
+            justify-content: space-between;
+            color: #9CA3AF;
+            font-size: 14px;
+            font-weight: 600;
+            z-index: 5;
+        }
+    </style>
+</head>
+<body>
+    <div class="slide-container">
+        
+        <!-- Elementos Geométricos Laterais -->
+        <div class="sidebar">
+            <div class="shape-orange"></div>
+            <div class="shape-blue"></div>
+        </div>
+
+        <!-- Logo SENAI -->
+        <div class="logo-container">
+            <img src="logo.png" alt="Logo SENAI">
+        </div>
+
+        <!-- Área de Conteúdo do Slide -->
+        <div class="content-area">
+            <h1 class="slide-title">Título Principal do Slide</h1>
+            <h2 class="slide-subtitle">Subtítulo ou Seção do Curso</h2>
+            
+            <p class="slide-text">
+                Este é um parágrafo de exemplo projetado para demonstrar a legibilidade e o alinhamento da tipografia dentro deste template. O espaço foi calculado para evitar colisões com as formas laterais e a logo superior.
+            </p>
+
+            <ul class="slide-list">
+                <li>Primeiro ponto de destaque importante para a apresentação.</li>
+                <li>Segundo item com métricas ou explicações técnicas.</li>
+                <li>Terceiro item ressaltando a metodologia aplicada.</li>
+            </ul>
+            
+            <p class="slide-text">
+                Você pode clonar este bloco para gerar múltiplos slides em um único arquivo HTML, adicionando <code>page-break-after: always;</code> em novas <code>div.slide-container</code> se desejar um arquivo de múltiplos slides.
+            </p>
+        </div>
+
+        <!-- Rodapé opcional -->
+        <div class="slide-footer">
+            <span>DEPARTAMENTO REGIONAL - EDUCAÇÃO PROFISSIONAL</span>
+            <span>01</span>
+        </div>
+
+    </div>
+</body>
+</html>
