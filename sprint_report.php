@@ -58,12 +58,13 @@ $stmtRanking = $pdo->prepare("
            COUNT(sa.id) as total_answered,
            SUM(IF(sa.is_correct = 1, 1, 0)) as total_correct,
            a.started_at,
-           a.completed_at
+           a.completed_at,
+           a.id as attempt_id
     FROM sprint_attempts a
     JOIN users u ON a.student_id = u.id
     LEFT JOIN student_answers sa ON sa.sprint_id = a.sprint_id AND sa.student_id = a.student_id
     WHERE a.sprint_id = ?
-    GROUP BY u.id, a.started_at, a.completed_at
+    GROUP BY u.id, a.started_at, a.completed_at, a.id
     ORDER BY total_correct DESC, total_answered DESC
 ");
 $stmtRanking->execute([$sprint_id]);
@@ -459,7 +460,14 @@ include 'includes/header.php';
                                                 </div>
                                             </td>
                                             <td class="py-3 text-center">
-                                                <button type="button" onclick="openStudentModal(<?= $r['student_id'] ?>, '<?= htmlspecialchars($r['student_name'], ENT_QUOTES) ?>')" class="text-senai-blue bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors w-full">Ver Detalhes</button>
+                                                <div class="flex items-center justify-center gap-1">
+                                                    <button type="button" onclick="openStudentModal(<?= $r['student_id'] ?>, '<?= htmlspecialchars($r['student_name'], ENT_QUOTES) ?>')" class="text-senai-blue bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors w-full" title="Ver respostas e Raio-X">Detalhes</button>
+                                                    <?php if ($r['completed_at']): ?>
+                                                    <a href="sprint_report_pdf.php?attempt_id=<?= $r['attempt_id'] ?>" target="_blank" class="text-senai-orange bg-orange-50 hover:bg-orange-100 w-8 h-8 flex items-center justify-center rounded-lg transition-colors flex-shrink-0" title="Gerar Relatório A4 em PDF">
+                                                        <i class="ph-bold ph-printer text-base"></i>
+                                                    </a>
+                                                    <?php endif; ?>
+                                                </div>
                                             </td>
                                         </tr>
                                         <?php endforeach; ?>
