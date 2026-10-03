@@ -57,6 +57,63 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $msg = "Preencha todos os campos obrigatórios.";
             $msgType = 'error';
         }
+    } elseif ($action === 'import_csv') {
+        require_once 'includes/mailer.php';
+        $unit_id = !empty($_POST['unit_id']) ? $_POST['unit_id'] : null;
+        
+        if (isset($_FILES['csv_file']) && $_FILES['csv_file']['error'] == UPLOAD_ERR_OK) {
+            $fileTmpPath = $_FILES['csv_file']['tmp_name'];
+            if (($handle = fopen($fileTmpPath, "r")) !== FALSE) {
+                // Pular cabeçalho
+                fgetcsv($handle, 1000, ",");
+                $successCount = 0;
+                $errorCount = 0;
+                
+                while (($data = fgetcsv($handle, 1000, ",")) !== FALSE) {
+                    $name = trim($data[0] ?? '');
+                    $email = trim($data[1] ?? '');
+                    
+                    if ($name && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                        // Verifica se email já existe
+                        $stmtCheck = $pdo->prepare("SELECT id FROM users WHERE email = ?");
+                        $stmtCheck->execute([$email]);
+                        if (!$stmtCheck->fetch()) {
+                            $temp_password = substr(str_shuffle('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#*'), 0, 8);
+                            $hash = password_hash($temp_password, PASSWORD_DEFAULT);
+                            
+                            $stmtInsert = $pdo->prepare("INSERT INTO users (unit_id, name, email, password, role, must_change_password) VALUES (?, ?, ?, ?, 'student', 1)");
+                            if ($stmtInsert->execute([$unit_id, $name, $email, $hash])) {
+                                $successCount++;
+                                
+                                // Enviar e-mail
+                                $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http";
+                                $host = $_SERVER['HTTP_HOST'];
+                                $uri = rtrim(dirname($_SERVER['REQUEST_URI']), '/\\');
+                                $loginLink = "$protocol://$host$uri/";
+                                
+                                $emailBody = "Olá <strong>{$name}</strong>,<br><br>Você acaba de ser cadastrado na plataforma aiS!<br><br>Suas credenciais de acesso provisórias são:<br><strong>E-mail:</strong> {$email}<br><strong>Senha:</strong> {$temp_password}<br><br><a href='{$loginLink}' style='display:inline-block; padding:10px 20px; background-color:#4f46e5; color:white; text-decoration:none; border-radius:5px;'>Acessar o aiS</a><br><br><em>Aviso: No seu primeiro acesso, o sistema pedirá que crie uma senha definitiva.</em>";
+                                send_system_email($email, "Bem-vindo ao aiS - Suas Credenciais", $emailBody);
+                            } else {
+                                $errorCount++;
+                            }
+                        } else {
+                            $errorCount++; // Email já existe
+                        }
+                    } else {
+                        $errorCount++; // Dados inválidos
+                    }
+                }
+                fclose($handle);
+                $msg = "Importação concluída! $successCount aluno(s) cadastrados. $errorCount ignorados (já existentes ou dados inválidos).";
+                $msgType = 'success';
+            } else {
+                $msg = "Erro ao ler o arquivo CSV.";
+                $msgType = 'error';
+            }
+        } else {
+            $msg = "Nenhum arquivo enviado ou erro no upload.";
+            $msgType = 'error';
+        }
     } elseif ($action === 'edit') {
         $id = $_POST['user_id'] ?? 0;
         $unit_id = !empty($_POST['unit_id']) ? $_POST['unit_id'] : null;
@@ -175,10 +232,16 @@ include 'includes/header.php';
                         <p class="text-slate-500 font-medium">Controle total de professores, alunos e administradores do sistema.</p>
                     </div>
                     
-                    <button onclick="openModal('createModal')" class="bg-senai-blue hover:bg-blue-800 text-white px-5 py-3 rounded-xl font-bold shadow-sm transition-all active:scale-95 text-sm flex items-center gap-2 hover:shadow-md">
-                        <i class="ph-bold ph-user-plus text-lg"></i>
-                        Cadastrar Usuário
-                    </button>
+                    <div class="flex gap-2">
+                        <button onclick="openModal('importUsersModal')" class="bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-700 px-5 py-3 rounded-xl font-bold transition-all active:scale-95 text-sm flex items-center gap-2">
+                            <i class="ph-bold ph-upload-simple text-lg"></i>
+                            Importar em Massa
+                        </button>
+                        <button onclick="openModal('createModal')" class="bg-senai-blue hover:bg-blue-800 text-white px-5 py-3 rounded-xl font-bold shadow-sm transition-all active:scale-95 text-sm flex items-center gap-2 hover:shadow-md">
+                            <i class="ph-bold ph-user-plus text-lg"></i>
+                            Cadastrar Usuário
+                        </button>
+                    </div>
                 </div>
 
                 <?php if($msg): ?>
@@ -347,6 +410,60 @@ include 'includes/header.php';
             <div class="mt-8 flex justify-end gap-3">
                 <button type="button" onclick="closeModal('createModal')" class="px-5 py-2.5 rounded-xl font-bold text-sm text-slate-500 hover:bg-slate-100 transition-colors">Cancelar</button>
                 <button type="submit" class="px-5 py-2.5 rounded-xl font-bold text-sm bg-senai-blue text-white hover:bg-blue-800 transition-all shadow-sm hover:shadow-md">Salvar Usuário</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Importação -->
+<div id="importUsersModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-3xl shadow-xl w-full max-w-md overflow-hidden scale-95 opacity-0 transition-all duration-300" id="importUsersModalContent">
+        <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-indigo-50/50">
+            <h3 class="font-bold text-lg text-slate-800 flex items-center gap-2"><i class="ph-bold ph-upload-simple text-indigo-500"></i> Importar Alunos</h3>
+            <button type="button" onclick="closeModal('importUsersModal')" class="text-slate-400 hover:text-red-500 transition-colors"><i class="ph-bold ph-x text-xl"></i></button>
+        </div>
+        <form method="POST" enctype="multipart/form-data" class="p-6">
+            <input type="hidden" name="action" value="import_csv">
+            
+            <div class="space-y-4">
+                <div class="bg-blue-50 border border-blue-100 p-4 rounded-xl text-sm text-blue-800 flex flex-col gap-2">
+                    <p>Baixe a planilha modelo, preencha os dados e faça o upload abaixo. A senha será gerada e enviada por e-mail para cada aluno automaticamente.</p>
+                    <a href="template_alunos.csv" download class="inline-flex items-center justify-center gap-2 bg-white border border-blue-200 text-blue-700 px-3 py-2 rounded-lg font-bold hover:bg-blue-100 transition-colors text-center shadow-sm">
+                        <i class="ph-bold ph-download-simple"></i> Baixar Modelo CSV
+                    </a>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Vincular à Unidade Escolar</label>
+                    <select name="unit_id" class="search-select w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all">
+                        <option value="">Sem Unidade (Global)</option>
+                        <?php
+                        $stmtUnits->execute(); // reseta o cursor
+                        $current_reg = '';
+                        while ($unit = $stmtUnits->fetch()) {
+                            if ($current_reg !== $unit['regional_name']) {
+                                if ($current_reg !== '') echo "</optgroup>";
+                                $current_reg = $unit['regional_name'];
+                                echo "<optgroup label='" . htmlspecialchars($current_reg) . "'>";
+                            }
+                            echo "<option value='{$unit['id']}'>" . htmlspecialchars($unit['unit_name']) . "</option>";
+                        }
+                        if ($current_reg !== '') echo "</optgroup>";
+                        ?>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Arquivo CSV</label>
+                    <input type="file" name="csv_file" accept=".csv" required class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-bold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer">
+                </div>
+            </div>
+            
+            <div class="mt-8 flex justify-end gap-3">
+                <button type="button" onclick="closeModal('importUsersModal')" class="px-5 py-2.5 rounded-xl font-bold text-sm text-slate-500 hover:bg-slate-100 transition-colors">Cancelar</button>
+                <button type="submit" class="px-5 py-2.5 rounded-xl font-bold text-sm bg-indigo-600 text-white hover:bg-indigo-700 transition-all shadow-sm hover:shadow-md flex items-center gap-2">
+                    <i class="ph-bold ph-upload-simple"></i> Iniciar Importação
+                </button>
             </div>
         </form>
     </div>
