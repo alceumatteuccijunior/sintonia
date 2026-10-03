@@ -67,7 +67,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 SELECT q.*, m.name as module_name 
                 FROM questions q 
                 JOIN modules m ON q.module_id = m.id 
-                WHERE m.course_id = ?
+                WHERE m.course_id = ? AND (q.is_active = 1 OR q.is_active IS NULL)
                 ORDER BY m.name, q.id
             ");
             $stmtQs->execute([$course_id]);

@@ -22,12 +22,22 @@ if (!$curso) {
     exit;
 }
 
-// Buscar todas as questões deste curso com o nome do módulo
+// Exclusão Lógica de Questão
+if (isset($_GET['delete_q']) && in_array($_SESSION['user_role'], ['admin', 'teacher'])) {
+    $delId = $_GET['delete_q'];
+    // Soft delete para não quebrar sprints passadas
+    $stmtDel = $pdo->prepare("UPDATE questions SET is_active = 0 WHERE id = ?");
+    $stmtDel->execute([$delId]);
+    header("Location: questions_view.php?course_id=" . $courseId);
+    exit;
+}
+
+// Buscar todas as questões ativas deste curso com o nome do módulo
 $stmtQs = $pdo->prepare("
     SELECT q.*, m.name as module_name 
     FROM questions q 
     JOIN modules m ON q.module_id = m.id 
-    WHERE m.course_id = ?
+    WHERE m.course_id = ? AND (q.is_active = 1 OR q.is_active IS NULL)
     ORDER BY m.name, q.id
 ");
 $stmtQs->execute([$courseId]);
@@ -166,6 +176,11 @@ include 'includes/header.php';
                                     <span class="text-[10px] font-bold px-2 py-1 rounded-md bg-slate-100 text-slate-600 uppercase tracking-wider truncate max-w-[150px]" title="<?= htmlspecialchars($q['module_name']) ?>">
                                         <?= htmlspecialchars($q['module_name']) ?>
                                     </span>
+                                    <?php if (in_array($_SESSION['user_role'], ['admin', 'teacher'])): ?>
+                                    <a href="?course_id=<?= $courseId ?>&delete_q=<?= $q['id'] ?>" onclick="event.stopPropagation(); return confirm('Tem certeza que deseja excluir/ocultar esta questão? Ela não aparecerá mais para ser selecionada em novas provas.');" class="w-7 h-7 rounded-full bg-red-50 hover:bg-red-100 text-red-400 hover:text-red-600 flex items-center justify-center transition-colors" title="Excluir Questão">
+                                        <i class="ph-bold ph-trash"></i>
+                                    </a>
+                                    <?php endif; ?>
                                 </div>
                                 
                                 <p class="text-sm font-semibold text-slate-800 mb-4 line-clamp-4 flex-grow" title="<?= htmlspecialchars($q['command']) ?>">
