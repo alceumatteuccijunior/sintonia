@@ -129,6 +129,11 @@ include 'includes/header.php';
                         class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-senai-blue/20 focus:border-senai-blue transition-all"
                         placeholder="••••••••">
                 </div>
+                <div class="flex justify-end mt-1">
+                    <a href="forgot_password.php" class="text-sm font-medium text-senai-blue hover:text-blue-800 transition-colors">
+                        Esqueceu a senha?
+                    </a>
+                </div>
                 <div class="pt-2">
                     <button type="submit"
                         class="w-full bg-senai-blue text-white font-semibold py-3.5 px-4 rounded-xl shadow-[0_8px_20px_-6px_rgba(26,66,138,0.5)] hover:shadow-[0_12px_25px_-6px_rgba(26,66,138,0.6)] hover:-translate-y-0.5 hover:bg-[#153673] transition-all duration-300">
@@ -136,21 +141,6 @@ include 'includes/header.php';
                     </button>
                 </div>
             </form>
-
-            <div class="relative flex items-center py-6">
-                <div class="flex-grow border-t border-slate-200"></div>
-                <span class="flex-shrink-0 mx-4 text-slate-400 text-[11px] uppercase tracking-widest font-bold">Primeiro
-                    Acesso?</span>
-                <div class="flex-grow border-t border-slate-200"></div>
-            </div>
-
-            <div class="space-y-3">
-                <a href="register.php"
-                    class="w-full border border-slate-200 text-slate-600 font-medium py-3.5 px-4 rounded-xl hover:bg-slate-50 hover:text-senai-orange transition-all flex items-center justify-center gap-2 group">
-                    <i class="ph-fill ph-student text-senai-orange group-hover:scale-110 transition-transform"></i>
-                    Sou Aluno e quero me cadastrar
-                </a>
-            </div>
 
         </div>
     </div>

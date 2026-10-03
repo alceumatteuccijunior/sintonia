@@ -151,10 +151,24 @@ try {
             $stmt->execute([$email]);
             $uid = $stmt->fetchColumn();
             if (!$uid) {
+                // A senha provisória é a matrícula
                 $hash = password_hash($matricula, PASSWORD_DEFAULT);
-                $pdo->prepare("INSERT INTO users (unit_id, name, email, password, role) VALUES (?, ?, ?, ?, 'student')")
+                $pdo->prepare("INSERT INTO users (unit_id, name, email, password, role, must_change_password) VALUES (?, ?, ?, ?, 'student', 1)")
                     ->execute([$unit_id, $student_name, $email, $hash]);
                 $uid = $pdo->lastInsertId();
+                
+                // Enviar e-mail de boas-vindas
+                if (!function_exists('send_system_email')) {
+                    require_once 'includes/mailer.php';
+                }
+                $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http";
+                $host = $_SERVER['HTTP_HOST'];
+                $uri = rtrim(dirname($_SERVER['REQUEST_URI']), '/\\');
+                $loginLink = "$protocol://$host$uri/";
+                
+                $emailBody = "Olá <strong>{$student_name}</strong>,<br><br>Você acaba de ser cadastrado(a) na plataforma aiS por meio da importação do SAEP!<br><br>Suas credenciais de acesso iniciais são:<br><strong>E-mail:</strong> {$email}<br><strong>Senha:</strong> {$matricula}<br><br><a href='{$loginLink}' style='display:inline-block; padding:10px 20px; background-color:#4f46e5; color:white; text-decoration:none; border-radius:5px;'>Acessar o aiS</a><br><br><em>Aviso: No seu primeiro acesso, o sistema pedirá que você crie uma nova senha definitiva.</em>";
+                send_system_email($email, "Bem-vindo ao aiS - Suas Credenciais", $emailBody);
+                
             } else {
                 // Se o usuário já existe, garantir que ele esteja vinculado a esta unidade
                 $pdo->prepare("UPDATE users SET unit_id = ? WHERE id = ? AND unit_id IS NULL")->execute([$unit_id, $uid]);

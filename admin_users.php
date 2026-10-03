@@ -16,18 +16,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
     
     if ($action === 'create') {
+        require_once 'includes/mailer.php';
         $unit_id = !empty($_POST['unit_id']) ? $_POST['unit_id'] : null;
         $name = trim($_POST['name'] ?? '');
         $email = trim($_POST['email'] ?? '');
-        $password = $_POST['password'] ?? '';
         $role = $_POST['role'] ?? 'student';
         
-        if ($name && $email && $password && in_array($role, ['admin', 'teacher', 'student'])) {
+        // Gerar senha temporária automática de 8 caracteres
+        $temp_password = substr(str_shuffle('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#*'), 0, 8);
+        
+        if ($name && $email && in_array($role, ['admin', 'teacher', 'student'])) {
             try {
-                $hash = password_hash($password, PASSWORD_DEFAULT);
-                $stmt = $pdo->prepare("INSERT INTO users (unit_id, name, email, password, role) VALUES (?, ?, ?, ?, ?)");
+                $hash = password_hash($temp_password, PASSWORD_DEFAULT);
+                $stmt = $pdo->prepare("INSERT INTO users (unit_id, name, email, password, role, must_change_password) VALUES (?, ?, ?, ?, ?, 1)");
                 $stmt->execute([$unit_id, $name, $email, $hash, $role]);
-                $msg = "Usuário '$name' cadastrado com sucesso!";
+                
+                // Montar link de login dinâmico
+                $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http";
+                $host = $_SERVER['HTTP_HOST'];
+                $uri = rtrim(dirname($_SERVER['REQUEST_URI']), '/\\');
+                $loginLink = "$protocol://$host$uri/";
+                
+                // Enviar E-mail
+                $emailBody = "Olá <strong>{$name}</strong>,<br><br>Sua conta na plataforma aiS acaba de ser criada!<br><br>Suas credenciais de acesso temporárias são:<br><strong>E-mail:</strong> {$email}<br><strong>Senha:</strong> {$temp_password}<br><br><a href='{$loginLink}' style='display:inline-block; padding:10px 20px; background-color:#4f46e5; color:white; text-decoration:none; border-radius:5px;'>Acessar o aiS</a><br><br><em>Aviso: Por questões de segurança, no seu primeiro login o sistema exigirá que você crie uma nova senha definitiva.</em>";
+                
+                send_system_email($email, "Bem-vindo ao aiS - Suas Credenciais", $emailBody);
+                
+                $msg = "Usuário '$name' cadastrado com sucesso! Um e-mail com a senha foi enviado para o usuário.";
                 $msgType = 'success';
             } catch (PDOException $e) {
                 if ($e->getCode() == 23000) {
@@ -306,10 +321,7 @@ include 'includes/header.php';
                     <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Email (Login)</label>
                     <input type="email" name="email" required class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-senai-blue focus:ring-1 focus:ring-senai-blue transition-all" placeholder="Ex: joao@senai.br">
                 </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Senha Inicial</label>
-                    <input type="password" name="password" required class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-senai-blue focus:ring-1 focus:ring-senai-blue transition-all" placeholder="••••••••">
-                </div>
+                <!-- A senha inicial é gerada automaticamente e enviada por e-mail -->
                 <div>
                     <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Perfil de Acesso</label>
                     <div class="grid grid-cols-3 gap-2">

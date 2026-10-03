@@ -12,7 +12,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $email = $_POST['email'];
         $password = $_POST['password'];
         
-        $stmt = $pdo->prepare("SELECT id, name, password, role, unit_id FROM users WHERE email = ?");
+        $stmt = $pdo->prepare("SELECT id, name, password, role, unit_id, must_change_password FROM users WHERE email = ?");
         $stmt->execute([$email]);
         $user = $stmt->fetch();
         
@@ -21,6 +21,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['user_name'] = $user['name'];
             $_SESSION['user_role'] = $user['role'];
             $_SESSION['unit_id'] = $user['unit_id'];
+            $_SESSION['must_change_password'] = $user['must_change_password'];
+            
+            if ($user['must_change_password']) {
+                header("Location: first_access.php");
+                exit;
+            }
             
             if ($user['role'] === 'student') {
                 $stmtClass = $pdo->prepare("SELECT class_id FROM class_students WHERE student_id = ? LIMIT 1");
