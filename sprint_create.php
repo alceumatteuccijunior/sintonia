@@ -108,17 +108,32 @@ include 'includes/header.php';
                             </div>
                             <?php endif; ?>
                             
-                            <div>
-                                <label class="block text-sm font-bold text-slate-700 mb-2">Tempo Limite (em minutos)</label>
-                                <div class="relative">
-                                    <input type="number" name="time_limit_minutes" required value="60" min="5" max="300" class="w-full px-5 py-3.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-senai-blue/20 focus:border-senai-blue transition-all bg-white/50 text-slate-800 font-medium">
-                                    <div class="absolute inset-y-0 right-5 flex items-center pointer-events-none">
-                                        <span class="text-slate-400 font-bold text-sm">minutos</span>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-bold text-slate-700 mb-2">Tempo Limite (Máximo)</label>
+                                    <div class="relative">
+                                        <input type="number" name="time_limit_minutes" required value="60" min="5" max="300" class="w-full px-5 py-3.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-senai-blue/20 focus:border-senai-blue transition-all bg-white/50 text-slate-800 font-medium">
+                                        <div class="absolute inset-y-0 right-5 flex items-center pointer-events-none">
+                                            <span class="text-slate-400 font-bold text-sm">minutos</span>
+                                        </div>
                                     </div>
+                                    <p class="text-[11px] text-slate-400 font-semibold mt-2 ml-1">
+                                        Tempo que o aluno terá para concluir a avaliação.
+                                    </p>
                                 </div>
-                                <p class="text-[11px] text-slate-400 font-semibold mt-2 ml-1">
-                                    Tempo que o aluno terá para concluir a avaliação após iniciá-la.
-                                </p>
+                                
+                                <div>
+                                    <label class="block text-sm font-bold text-slate-700 mb-2">Tempo Mínimo <span class="text-slate-400 font-normal">(Opcional)</span></label>
+                                    <div class="relative">
+                                        <input type="number" name="time_min_minutes" value="" min="0" max="300" placeholder="Ex: 10" class="w-full px-5 py-3.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-senai-blue/20 focus:border-senai-blue transition-all bg-white/50 text-slate-800 font-medium">
+                                        <div class="absolute inset-y-0 right-5 flex items-center pointer-events-none">
+                                            <span class="text-slate-400 font-bold text-sm">minutos</span>
+                                        </div>
+                                    </div>
+                                    <p class="text-[11px] text-slate-400 font-semibold mt-2 ml-1">
+                                        Obriga o aluno a aguardar esse tempo antes de finalizar (garante leitura).
+                                    </p>
+                                </div>
                             </div>
 
                             <div class="pt-4 mt-8 border-t border-slate-100 flex justify-end">

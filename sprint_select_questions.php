@@ -15,6 +15,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $class_id = $_POST['class_id'] ?? '';
     $name = $_POST['name'] ?? '';
     $time_limit = $_POST['time_limit_minutes'] ?? '';
+    $time_min = (!empty($_POST['time_min_minutes'])) ? (int)$_POST['time_min_minutes'] : null;
     $teacher_id = $_POST['teacher_id'] ?? $_SESSION['user_id'];
     
     // Processamento Final (Salvando a Sprint)
@@ -33,8 +34,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $pdo->beginTransaction();
                 
                 // Insere a Sprint como 'active' para que os alunos já possam ver
-                $stmt = $pdo->prepare("INSERT INTO sprints (teacher_id, class_id, name, time_limit_minutes, status) VALUES (?, ?, ?, ?, 'active')");
-                $stmt->execute([$teacher_id, $class_id, $name, $time_limit]);
+                $stmt = $pdo->prepare("INSERT INTO sprints (teacher_id, class_id, name, time_limit_minutes, time_min_minutes, status) VALUES (?, ?, ?, ?, ?, 'active')");
+                $stmt->execute([$teacher_id, $class_id, $name, $time_limit, $time_min]);
                 $sprint_id = $pdo->lastInsertId();
                 
                 // Insere as Questões
@@ -235,6 +236,7 @@ include 'includes/header.php';
                     <input type="hidden" name="class_id" value="<?= htmlspecialchars($class_id) ?>">
                     <input type="hidden" name="name" value="<?= htmlspecialchars($name) ?>">
                     <input type="hidden" name="time_limit_minutes" value="<?= htmlspecialchars($time_limit) ?>">
+                    <input type="hidden" name="time_min_minutes" value="<?= htmlspecialchars($_POST['time_min_minutes'] ?? '') ?>">
                     <input type="hidden" name="teacher_id" value="<?= htmlspecialchars($teacher_id) ?>">
                     <input type="hidden" name="save_sprint" value="1">
                     

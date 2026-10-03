@@ -53,6 +53,10 @@ $diff_seconds = $now->getTimestamp() - $started->getTimestamp();
 $time_limit_seconds = $sprint['time_limit_minutes'] * 60;
 $time_remaining = $time_limit_seconds - $diff_seconds;
 
+$time_min_minutes = $sprint['time_min_minutes'] ?? 0;
+$time_min_seconds = $time_min_minutes * 60;
+$min_time_remaining = $time_min_seconds - $diff_seconds;
+
 if ($time_remaining <= 0) {
     // Tempo esgotou, finaliza a prova
     $stmtComplete = $pdo->prepare("UPDATE sprint_attempts SET completed_at = NOW() WHERE id = ?");
@@ -128,24 +132,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (isset($_POST['finish_sprint'])) {
-        $stmtComplete = $pdo->prepare("UPDATE sprint_attempts SET completed_at = NOW() WHERE id = ?");
-        $stmtComplete->execute([$attempt['id']]);
-        
-        // Disparo de E-mail
-        require_once 'includes/mailer.php';
-        $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http";
-        $host = $_SERVER['HTTP_HOST'];
-        $uri = rtrim(dirname($_SERVER['REQUEST_URI']), '/\\');
-        $reportLink = "$protocol://$host$uri/sprint_report_pdf.php?attempt_id=" . $attempt['id'];
-        $emailBody = "Olá <strong>{$_SESSION['user_name']}</strong>,<br><br>Você acabou de finalizar a Sprint <strong>{$sprint['name']}</strong>!<br><br>Seu relatório individual de desempenho já está disponível. Clique no botão abaixo para visualizá-lo e salvá-lo em PDF.<br><br><a href='{$reportLink}' style='display:inline-block; padding:10px 20px; background-color:#4f46e5; color:white; text-decoration:none; border-radius:5px;'>Ver Devolutiva em PDF</a>";
-        $stmtEmail = $pdo->prepare("SELECT email FROM users WHERE id = ?");
-        $stmtEmail->execute([$student_id]);
-        if ($student_email = $stmtEmail->fetchColumn()) {
-            send_system_email($student_email, "Devolutiva: {$sprint['name']}", $emailBody);
+        // Verifica tempo minimo no backend
+        $can_finish = true;
+        if (!empty($sprint['time_min_minutes'])) {
+            $diff_now = (new DateTime())->getTimestamp() - (new DateTime($attempt['started_at']))->getTimestamp();
+            if ($diff_now < ($sprint['time_min_minutes'] * 60)) {
+                $can_finish = false;
+            }
         }
 
-        header("Location: student_dashboard.php");
-        exit;
+        if ($can_finish) {
+            $stmtComplete = $pdo->prepare("UPDATE sprint_attempts SET completed_at = NOW() WHERE id = ?");
+            $stmtComplete->execute([$attempt['id']]);
+            
+            // Disparo de E-mail
+            require_once 'includes/mailer.php';
+            $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http";
+            $host = $_SERVER['HTTP_HOST'];
+            $uri = rtrim(dirname($_SERVER['REQUEST_URI']), '/\\');
+            $reportLink = "$protocol://$host$uri/sprint_report_pdf.php?attempt_id=" . $attempt['id'];
+            $emailBody = "Olá <strong>{$_SESSION['user_name']}</strong>,<br><br>Você acabou de finalizar a Sprint <strong>{$sprint['name']}</strong>!<br><br>Seu relatório individual de desempenho já está disponível. Clique no botão abaixo para visualizá-lo e salvá-lo em PDF.<br><br><a href='{$reportLink}' style='display:inline-block; padding:10px 20px; background-color:#4f46e5; color:white; text-decoration:none; border-radius:5px;'>Ver Devolutiva em PDF</a>";
+            $stmtEmail = $pdo->prepare("SELECT email FROM users WHERE id = ?");
+            $stmtEmail->execute([$student_id]);
+            if ($student_email = $stmtEmail->fetchColumn()) {
+                send_system_email($student_email, "Devolutiva: {$sprint['name']}", $emailBody);
+            }
+
+            header("Location: student_dashboard.php");
+            exit;
+        } else {
+            // Recarrega a página para impedir finalização prematura
+            header("Location: sprint_solve.php?id=" . $sprint_id . "&q=" . ($current_q_index + 1));
+            exit;
+        }
     }
     
     if (!$is_ajax) {
@@ -346,7 +365,10 @@ include 'includes/header.php';
             <input type="hidden" name="finish_sprint" value="1">
             <!-- Salva a última selecionada caso ele clique finalizar na própria questão -->
             <button type="button" onclick="document.getElementById('modal-finish').classList.add('hidden')" class="w-full py-3 rounded-xl font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 transition-colors">Voltar para Prova</button>
-            <button type="submit" onclick="submitFinal(event)" class="w-full py-3 rounded-xl font-bold text-white bg-green-500 shadow-md hover:bg-green-600 transition-colors">Sim, Entregar Prova</button>
+            <button type="submit" id="btn-final-submit" onclick="submitFinal(event)" class="w-full py-3 rounded-xl font-bold text-white bg-green-500 shadow-md hover:bg-green-600 transition-colors <?= $min_time_remaining > 0 ? 'opacity-50 cursor-not-allowed pointer-events-none' : '' ?>">Sim, Entregar Prova</button>
+            <p id="min-time-warning" class="text-xs text-red-500 font-bold mt-1 <?= $min_time_remaining > 0 ? '' : 'hidden' ?>">
+                Aguarde <span id="min-countdown">00:00</span> para poder entregar.
+            </p>
         </form>
     </div>
 </div>
@@ -434,9 +456,29 @@ include 'includes/header.php';
     const countdownEl = document.getElementById('countdown');
     const timerIcon = document.getElementById('timer-icon');
 
+    // Min Timer Logic
+    const minTimeRemainingSeconds = <?= $min_time_remaining > 0 ? $min_time_remaining : 0 ?>;
+    let minSecondsLeft = minTimeRemainingSeconds;
+
     const timer = setInterval(() => {
         secondsLeft--;
         
+        if (minSecondsLeft > 0) {
+            minSecondsLeft--;
+            const minMins = Math.floor(minSecondsLeft / 60);
+            const minSecs = minSecondsLeft % 60;
+            const minCdEl = document.getElementById('min-countdown');
+            if (minCdEl) minCdEl.textContent = `${minMins.toString().padStart(2, '0')}:${minSecs.toString().padStart(2, '0')}`;
+            if (minSecondsLeft <= 0) {
+                const btnSubmit = document.getElementById('btn-final-submit');
+                if (btnSubmit) {
+                    btnSubmit.classList.remove('opacity-50', 'cursor-not-allowed', 'pointer-events-none');
+                }
+                const minWarn = document.getElementById('min-time-warning');
+                if (minWarn) minWarn.classList.add('hidden');
+            }
+        }
+
         if (secondsLeft <= 0) {
             clearInterval(timer);
             countdownEl.textContent = "00:00";
