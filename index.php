@@ -1,4 +1,5 @@
 <?php
+// Teste de Deploy Automático cPanel - aiS
 session_start();
 if (isset($_SESSION['user_id'])) {
     if ($_SESSION['user_role'] === 'student') {
