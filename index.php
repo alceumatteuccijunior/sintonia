@@ -15,7 +15,7 @@ include 'includes/header.php';
 <div id="splash-screen"
     class="fixed inset-0 z-[100] flex flex-col items-center justify-center transition-opacity duration-1000 ease-in-out"
     style="background: linear-gradient(-45deg, #F25C27, #1A428A, #F25C27, #1A428A); background-size: 400% 400%; animation: gradientBG 8s ease infinite;">
-    <img src="logo-ias.png" alt="aiS Logo" class="w-64 md:w-80 h-auto animate-pulse drop-shadow-lg">
+    <img src="logo-ias.png?v=2" alt="aiS Logo" class="w-64 md:w-80 h-auto animate-pulse drop-shadow-lg">
     <style>
         @keyframes gradientBG {
             0% {
