@@ -57,6 +57,20 @@ if ($time_remaining <= 0) {
     // Tempo esgotou, finaliza a prova
     $stmtComplete = $pdo->prepare("UPDATE sprint_attempts SET completed_at = NOW() WHERE id = ?");
     $stmtComplete->execute([$attempt['id']]);
+    
+    // Disparo de E-mail
+    require_once 'includes/mailer.php';
+    $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http";
+    $host = $_SERVER['HTTP_HOST'];
+    $uri = rtrim(dirname($_SERVER['REQUEST_URI']), '/\\');
+    $reportLink = "$protocol://$host$uri/sprint_report_pdf.php?attempt_id=" . $attempt['id'];
+    $emailBody = "Olá <strong>{$_SESSION['user_name']}</strong>,<br><br>Você acabou de finalizar a Sprint <strong>{$sprint['name']}</strong>!<br><br>Seu relatório individual de desempenho já está disponível. Clique no botão abaixo para visualizá-lo e salvá-lo em PDF.<br><br><a href='{$reportLink}' style='display:inline-block; padding:10px 20px; background-color:#4f46e5; color:white; text-decoration:none; border-radius:5px;'>Ver Devolutiva em PDF</a>";
+    $stmtEmail = $pdo->prepare("SELECT email FROM users WHERE id = ?");
+    $stmtEmail->execute([$student_id]);
+    if ($student_email = $stmtEmail->fetchColumn()) {
+        send_system_email($student_email, "Devolutiva: {$sprint['name']}", $emailBody);
+    }
+
     header("Location: student_dashboard.php");
     exit;
 }
@@ -116,6 +130,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['finish_sprint'])) {
         $stmtComplete = $pdo->prepare("UPDATE sprint_attempts SET completed_at = NOW() WHERE id = ?");
         $stmtComplete->execute([$attempt['id']]);
+        
+        // Disparo de E-mail
+        require_once 'includes/mailer.php';
+        $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http";
+        $host = $_SERVER['HTTP_HOST'];
+        $uri = rtrim(dirname($_SERVER['REQUEST_URI']), '/\\');
+        $reportLink = "$protocol://$host$uri/sprint_report_pdf.php?attempt_id=" . $attempt['id'];
+        $emailBody = "Olá <strong>{$_SESSION['user_name']}</strong>,<br><br>Você acabou de finalizar a Sprint <strong>{$sprint['name']}</strong>!<br><br>Seu relatório individual de desempenho já está disponível. Clique no botão abaixo para visualizá-lo e salvá-lo em PDF.<br><br><a href='{$reportLink}' style='display:inline-block; padding:10px 20px; background-color:#4f46e5; color:white; text-decoration:none; border-radius:5px;'>Ver Devolutiva em PDF</a>";
+        $stmtEmail = $pdo->prepare("SELECT email FROM users WHERE id = ?");
+        $stmtEmail->execute([$student_id]);
+        if ($student_email = $stmtEmail->fetchColumn()) {
+            send_system_email($student_email, "Devolutiva: {$sprint['name']}", $emailBody);
+        }
+
         header("Location: student_dashboard.php");
         exit;
     }
