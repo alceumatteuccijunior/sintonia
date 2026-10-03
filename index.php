@@ -14,7 +14,7 @@ include 'includes/header.php';
 <div id="splash-screen"
     class="fixed inset-0 z-[100] flex flex-col items-center justify-center transition-opacity duration-1000 ease-in-out"
     style="background: linear-gradient(-45deg, #F25C27, #1A428A, #F25C27, #1A428A); background-size: 400% 400%; animation: gradientBG 8s ease infinite;">
-    <img src="logo-sintonia.svg" alt="aiS Logo" class="w-64 md:w-80 h-auto animate-pulse drop-shadow-lg">
+    <img src="logo-ias.png" alt="aiS Logo" class="w-64 md:w-80 h-auto animate-pulse drop-shadow-lg">
     <style>
         @keyframes gradientBG {
             0% {
@@ -91,7 +91,8 @@ include 'includes/header.php';
 
         <!-- Conteúdo Textual -->
         <div class="relative z-10 max-w-lg">
-            <h1 class="text-5xl lg:text-6xl font-bold mb-6 text-white leading-tight">aiS<br><span class="text-3xl lg:text-4xl font-normal text-indigo-200">Evolução em cada desafio</span></h1>
+            <h1 class="text-5xl lg:text-6xl font-bold mb-6 text-white leading-tight">aiS<br><span
+                    class="text-3xl lg:text-4xl font-normal text-indigo-200">Evolução em cada desafio</span></h1>
             <p class="text-lg lg:text-xl text-blue-100 font-medium leading-relaxed opacity-90">
                 Faça login na plataforma para gerenciar turmas, simulados e engajamento.
             </p>

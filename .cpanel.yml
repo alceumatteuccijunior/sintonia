@@ -1,0 +1,5 @@
+---
+deployment:
+  tasks:
+    - export DEPLOYPATH=/home/ia191379/domains/iassenai.com.br/public_html/
+    - /bin/cp -R * $DEPLOYPATH
