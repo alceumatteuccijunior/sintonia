@@ -38,20 +38,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file'])) {
         
         while (($row = fgetcsv($fileHandle, 0, ",")) !== FALSE) {
             // Colunas: Curso (0), Módulo (1), Capacidade (2), Enunciado (3), Dificuldade (4), Tag (5), A(Correta)(6), B(7), C(8), D(9), E(10)
-            if (count($row) < 11) continue; // Pular linhas incompletas
+            if (count($row) < 10) continue; // Pular linhas incompletas (mínimo até a D)
             
             $courseName = trim($row[0]);
             $moduleName = trim($row[1]);
             $capacity = trim($row[2]);
             $command = trim($row[3]);
             $difficulty = trim($row[4]);
-            $tag = trim($row[5]) ?: null;
+            $tag = trim($row[5] ?? '') ?: null;
             
-            $optCorrect = trim($row[6]);
-            $optB = trim($row[7]);
-            $optC = trim($row[8]);
-            $optD = trim($row[9]);
-            $optE = trim($row[10]);
+            $optCorrect = trim($row[6] ?? '');
+            $optB = trim($row[7] ?? '');
+            $optC = trim($row[8] ?? '');
+            $optD = trim($row[9] ?? '');
+            $optE = trim($row[10] ?? '');
             
             if (!$courseName || !$moduleName || !$command || !$optCorrect) continue;
 
@@ -85,8 +85,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file'])) {
                 ['text' => $optB, 'correct' => 0],
                 ['text' => $optC, 'correct' => 0],
                 ['text' => $optD, 'correct' => 0],
-                ['text' => $optE, 'correct' => 0],
             ];
+            if (!empty($optE)) {
+                $optsToInsert[] = ['text' => $optE, 'correct' => 0];
+            }
+            
+            // Embaralhar as alternativas para não ficar sempre a correta na primeira posição no DB
+            shuffle($optsToInsert);
             
             $stmtOpt = $pdo->prepare("INSERT INTO question_options (question_id, text, is_correct) VALUES (?, ?, ?)");
             foreach ($optsToInsert as $opt) {
