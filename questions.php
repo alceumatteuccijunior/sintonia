@@ -133,8 +133,8 @@ include 'includes/header.php';
                 <h4 class="font-bold mb-2 flex items-center gap-2"><i class="ph-fill ph-info"></i> Como Importar?</h4>
                 <p class="mb-3">Para cadastrar dezenas de questões de uma vez, você precisa preencher uma planilha no formato CSV. Siga as regras:</p>
                 <ul class="list-disc pl-5 space-y-1.5 mb-4 text-indigo-800">
-                    <li>Baixe a planilha modelo abaixo e não altere a ordem das colunas (Módulo, Capacidade, Enunciado, etc).</li>
-                    <li>Se o <b>Módulo</b> digitado no CSV não existir no sistema, ele será <b>criado automaticamente</b> num Curso Geral.</li>
+                    <li>Baixe a planilha modelo abaixo e não altere a ordem das colunas (Curso, Módulo, Capacidade, Enunciado, etc).</li>
+                    <li>Se o <b>Curso</b> ou <b>Módulo</b> digitado no CSV não existir no sistema, eles serão <b>criados automaticamente</b>.</li>
                     <li>A coluna <b>Tag</b> serve para identificar as questões de uma prova específica (ex: "SAEP2026TI2"), facilitando na hora de criar uma Sprint!</li>
                     <li>Salve o arquivo no formato <code>.csv</code> separado por vírgula e faça o upload abaixo.</li>
                 </ul>

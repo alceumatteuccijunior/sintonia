@@ -30,15 +30,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file'])) {
         
         $teacherId = $_SESSION['user_id'];
         
-        // Padrão: Pegamos o primeiro curso, ou criamos um "Geral" para simplificar a estrutura CSV (já que o CSV não tem curso).
-        $stmt = $pdo->prepare("SELECT id FROM courses LIMIT 1");
-        $stmt->execute();
-        $courseId = $stmt->fetchColumn();
-        if (!$courseId) {
-            $pdo->exec("INSERT INTO courses (name, description) VALUES ('Curso Geral', 'Gerado pelo sistema')");
-            $courseId = $pdo->lastInsertId();
-        }
-        
         $totalQuestoes = 0;
         $fileHandle = fopen($file['tmp_name'], 'r');
         
@@ -46,22 +37,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file'])) {
         fgetcsv($fileHandle, 0, ",");
         
         while (($row = fgetcsv($fileHandle, 0, ",")) !== FALSE) {
-            // Colunas: Módulo (0), Capacidade (1), Enunciado (2), Dificuldade (3), Tag (4), A(Correta)(5), B(6), C(7), D(8), E(9)
-            if (count($row) < 10) continue; // Pular linhas incompletas
+            // Colunas: Curso (0), Módulo (1), Capacidade (2), Enunciado (3), Dificuldade (4), Tag (5), A(Correta)(6), B(7), C(8), D(9), E(10)
+            if (count($row) < 11) continue; // Pular linhas incompletas
             
-            $moduleName = trim($row[0]);
-            $capacity = trim($row[1]);
-            $command = trim($row[2]);
-            $difficulty = trim($row[3]);
-            $tag = trim($row[4]) ?: null;
+            $courseName = trim($row[0]);
+            $moduleName = trim($row[1]);
+            $capacity = trim($row[2]);
+            $command = trim($row[3]);
+            $difficulty = trim($row[4]);
+            $tag = trim($row[5]) ?: null;
             
-            $optCorrect = trim($row[5]);
-            $optB = trim($row[6]);
-            $optC = trim($row[7]);
-            $optD = trim($row[8]);
-            $optE = trim($row[9]);
+            $optCorrect = trim($row[6]);
+            $optB = trim($row[7]);
+            $optC = trim($row[8]);
+            $optD = trim($row[9]);
+            $optE = trim($row[10]);
             
-            if (!$moduleName || !$command || !$optCorrect) continue;
+            if (!$courseName || !$moduleName || !$command || !$optCorrect) continue;
+
+            // 0. Course
+            $stmt = $pdo->prepare("SELECT id FROM courses WHERE name = ?");
+            $stmt->execute([$courseName]);
+            $courseId = $stmt->fetchColumn();
+            if (!$courseId) {
+                $pdo->prepare("INSERT INTO courses (name, description) VALUES (?, 'Curso gerado via importação')")->execute([$courseName]);
+                $courseId = $pdo->lastInsertId();
+            }
             
             // 1. Module
             $stmt = $pdo->prepare("SELECT id FROM modules WHERE name = ? AND course_id = ?");
