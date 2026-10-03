@@ -54,7 +54,7 @@ include 'includes/header.php';
                     <?php if ($_SESSION['user_role'] === 'teacher' || $_SESSION['user_role'] === 'admin'): ?>
                     <div class="mt-4 md:mt-0 flex flex-wrap items-center gap-3">
                         <button onclick="openModal('importModal')" class="bg-indigo-50 text-indigo-600 hover:bg-indigo-100 border border-indigo-200 px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2">
-                            <i class="ph-bold ph-upload-simple"></i> Importar JSON
+                            <i class="ph-bold ph-upload-simple"></i> Importar CSV
                         </button>
                         <a href="question_create.php" class="bg-senai-blue text-white px-5 py-2.5 rounded-xl font-semibold shadow-[0_4px_15px_-3px_rgba(26,66,138,0.4)] hover:shadow-[0_8px_20px_-3px_rgba(26,66,138,0.5)] hover:-translate-y-0.5 transition-all flex items-center gap-2 text-sm">
                             <i class="ph-bold ph-plus"></i> Nova Questão
@@ -119,40 +119,40 @@ include 'includes/header.php';
     </main>
 </div>
 
-<!-- Modal de Importação JSON -->
+<!-- Modal de Importação CSV -->
 <div id="importModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
     <div class="bg-white rounded-3xl shadow-xl w-full max-w-2xl overflow-hidden scale-95 opacity-0 transition-all duration-300 flex flex-col max-h-[90vh]" id="importModalContent">
         
         <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 shrink-0">
-            <h3 class="font-bold text-lg text-slate-800 flex items-center gap-2"><i class="ph-bold ph-upload-simple text-indigo-500"></i> Importação em Massa (JSON)</h3>
+            <h3 class="font-bold text-lg text-slate-800 flex items-center gap-2"><i class="ph-bold ph-upload-simple text-indigo-500"></i> Importação em Massa (CSV)</h3>
             <button onclick="closeModal('importModal')" class="text-slate-400 hover:text-red-500 transition-colors"><i class="ph-bold ph-x text-xl"></i></button>
         </div>
         
         <div class="p-6 overflow-y-auto flex-1">
             <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-5 mb-6 text-sm text-indigo-900">
                 <h4 class="font-bold mb-2 flex items-center gap-2"><i class="ph-fill ph-info"></i> Como Importar?</h4>
-                <p class="mb-3">Para cadastrar dezenas de questões de uma vez, você precisa preencher um arquivo estruturado no formato JSON. Siga as regras:</p>
+                <p class="mb-3">Para cadastrar dezenas de questões de uma vez, você precisa preencher uma planilha no formato CSV. Siga as regras:</p>
                 <ul class="list-disc pl-5 space-y-1.5 mb-4 text-indigo-800">
-                    <li>Baixe o template abaixo e não altere o nome das "chaves" estruturais (ex: "curso", "questoes", "alternativas").</li>
-                    <li>Se o <b>Curso</b> ou <b>Módulo</b> digitado no JSON já existir no sistema (com a exata mesma escrita), as questões serão <b>adicionadas</b> a ele.</li>
-                    <li>Se não existirem, o sistema os criará automaticamente.</li>
-                    <li>Salve o arquivo no formato <code>.json</code> e faça o upload abaixo.</li>
+                    <li>Baixe a planilha modelo abaixo e não altere a ordem das colunas (Módulo, Capacidade, Enunciado, etc).</li>
+                    <li>Se o <b>Módulo</b> digitado no CSV não existir no sistema, ele será <b>criado automaticamente</b> num Curso Geral.</li>
+                    <li>A coluna <b>Tag</b> serve para identificar as questões de uma prova específica (ex: "SAEP2026TI2"), facilitando na hora de criar uma Sprint!</li>
+                    <li>Salve o arquivo no formato <code>.csv</code> separado por vírgula e faça o upload abaixo.</li>
                 </ul>
                 
-                <a href="template_questoes.json" download class="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-bold transition-all shadow-sm">
-                    <i class="ph-bold ph-download-simple"></i> Baixar Template JSON
+                <a href="template_questoes.csv" download class="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-bold transition-all shadow-sm">
+                    <i class="ph-bold ph-download-simple"></i> Baixar Template CSV
                 </a>
             </div>
 
             <form id="importForm" onsubmit="submitImport(event)">
                 <div class="border-2 border-dashed border-slate-300 rounded-2xl p-8 text-center hover:bg-slate-50 hover:border-indigo-400 transition-all cursor-pointer relative" id="dropzone">
-                    <input type="file" id="json_file" name="json_file" accept=".json" required class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onchange="updateFileName(this)">
+                    <input type="file" id="csv_file" name="csv_file" accept=".csv" required class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onchange="updateFileName(this)">
                     
                     <div id="upload-icon" class="w-16 h-16 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-500 mx-auto mb-4">
-                        <i class="ph-fill ph-file-json text-3xl"></i>
+                        <i class="ph-fill ph-file-csv text-3xl"></i>
                     </div>
                     
-                    <h4 class="font-bold text-slate-700 text-lg mb-1" id="file-title">Selecione o arquivo .json</h4>
+                    <h4 class="font-bold text-slate-700 text-lg mb-1" id="file-title">Selecione o arquivo .csv</h4>
                     <p class="text-sm text-slate-500" id="file-desc">ou arraste e solte ele aqui</p>
                 </div>
 
@@ -179,7 +179,7 @@ include 'includes/header.php';
         
         // Reset form
         document.getElementById('importForm').reset();
-        document.getElementById('file-title').textContent = 'Selecione o arquivo .json';
+        document.getElementById('file-title').textContent = 'Selecione o arquivo .csv';
         document.getElementById('file-desc').textContent = 'ou arraste e solte ele aqui';
         document.getElementById('import-alert').classList.add('hidden');
         

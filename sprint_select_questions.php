@@ -185,7 +185,7 @@ include 'includes/header.php';
                 
                 <!-- Barra de Filtros -->
                 <div class="bg-white/80 backdrop-blur-md border border-slate-200 rounded-2xl p-4 shadow-sm mb-6 animate-fade-in sticky top-0 z-30">
-                    <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+                    <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
                         <div class="md:col-span-1">
                             <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Módulo/Unidade</label>
                             <select id="filter-module" class="w-full bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-lg px-3 py-2 focus:ring-1 focus:ring-senai-blue outline-none transition-all">
@@ -205,6 +205,15 @@ include 'includes/header.php';
                             </select>
                         </div>
                         <div class="md:col-span-1">
+                            <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Lote/Tag</label>
+                            <select id="filter-tag" class="w-full bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-lg px-3 py-2 focus:ring-1 focus:ring-senai-blue outline-none transition-all">
+                                <option value="all">Todas as tags</option>
+                                <?php foreach($tags_unicas as $tag): ?>
+                                    <option value="<?= htmlspecialchars($tag) ?>"><?= htmlspecialchars($tag) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="md:col-span-1">
                             <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Dificuldade</label>
                             <select id="filter-difficulty" class="w-full bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-lg px-3 py-2 focus:ring-1 focus:ring-senai-blue outline-none transition-all">
                                 <option value="all">Todas as dificuldades</option>
@@ -216,7 +225,7 @@ include 'includes/header.php';
                         <div class="md:col-span-1 flex items-end">
                             <label class="flex items-center gap-2 bg-slate-50 hover:bg-slate-100 px-3 py-2 rounded-lg border border-slate-200 cursor-pointer w-full transition-colors h-[38px]">
                                 <input type="checkbox" id="filter-used" class="w-4 h-4 rounded text-senai-blue focus:ring-senai-blue border-slate-300">
-                                <span class="text-xs font-bold text-slate-600">Ocultar já respondidas</span>
+                                <span class="text-[10px] font-bold text-slate-600 uppercase tracking-wider">Ocultar usadas</span>
                             </label>
                         </div>
                     </div>
@@ -243,6 +252,7 @@ include 'includes/header.php';
                                  data-used="<?= $isUsed ? 'true' : 'false' ?>"
                                  data-module="<?= $q['module_id'] ?>"
                                  data-capacity="<?= htmlspecialchars($q['capacity']) ?>"
+                                 data-tag="<?= htmlspecialchars($q['import_tag'] ?? '') ?>"
                                  data-difficulty="<?= htmlspecialchars($q['difficulty']) ?>">
                                 
                                 <label class="p-5 flex flex-col h-full cursor-pointer">
@@ -355,6 +365,7 @@ include 'includes/header.php';
     const fModule = document.getElementById('filter-module');
     const fCapacity = document.getElementById('filter-capacity');
     const fDifficulty = document.getElementById('filter-difficulty');
+    const fTag = document.getElementById('filter-tag');
     const fUsed = document.getElementById('filter-used');
     const cards = document.querySelectorAll('.question-card');
     const noResults = document.getElementById('no-results');
@@ -363,6 +374,7 @@ include 'includes/header.php';
         const mod = fModule.value;
         const cap = fCapacity.value;
         const diff = fDifficulty.value;
+        const tag = fTag ? fTag.value : 'all';
         const hideUsed = fUsed.checked;
         
         let visibleCount = 0;
@@ -373,6 +385,7 @@ include 'includes/header.php';
             if (mod !== 'all' && card.dataset.module !== mod) show = false;
             if (cap !== 'all' && card.dataset.capacity !== cap) show = false;
             if (diff !== 'all' && card.dataset.difficulty !== diff) show = false;
+            if (tag !== 'all' && card.dataset.tag !== tag) show = false;
             if (hideUsed && card.dataset.used === 'true') show = false;
             
             if (show) {
@@ -394,6 +407,7 @@ include 'includes/header.php';
         fModule.addEventListener('change', applyFilters);
         fCapacity.addEventListener('change', applyFilters);
         fDifficulty.addEventListener('change', applyFilters);
+        if(fTag) fTag.addEventListener('change', applyFilters);
         fUsed.addEventListener('change', applyFilters);
     }
 
