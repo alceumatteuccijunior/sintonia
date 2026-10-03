@@ -1,129 +1,108 @@
-# Sistema aiS - Plataforma de Inteligência e Avaliação Educacional
+# Sistema aiS - Evolução em cada desafio
 
 ## 🎯 O que é o aiS?
 
-O **aiS** é uma plataforma corporativa e educacional de Alta Performance desenvolvida em PHP e MySQL (Vanilla), construída para transformar o processo de avaliação, diagnóstico e tomada de decisão em grandes redes de ensino (com forte alinhamento às diretrizes do SENAI e ao modelo SAEP). 
+O **aiS** é uma plataforma corporativa e educacional de Alta Performance desenvolvida em PHP e MySQL (Vanilla). Ele foi projetado para revolucionar o processo de avaliação, diagnóstico e tomada de decisão em instituições de ensino, com forte alinhamento às diretrizes educacionais e aos padrões de excelência.
 
-Ele não é apenas um "aplicador de provas", mas sim um **Ecossistema Multi-Tenant de Inteligência Pedagógica e Engajamento**. O aiS engloba de forma fluida todo o ciclo de vida da avaliação: desde o armazenamento de questões complexas e composição de simulados (Sprints), até a aplicação rigorosa (anti-cola), a extração de dados analíticos para professores e diretores em múltiplas hierarquias, e um inovador sistema de Gamificação e Duelos (P2P) para engajar os alunos no estudo contínuo.
+Mais do que um aplicador de simulados, o aiS atua como um **Ecossistema Multi-Tenant de Inteligência Pedagógica e Engajamento**. A plataforma cobre com fluidez e modernidade todo o ciclo de avaliação: do armazenamento inteligente de questões à aplicação rigorosa com métricas anti-cola, passando pelo disparo de devolutivas em PDF por e-mail e terminando em um sistema inovador de Gamificação.
 
-A interface foca intensamente na usabilidade e estética (Glassmorphism, TailwindCSS, Phosphor Icons), entregando uma experiência "Premium", moderna e 100% responsiva.
+Sua interface foca intensamente na usabilidade e estética, utilizando **TailwindCSS**, **Phosphor Icons** e elementos de **Glassmorphism**, garantindo uma experiência "Premium", moderna e 100% responsiva para professores, alunos e gestores.
 
-## 🚀 Para que serve o aiS?
+---
 
-A missão do aiS é **erradicar o ponto cego pedagógico** e **potencializar o engajamento**. Suas principais atribuições são:
+## 🚀 Para que serve o aiS? Principais Atribuições:
 
-1. **Gestão do Conhecimento (Banco de Questões):** Armazenar de forma estruturada as questões do modelo SAEP, fragmentando-as rigidamente por Capacidade, Comando, Contexto e Dificuldade.
-2. **Aplicação Segura e em Escala (Sprints):** Permitir que docentes montem avaliações em poucos cliques. O motor de resolução nativo controla cronômetros e monitora perda de foco (abas do navegador) para coibir trapaças.
-3. **Diagnóstico Cirúrgico para Docentes:** Transformar a nota bruta em inteligência acionável. O Raio-X da turma mapeia precisamente em quais "Capacidades" e "Módulos" os estudantes estão falhando.
-4. **Governança Macro para Gestores (Multi-Tenant):** Oferecer à direção uma visão analítica massiva através do Dashboard Global, monitorando a evolução histórica de uma Regional inteira ou Unidade específica.
-5. **Automação Institucional e Inteligência Artificial:** Importar massivamente arquivos base federais (SAEP via CSV) recriando o ambiente escolar instantaneamente, e gerar Planos de Aula Corretivos com a IA.
-6. **Arena aiS e Gamificação:** Um hub de engajamento do aluno. Sistema de XP, Níveis, Fotos de Perfil Animadas (GIFs), Ranking (Leaderboard) e a inovadora **Arena de Duelos P2P**, onde os alunos desafiam uns aos outros em simulados para testar conhecimentos.
+1. **Gestão Estruturada do Conhecimento (Banco de Questões)**
+   Armazena questões e separa o acervo por Curso, Módulo, Capacidade e Dificuldade. A recente integração de **Tags/Lotes (ex: SAEP2026)** permite catalogar milhares de questões de provas específicas para seleção com 1 clique.
+   - **Importação Massiva (CSV):** O sistema aceita a criação de centenas de questões instantaneamente.
+   - **Preservação de Dados:** A exclusão de questões é lógica (*Soft Delete*), garantindo que históricos e notas de alunos do passado não sejam perdidos.
+
+2. **Aplicação Segura e Inteligente (Sprints)**
+   A criação de provas, apelidadas de *Sprints*, permite customização extrema:
+   - Definição de **Tempo Limite** (contagem regressiva máxima).
+   - Definição de **Tempo Mínimo** de entrega (trava de segurança para obrigar o estudante a dedicar tempo de leitura, impedindo "chutes rápidos").
+   - Motor de seleção inteligente de questões via filtros combinados.
+   - **Sistema Anti-Cola:** O cronômetro persiste em tempo real e monitora perda de foco (saídas de abas). Após 3 avisos, a prova é encerrada automaticamente.
+
+3. **Diagnóstico Cirúrgico para Docentes e Feedback Ativo**
+   Transforma a nota bruta em inteligência. O *Raio-X* da turma mapeia com precisão em quais Módulos e Capacidades a turma tem defasagem. 
+   - Ao finalizar uma sprint, o aluno recebe **instantaneamente por E-mail** (função nativa PHP) sua Devolutiva Individual em formato PDF (tamanho A4 estruturado).
+   - Professores também podem exportar esses PDFs individualmente pelo Dashboard.
+
+4. **Governança Macro para Gestores (Multi-Tenant)**
+   Visão analítica completa através de um Dashboard Administrativo, monitorando evolução de Regionais, Unidades Escolares e Cursos. Permite criação de planos de aula baseados em IA.
+
+5. **Cadastro e Automação Institucional**
+   - **Importação Massiva de Usuários (CSV):** Secretarias podem subir planilhas inteiras de alunos. O sistema cria as contas e dispara automaticamente um **e-mail de boas-vindas com as credenciais iniciais**. No primeiro login, o sistema exige obrigatoriamente a troca de senha por segurança.
+
+6. **Arena aiS e Gamificação**
+   O coração do engajamento do aluno. Possui:
+   - **Sistema de Níveis (XP):** Resoluções de Sprints geram Experiência que eleva o ranqueamento.
+   - **Avatares Personalizados:** Upload seguro de imagens (.JPG, .PNG, .GIF animados).
+   - **Arena de Duelos (PvP):** Alunos desafiam uns aos outros na turma para "Batalhas de Conhecimento" geradas dinamicamente com questões que ainda não responderam.
+   - **Ranking Global e Pódio Holográfico:** Exibição competitiva saudável.
 
 ---
 
 ## 🛠 Arquitetura Técnica
 
-- **Backend:** PHP 8+ (Estruturado, sem frameworks complexos, focado em alta velocidade e simplicidade).
-- **Banco de Dados:** MySQL/MariaDB (Acesso via PDO).
-- **Frontend:** HTML5, Vanilla JavaScript, CSS customizado.
-  - **Framework CSS:** TailwindCSS (via script CDN).
-  - **Ícones:** Phosphor Icons (CDN).
-  - **Gráficos:** Chart.js
-  - **Componentes Interativos:** TomSelect (Buscas dinâmicas).
-- **Gerenciamento de Estado:** Sessões nativas do PHP (`$_SESSION`).
+- **Backend:** PHP 8+ (Estruturado, PDO, focado em altíssima performance, disparos nativos via `mail()`).
+- **Banco de Dados:** MySQL/MariaDB.
+- **Frontend:** HTML5, Vanilla JavaScript.
+- **Estilização e UI:** TailwindCSS (CDN), Phosphor Icons.
+- **Visualização de Dados:** Chart.js.
+- **Componentes Interativos:** TomSelect.
+- **Infraestrutura/Deploy:** Automação Contínua (CI/CD) em cPanel via git `.cpanel.yml`.
 
 ### Padrão de Arquitetura de Pastas
 
 ```
 /
-├── admin_*.php                # Módulos de Inteligência e Gestão da Diretoria (Dashboard, Unidades, Usuários)
+├── admin_*.php                # Módulos Administrativos (Dashboard, Exportações SAEP, IA)
 ├── class_*.php / classes.php  # Módulos do Professor para Gestão de Turmas
-├── dashboard.php              # Dashboard principal (Visão Professor)
-├── import_saep*.php           # Motor de importação do CSV Governamental SAEP
-├── includes/                  # Componentes UI reutilizáveis (Header, Sidebar, Footer Global e Modal de Ajuda)
-├── migrate_*.php              # Scripts dinâmicos de atualização e alteração de banco de dados
-├── questions*.php             # Repositório Central de Questões e Cadastro
-├── sprint_*.php               # Todo o ciclo da Prova (Criação, Execução Anti-Cola, Relatórios, Slides, Raio-X)
-├── student_*.php              # O Universo do Aluno (Dashboard, Arena, Duelos, Ranking, Upload de Avatares)
-├── sql/                       # Scripts de criação e população do banco de dados (setup.php)
-└── README.md                  # Documentação do Projeto
+├── dashboard.php              # Dashboard Global (Visão Professor)
+├── import_*.php               # Rotinas de importação de CSV (Usuários e Questões)
+├── includes/                  # Componentes reutilizáveis (Header, Sidebar, Mailer, Modais)
+├── migrate_*.php              # Scripts dinâmicos de Update do BD (Ex: migrate_sprint_min_time.php)
+├── questions*.php             # Repositório Central de Questões e Cadastro Manual/CSV
+├── reset_password.php         # Fluxo obrigatório de troca de senha inicial
+├── sprint_*.php               # Motor Core das Provas (Create, Solve, Report, Select, PDF)
+├── student_*.php              # O Universo do Aluno (Dashboard, Arena, Duelos, Ranking)
+├── template_*.csv             # Templates oficiais padronizados para download e preenchimento
+└── README.md                  # Documentação Completa do Projeto
 ```
 
 ---
 
 ## 🚀 Como Executar Localmente
 
-1. Suba um servidor web com suporte a PHP (Apache/Nginx via XAMPP, Laragon, Docker, etc).
-2. Configure o banco de dados e ajuste o arquivo `config.php` com as credenciais.
-3. Para criar a estrutura completa do banco de dados (Tabelas e Chaves), acesse: `http://localhost/.../sql/setup.php`
-4. Crie o **Administrador Master (Sede Central)** rodando: `http://localhost/.../migrate_admin.php`
-5. Acesse o `index.php` e faça login com `admin@senai.br` (senha: `marciaalinemarcio`).
-6. **Mágica da Inicialização:** No menu lateral do Administrador, clique em "Importar SAEP", selecione o arquivo CSV oficial e clique em processar. O sistema irá automaticamente:
-   - Cadastrar todas as Regionais, Unidades Escolares, Cursos e Turmas.
-   - Criar contas de Professores e Alunos vinculados às suas escolas.
-   - Popular o Banco de Questões e todas as avaliações já respondidas (Sprints).
-7. Opcional: Execute também as rotinas complementares para habilitar novos recursos: `migrate_profile_pic.php` (para habilitar avatares de alunos) e `migrate_capacities.php`.
+1. Suba um servidor web com suporte a PHP (Apache/Nginx via XAMPP, Laragon, Docker).
+2. Ajuste o arquivo `config.php` com as credenciais do banco MySQL.
+3. Para configurar o ambiente e habilitar 100% dos recursos mais recentes, execute os scripts de banco de dados na ordem:
+   - Configurações antigas do BD (Se necessário)
+   - `migrate_admin.php` (Gera o Admin Master)
+   - `migrate_profile_pic.php` (Avatares)
+   - `migrate_capacities.php` 
+   - `migrate_questions_tag.php` (Filtros Avançados)
+   - `migrate_questions_active.php` (Soft Delete)
+   - `migrate_sprint_min_time.php` (Trava de Leitura)
+4. Acesse o sistema. Para o fluxo de envio de e-mails funcionar localmente, ative uma configuração SMTP ou ambiente de emulação na sua infraestrutura PHP.
 
 ---
 
-## 📦 Modelo de Dados Principal (MySQL)
+## 📦 Modelo de Dados Principal
 
-- **users:** Administrador, Professores e Alunos (controlado por `role` e `unit_id`). Possui suporte a `profile_pic`.
-- **courses / modules:** Estrutura curricular base.
-- **questions / question_options:** O núcleo do banco de questões do SAEP e suas alternativas.
-- **classes / class_students:** Gestão e agrupamento de alunos.
-- **sprints / sprint_questions:** Entidade de Avaliação. Pode ser uma prova normal (criada pelo professor) ou um *Duelo de Arena* (criada automaticamente pelo aluno).
-- **student_answers:** Tabela central analítica. Registra cada clique e acerto de todas as provas do sistema.
-
----
-
-## 🎯 Escopo e Progresso do Desenvolvimento
-
-O desenvolvimento foi concluído em um fluxo contínuo e orgânico. Abaixo o histórico de todas as Fases Finalizadas (100%):
-
-### ✅ Fase 1: Fundação & Visão Professor
-- Estrutura do DB e Script de Inicialização.
-- Template e Sistema de Design Premium (Glassmorphism).
-- Banco de Questões e Organização de Cursos/Módulos.
-- Cadastro e Gestão de Turmas.
-- Assistente em Passos para Criação de Sprints.
-
-### ✅ Fase 2: Motor de Avaliação Rigorosa
-- Engine de Resolução de Sprints (`sprint_solve.php`).
-- Temporizador persistente e submissão automática.
-- Armazenamento assíncrono à prova de falhas (AJAX).
-
-### ✅ Fase 3 e 4: Diagnóstico, IA e Sala de Aula
-- Ultra Relatório de Desempenho do Professor (quebra por Módulo, Capacidade e Questão).
-- Integração de IA para Sugestão de Planos de Aula Baseados nos Gaps.
-- Controle de Gabarito e Modo Projetor (`sprint_review_teacher.php`).
-- Boletim Cirúrgico do Aluno após aprovação do Gabarito.
-
-### ✅ Fase 5: Autenticação Real e Anti-Cola Rigoroso
-- Níveis de Acesso Dinâmicos e Auto-Cadastro.
-- Gestão de Turmas Avançada (mover alunos e lixeira lógica).
-- Detecção de Perda de Foco: 3 avisos visuais ao sair da aba antes de finalizar a prova coercitivamente.
-
-### ✅ Fase 6: Apresentações Executivas em HTML
-- Histórico do Aluno com Gráficos Temporais (Chart.js).
-- Motor de Geração de Slides Institucionais SENAI prontos para PDF, exportando diretamente do navegador o histórico e as sugestões de IA.
-
-### ✅ Fase 7 e 8: Multi-Tenant SAEP & Inteligência Governamental
-- Importador Massivo de Arquivos Federais (CSV SAEP). Recriação de toda a estrutura do Estado em segundos.
-- Visão Global Macrossistêmica (`admin_dashboard.php`): Filtros dinâmicos por Regionais, Unidades Escolares e Cursos.
-- Fluxo de status da prova (Pendente -> Em Andamento -> Finalizada) ativado de forma autônoma.
-- Identificação visual imediata de risco pedagógico (<50% de acerto).
-
-### ✅ Fase 9: A Revolução do Engajamento (Gamificação P2P)
-- **Sistema de Níveis (Level Up):** Motor inteligente de cálculo de Experiência (XP). Cada acerto do aluno em todo o sistema gera 50 XP, subindo seu nível (Novato -> Proficiente -> Avançado -> Mestre).
-- **Arena aiS (Treinamento):** O aluno solicita treinamento e o sistema "pesca" automaticamente 5 questões que o aluno nunca acertou antes para reforço.
-- **Duelos PvP:** Alunos podem desafiar colegas de turma para Batalhas de Conhecimento. O sistema gera uma Sprint neutra idêntica para ambos e os dois competem pelo melhor tempo e nota.
-- **Ranking Holográfico:** Pódio estilizado destacando Ouro, Prata e Bronze dentro da turma.
-
-### ✅ Fase 10: Personalização e Onboarding Autodidata
-- **Sistema de Fotos de Perfil:** Upload otimizado de Avatares JPG/PNG e suporte a GIFs animados, integrados nos rankings, duelos e dashboard principal.
-- **Modal Global de Ajuda (Self-Onboarding):** Ícones estratégicos implementados ao lado dos títulos de todas as telas administrativas e docentes. Ao clicar, o sistema explica as funcionalidades, abolindo manuais de instrução externos.
+- **users:** Administrador, Professores e Alunos (`role`, `unit_id`, `profile_pic`, `require_password_change`).
+- **courses / modules:** Estrutura curricular.
+- **questions / question_options:** Acervo completo (`is_active`, `import_tag`, opções randômicas na query).
+- **classes / class_students:** Agrupamento e vínculos.
+- **sprints / sprint_questions:** Entidade de Avaliação. Parâmetros de tempo (`time_limit_minutes`, `time_min_minutes`).
+- **student_answers / sprint_attempts:** Centro de dados analíticos, guardando cada clique do estudante para os relatórios.
 
 ---
 
-**✨ aiS Finalizado e Pronto para Operação de Elite!**
+## 🎯 Por que o aiS é Inovador?
+
+O **aiS** resolve o eterno problema do ensino digital - a falta de foco do aluno - através do choque de Gamificação. Além de entregar um sistema esteticamente belíssimo que encanta usuários, ele é rígido com métricas e antifraude, blindando os relatórios de "chutes" irreais através do motor de tempo e travas de saída de abas. O uso de E-mails automatizados para *Onboarding* e envio instantâneo do Feedback humanizam o software, conectando instituição, aluno e resultados em tempo real.
+
+**aiS - Evolução em cada desafio.**
