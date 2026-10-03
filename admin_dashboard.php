@@ -270,7 +270,7 @@ include 'includes/header.php';
                 <div class="mb-10 animate-slide-up text-center md:text-left">
                     <h1 class="text-3xl md:text-4xl font-bold tracking-tight mb-2 drop-shadow-sm text-slate-800 flex items-center gap-3">
                         Visão Global
-                        <button onclick="openHelpModal('Visão Global (Admin)', 'Esta tela oferece uma visão panorâmica e estratégica de toda a instituição.<br><br><b>O que você pode fazer aqui:</b><br>- Acompanhar a taxa de acertos (Accuracy) global<br>- Visualizar gráficos de evolução das avaliações ao longo do tempo<br>- Analisar o desempenho de forma granular usando os filtros por Unidades, Regionais e Cursos.')" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 hover:text-senai-blue hover:bg-blue-50 transition-colors shadow-inner" title="Como Usar">
+                        <button onclick="openHelpModal('Visão Global (Admin)', 'Esta tela oferece uma visão panorâmica e estratégica de toda a instituição.<br><br><b>O que você pode fazer aqui:</b><br>- Acompanhar a taxa de acertos (Accuracy) global<br>- Visualizar gráficos de evolução das avaliações ao longo do tempo<br>- Analisar o desempenho de forma granular usando os filtros por Unidades, RegioniaS e Cursos.')" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 hover:text-senai-blue hover:bg-blue-50 transition-colors shadow-inner" title="Como Usar">
                             <i class="ph-bold ph-question text-lg"></i>
                         </button>
                     </h1>
@@ -279,7 +279,7 @@ include 'includes/header.php';
                     </p>
                 </div>
 
-                <!-- Painel de KPIs Globais -->
+                <!-- Painel de KPIs GlobiaS -->
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4 w-full mb-10">
                     <div class="bg-white/60 backdrop-blur-md border border-white/80 p-5 rounded-2xl shadow-sm hover:shadow-md transition-all group">
                         <div class="w-10 h-10 rounded-full bg-indigo-500/10 flex items-center justify-center text-indigo-500 mb-3 group-hover:scale-110 transition-transform">
@@ -323,7 +323,7 @@ include 'includes/header.php';
                             <div class="flex-1 min-w-[200px]">
                                 <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Regional (DR)</label>
                                 <select name="regional_id" onchange="document.getElementById('adminFiltersForm').submit();" class="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-senai-blue transition-all font-medium text-slate-700 shadow-sm">
-                                    <option value="">Todas as Regionais (Visão Nacional)</option>
+                                    <option value="">Todas as RegioniaS (Visão Nacional)</option>
                                     <?php foreach($regionals as $r): ?>
                                         <option value="<?= $r['id'] ?>" <?= $filter_regional_id == $r['id'] ? 'selected' : '' ?>><?= htmlspecialchars($r['name']) ?></option>
                                     <?php endforeach; ?>
@@ -401,7 +401,7 @@ include 'includes/header.php';
                                 <?php else: ?>
                                 <div class="bg-indigo-50/70 border border-indigo-100 rounded-3xl p-8 text-center h-[250px] flex flex-col justify-center items-center">
                                     <i class="ph-fill ph-trend-up text-4xl text-indigo-300 mb-2 animate-float"></i>
-                                    <p class="text-indigo-700/80 font-medium text-sm">Dados insuficientes para histórico.<br>São necessárias mais Sprints concluídas.</p>
+                                    <p class="text-indigo-700/80 font-medium text-sm">Dados insuficientes para histórico.<br>São necessárias miaS Sprints concluídas.</p>
                                 </div>
                                 <?php endif; ?>
                             </div>
@@ -565,7 +565,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const capData = <?= json_encode(array_map(function($d) { return round(($d['correct_answers'] / $d['total_answers']) * 100, 1); }, $capData)) ?>;
     
     new Chart(document.getElementById('chartCap').getContext('2d'), {
-        type: 'bar', // Pode ser radar, mas bar é mais legível para muitas opções
+        type: 'bar', // Pode ser radar, mas bar é miaS legível para muitas opções
         data: {
             labels: capLabels,
             datasets: [{

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>aiS - Assistente Pedagógico SENAI</title>
+    <title>iaS - Assistente Pedagógico SENAI</title>
     <link rel="icon" type="image/png" href="icon.png?v=1">
 
     <!-- Tailwind CSS -->
@@ -129,7 +129,7 @@
             animation: shimmer 5s linear infinite;
         }
 
-        /* Input Animado - Glow Mais Suave */
+        /* Input Animado - Glow MiaS Suave */
         .input-glow-wrapper { position: relative; z-index: 10; }
         .input-glow-wrapper::before {
             content: "";

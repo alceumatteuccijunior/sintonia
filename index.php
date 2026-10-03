@@ -1,5 +1,5 @@
 <?php
-// Teste de Deploy Automático cPanel - aiS
+// Teste de Deploy Automático cPanel - iaS
 session_start();
 if (isset($_SESSION['user_id'])) {
     if ($_SESSION['user_role'] === 'student') {
@@ -15,7 +15,7 @@ include 'includes/header.php';
 <div id="splash-screen"
     class="fixed inset-0 z-[100] flex flex-col items-center justify-center transition-opacity duration-1000 ease-in-out"
     style="background: linear-gradient(-45deg, #F25C27, #1A428A, #F25C27, #1A428A); background-size: 400% 400%; animation: gradientBG 8s ease infinite;">
-    <img src="logo-ias.png?v=2" alt="aiS Logo" class="w-64 md:w-80 h-auto animate-pulse drop-shadow-lg">
+    <img src="logo-ias.png?v=2" alt="iaS Logo" class="w-64 md:w-80 h-auto animate-pulse drop-shadow-lg">
     <style>
         @keyframes gradientBG {
             0% {
@@ -82,7 +82,7 @@ include 'includes/header.php';
         <!-- Grid de Pontos Superior Direita -->
         <div class="absolute top-[10%] right-[10%] w-24 h-48 opacity-40"
             style="background-image: radial-gradient(#fff 2px, transparent 2px); background-size: 20px 20px;"></div>
-        <!-- Sinais de Plus e Círculos Espalhados -->
+        <!-- SiniaS de Plus e Círculos Espalhados -->
         <div class="absolute top-[20%] left-[30%] text-white/50 text-2xl font-light pointer-events-none">+</div>
         <div class="absolute bottom-[30%] left-[20%] text-white/50 text-2xl font-light pointer-events-none">+</div>
         <div class="absolute top-[30%] right-[40%] w-4 h-4 border-2 border-white/40 rounded-full pointer-events-none">
@@ -92,7 +92,7 @@ include 'includes/header.php';
 
         <!-- Conteúdo Textual -->
         <div class="relative z-10 max-w-lg">
-            <h1 class="text-5xl lg:text-6xl font-bold mb-6 text-white leading-tight">aiS<br><span
+            <h1 class="text-5xl lg:text-6xl font-bold mb-6 text-white leading-tight">iaS<br><span
                     class="text-3xl lg:text-4xl font-normal text-indigo-200">Evolução em cada desafio</span></h1>
             <p class="text-lg lg:text-xl text-blue-100 font-medium leading-relaxed opacity-90">
                 Faça login na plataforma para gerenciar turmas, simulados e engajamento.
@@ -105,8 +105,8 @@ include 'includes/header.php';
         <div class="absolute top-0 right-0 w-64 h-64 bg-slate-50 rounded-bl-[100px] -z-10 opacity-50"></div>
         <div class="max-w-sm w-full">
             <div class="mb-10 text-center md:text-left">
-                <!-- <img src="logo.png" alt="aiS" class="h-10 mb-8 mx-auto md:mx-0 object-contain"> -->
-                <h2 class="text-3xl font-bold text-slate-800 tracking-tight">aiS</h2>
+                <!-- <img src="logo.png" alt="iaS" class="h-10 mb-8 mx-auto md:mx-0 object-contain"> -->
+                <h2 class="text-3xl font-bold text-slate-800 tracking-tight">iaS</h2>
                 <p class="text-slate-500 mt-2 font-medium">Acesso restrito</p>
             </div>
 

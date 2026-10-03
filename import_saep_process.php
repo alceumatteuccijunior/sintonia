@@ -91,7 +91,7 @@ try {
         $correct_choice = trim($data[$colMap['Gabarito']]);
 
 
-        // --- 1.5. Regionais e Unidades ---
+        // --- 1.5. RegioniaS e Unidades ---
         if (!isset($regionalsCache[$dr_name])) {
             $stmt = $pdo->prepare("SELECT id FROM regionals WHERE name = ?");
             $stmt->execute([$dr_name]);
@@ -166,8 +166,8 @@ try {
                 $uri = rtrim(dirname($_SERVER['REQUEST_URI']), '/\\');
                 $loginLink = "$protocol://$host$uri/";
                 
-                $emailBody = "Olá <strong>{$student_name}</strong>,<br><br>Você acaba de ser cadastrado(a) na plataforma aiS por meio da importação do SAEP!<br><br>Suas credenciais de acesso iniciais são:<br><strong>E-mail:</strong> {$email}<br><strong>Senha:</strong> {$matricula}<br><br><a href='{$loginLink}' style='display:inline-block; padding:10px 20px; background-color:#4f46e5; color:white; text-decoration:none; border-radius:5px;'>Acessar o aiS</a><br><br><em>Aviso: No seu primeiro acesso, o sistema pedirá que você crie uma nova senha definitiva.</em>";
-                send_system_email($email, "Bem-vindo ao aiS - Suas Credenciais", $emailBody);
+                $emailBody = "Olá <strong>{$student_name}</strong>,<br><br>Você acaba de ser cadastrado(a) na plataforma iaS por meio da importação do SAEP!<br><br>Suas credenciiaS de acesso iniciiaS são:<br><strong>E-mail:</strong> {$email}<br><strong>Senha:</strong> {$matricula}<br><br><a href='{$loginLink}' style='display:inline-block; padding:10px 20px; background-color:#4f46e5; color:white; text-decoration:none; border-radius:5px;'>Acessar o iaS</a><br><br><em>Aviso: No seu primeiro acesso, o sistema pedirá que você crie uma nova senha definitiva.</em>";
+                send_system_email($email, "Bem-vindo ao iaS - Suas CredenciiaS", $emailBody);
                 
             } else {
                 // Se o usuário já existe, garantir que ele esteja vinculado a esta unidade

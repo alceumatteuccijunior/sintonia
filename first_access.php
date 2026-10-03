@@ -51,7 +51,7 @@ include 'includes/header.php';
             <div class="w-16 h-16 bg-gradient-to-br from-indigo-500 to-senai-blue text-white rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
                 <i class="ph-bold ph-lock-key text-3xl"></i>
             </div>
-            <h1 class="text-2xl font-bold text-slate-800">Bem-vindo(a) ao aiS!</h1>
+            <h1 class="text-2xl font-bold text-slate-800">Bem-vindo(a) ao iaS!</h1>
             <p class="text-slate-500 text-sm mt-2">Como este é seu primeiro acesso, por motivos de segurança, você precisa cadastrar uma nova senha.</p>
         </div>
 

@@ -1,6 +1,6 @@
 <?php
 // sql/setup.php
-// Script para configuração inicial do banco de dados do aiS
+// Script para configuração inicial do banco de dados do iaS
 
 require_once '../config.php';
 
@@ -8,7 +8,7 @@ echo "<!DOCTYPE html>
 <html lang='pt-BR'>
 <head>
     <meta charset='UTF-8'>
-    <title>Setup - aiS</title>
+    <title>Setup - iaS</title>
     <style>
         body { font-family: 'Inter', sans-serif; background: #F8FAFC; color: #333; padding: 40px; }
         .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
@@ -20,7 +20,7 @@ echo "<!DOCTYPE html>
 </head>
 <body>
 <div class='container'>
-    <h1>Setup do Banco de Dados - aiS</h1>
+    <h1>Setup do Banco de Dados - iaS</h1>
     <div class='log'>";
 
 try {
@@ -196,7 +196,7 @@ try {
 
     echo "</div>";
     echo "<h2 class='success' style='margin-top:20px;'>✔ Tudo pronto!</h2>";
-    echo "<p>O banco de dados do aiS foi configurado com sucesso. Você já pode deletar este arquivo se estiver em um ambiente de produção.</p>";
+    echo "<p>O banco de dados do iaS foi configurado com sucesso. Você já pode deletar este arquivo se estiver em um ambiente de produção.</p>";
 
 } catch (PDOException $e) {
     echo "</div>";

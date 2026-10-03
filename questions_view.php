@@ -105,7 +105,7 @@ include 'includes/header.php';
                         </div>
                         <h1 class="text-3xl font-bold tracking-tight mb-2 text-slate-800 flex items-center gap-3">
                             <?= htmlspecialchars($curso['name']) ?>
-                            <button onclick="openHelpModal('Questões do Curso', 'Visualize o acervo completo de questões deste curso específico.<br><br><b>Ações disponíveis:</b><br>- Utilize os filtros por Módulo e Competência para encontrar questões rapidamente.<br>- Clique em <b>Ver Mais</b> para visualizar todas as alternativas e identificar a resposta correta.<br>- Adicione, edite ou remova questões para manter seu banco sempre atualizado.')" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 hover:text-senai-blue hover:bg-blue-50 transition-colors shadow-inner" title="Como Usar">
+                            <button onclick="openHelpModal('Questões do Curso', 'Visualize o acervo completo de questões deste curso específico.<br><br><b>Ações disponíveis:</b><br>- Utilize os filtros por Módulo e Competência para encontrar questões rapidamente.<br>- Clique em <b>Ver MiaS</b> para visualizar todas as alternativas e identificar a resposta correta.<br>- Adicione, edite ou remova questões para manter seu banco sempre atualizado.')" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 hover:text-senai-blue hover:bg-blue-50 transition-colors shadow-inner" title="Como Usar">
                                 <i class="ph-bold ph-question text-lg"></i>
                             </button>
                         </h1>
@@ -177,7 +177,7 @@ include 'includes/header.php';
                                         <?= htmlspecialchars($q['module_name']) ?>
                                     </span>
                                     <?php if (in_array($_SESSION['user_role'], ['admin', 'teacher'])): ?>
-                                    <a href="?course_id=<?= $courseId ?>&delete_q=<?= $q['id'] ?>" onclick="event.stopPropagation(); return confirm('Tem certeza que deseja excluir/ocultar esta questão? Ela não aparecerá mais para ser selecionada em novas provas.');" class="w-7 h-7 rounded-full bg-red-50 hover:bg-red-100 text-red-400 hover:text-red-600 flex items-center justify-center transition-colors" title="Excluir Questão">
+                                    <a href="?course_id=<?= $courseId ?>&delete_q=<?= $q['id'] ?>" onclick="event.stopPropagation(); return confirm('Tem certeza que deseja excluir/ocultar esta questão? Ela não aparecerá miaS para ser selecionada em novas provas.');" class="w-7 h-7 rounded-full bg-red-50 hover:bg-red-100 text-red-400 hover:text-red-600 flex items-center justify-center transition-colors" title="Excluir Questão">
                                         <i class="ph-bold ph-trash"></i>
                                     </a>
                                     <?php endif; ?>

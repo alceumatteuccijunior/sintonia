@@ -119,13 +119,13 @@ $date_str = date('d/m/Y \à\s H:i', strtotime($attempt['completed_at']));
             .no-print { display: none !important; }
         }
 
-        /* Branding aiS */
-        .ais-bg {
+        /* Branding iaS */
+        .iaS-bg {
             background: linear-gradient(135deg, #1A428A 0%, #0d2247 100%);
             color: white;
         }
-        .ais-text-orange { color: #F25C27; }
-        .ais-bg-orange { background-color: #F25C27; }
+        .iaS-text-orange { color: #F25C27; }
+        .iaS-bg-orange { background-color: #F25C27; }
     </style>
 </head>
 <body>
@@ -156,7 +156,7 @@ $date_str = date('d/m/Y \à\s H:i', strtotime($attempt['completed_at']));
             <!-- Cabeçalho -->
             <div class="flex items-center justify-between border-b-4 border-[#1A428A] pb-6 mb-8">
                 <div>
-                    <h1 class="text-4xl font-black text-[#1A428A] tracking-tight">aiS</h1>
+                    <h1 class="text-4xl font-black text-[#1A428A] tracking-tight">iaS</h1>
                     <p class="text-sm font-bold tracking-widest text-[#F25C27] uppercase">Evolução em cada desafio</p>
                 </div>
                 <div class="text-right">
@@ -166,7 +166,7 @@ $date_str = date('d/m/Y \à\s H:i', strtotime($attempt['completed_at']));
             </div>
 
             <!-- Identificação do Aluno -->
-            <div class="ais-bg rounded-2xl p-6 mb-8 shadow-md">
+            <div class="iaS-bg rounded-2xl p-6 mb-8 shadow-md">
                 <div class="flex items-center gap-6">
                     <div class="w-20 h-20 rounded-full bg-white/10 flex items-center justify-center border-2 border-white/20">
                         <i class="ph-fill ph-student text-4xl text-white"></i>
@@ -258,7 +258,7 @@ $date_str = date('d/m/Y \à\s H:i', strtotime($attempt['completed_at']));
             
             <!-- Rodapé da Página -->
             <div class="mt-12 pt-6 border-t border-slate-200 text-center text-slate-400 text-xs font-medium">
-                Documento gerado automaticamente pelo Sistema aiS - Assistente Pedagógico SENAI.<br>
+                Documento gerado automaticamente pelo Sistema iaS - Assistente Pedagógico SENAI.<br>
                 <?= date('d/m/Y H:i:s') ?>
             </div>
 

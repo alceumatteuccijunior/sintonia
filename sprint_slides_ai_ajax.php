@@ -29,7 +29,7 @@ foreach($data['best_capacities'] as $c) {
     $prompt .= "- {$c['capacity_code']} ({$c['capacity_desc']}): ".round($c['rate'], 1)."% de acerto\n";
 }
 
-$prompt .= "\nEscreva um RESUMO EXECUTIVO (em no máximo 3 parágrafos curtos) focado em: O que observar com esses dados? Quais pontos fortes? Quais fragilidades devem ser atacadas imediatamente pelo professor? Use uma linguagem profissional e direta para apresentação de slides.";
+$prompt .= "\nEscreva um RESUMO EXECUTIVO (em no máximo 3 parágrafos curtos) focado em: O que observar com esses dados? QuiaS pontos fortes? QuiaS fragilidades devem ser atacadas imediatamente pelo professor? Use uma linguagem profissional e direta para apresentação de slides.";
 
 $url = 'https://api.openai.com/v1/chat/completions';
 $postData = [
@@ -37,7 +37,7 @@ $postData = [
     'messages' => [
         [
             'role' => 'system',
-            'content' => 'Você é um Assistente Pedagógico (aiS). Responda apenas com o texto do relatório executivo, sem introduções extras.'
+            'content' => 'Você é um Assistente Pedagógico (iaS). Responda apenas com o texto do relatório executivo, sem introduções extras.'
         ],
         [
             'role' => 'user',

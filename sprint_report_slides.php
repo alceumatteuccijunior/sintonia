@@ -180,7 +180,7 @@ $slideNumber = 1;
         /* Aumentando o espaço útil (bottom de 100 para 80) */
         .content-area { position: absolute; top: 130px; left: 120px; right: 120px; bottom: 80px; display: flex; flex-direction: column; z-index: 5; }
         
-        /* Ajuste de tipografia para caber mais texto sem estourar */
+        /* Ajuste de tipografia para caber miaS texto sem estourar */
         .slide-title { color: #0038A8; font-size: 42px; font-weight: 800; margin-bottom: 8px; line-height: 1.1; letter-spacing: -1px; }
         .slide-subtitle { color: #F25922; font-size: 24px; font-weight: 600; margin-bottom: 24px; text-transform: uppercase; letter-spacing: 1px; }
         
@@ -233,7 +233,7 @@ $slideNumber = 1;
         
         <div class="content-area">
             <h1 class="slide-title">Saúde da Turma</h1>
-            <h2 class="slide-subtitle">Indicadores Gerais da Avaliação</h2>
+            <h2 class="slide-subtitle">Indicadores GeriaS da Avaliação</h2>
             
             <div class="grid grid-cols-3 gap-6 mt-8">
                 <div class="metric-card">
@@ -534,7 +534,7 @@ $slideNumber = 1;
         
         <div class="content-area">
             <h1 class="slide-title">Desempenho por Questão</h1>
-            <h2 class="slide-subtitle">Resultados Individuais (Parte <?= $chunkIndex + 1 ?>)</h2>
+            <h2 class="slide-subtitle">Resultados IndividuiaS (Parte <?= $chunkIndex + 1 ?>)</h2>
             
             <div class="flex flex-col gap-4 mt-2">
                 <?php foreach($chunk as $q): 

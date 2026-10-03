@@ -298,7 +298,7 @@ if ($overall_accuracy > 0 && $overall_accuracy < 50) {
                             <div class="bg-indigo-50/70 border border-indigo-100 rounded-3xl p-8 text-center shadow-sm">
                                 <i class="ph-fill ph-trend-up text-5xl text-indigo-300 mb-3 animate-float"></i>
                                 <h3 class="text-lg font-bold text-indigo-900 mb-1">Evolução em Construção</h3>
-                                <p class="text-indigo-700/80 font-medium">Esta turma realizou apenas <strong class="text-indigo-800">uma Sprint</strong> até o momento. Mais Sprints são necessárias para gerar o histórico de gráficos e evolução.</p>
+                                <p class="text-indigo-700/80 font-medium">Esta turma realizou apenas <strong class="text-indigo-800">uma Sprint</strong> até o momento. MiaS Sprints são necessárias para gerar o histórico de gráficos e evolução.</p>
                             </div>
                         <?php else: ?>
                             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">

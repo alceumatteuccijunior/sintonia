@@ -48,7 +48,7 @@ if ($existing_duel) {
     exit;
 }
 
-// 3. Gerar 5 questões aleatórias (Gerais para ser justo)
+// 3. Gerar 5 questões aleatórias (GeriaS para ser justo)
 $stmtQuestions = $pdo->query("SELECT id FROM questions ORDER BY RAND() LIMIT 5");
 $questions = $stmtQuestions->fetchAll(PDO::FETCH_COLUMN);
 

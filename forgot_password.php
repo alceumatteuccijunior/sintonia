@@ -28,9 +28,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $uri = rtrim(dirname($_SERVER['REQUEST_URI']), '/\\');
             $resetLink = "$protocol://$host$uri/reset_password.php?token=$token";
             
-            $emailBody = "Olá <strong>{$user['name']}</strong>,<br><br>Recebemos uma solicitação para redefinir sua senha na plataforma aiS.<br><br>Para criar uma nova senha, clique no botão abaixo:<br><br><a href='$resetLink' style='display:inline-block; padding:12px 24px; background-color:#4f46e5; color:#ffffff; font-weight:bold; text-decoration:none; border-radius:8px;'>Redefinir Minha Senha</a><br><br><br>Se você não solicitou isso, apenas ignore este e-mail. Este link é válido por apenas 1 hora.";
+            $emailBody = "Olá <strong>{$user['name']}</strong>,<br><br>Recebemos uma solicitação para redefinir sua senha na plataforma iaS.<br><br>Para criar uma nova senha, clique no botão abaixo:<br><br><a href='$resetLink' style='display:inline-block; padding:12px 24px; background-color:#4f46e5; color:#ffffff; font-weight:bold; text-decoration:none; border-radius:8px;'>Redefinir Minha Senha</a><br><br><br>Se você não solicitou isso, apenas ignore este e-mail. Este link é válido por apenas 1 hora.";
             
-            send_system_email($email, "Recuperação de Senha - aiS", $emailBody);
+            send_system_email($email, "Recuperação de Senha - iaS", $emailBody);
         }
         
         // Sempre mostramos a mensagem positiva por segurança (Security best practice)
@@ -54,7 +54,7 @@ include 'includes/header.php';
 
     <div class="w-full max-w-md bg-white/80 backdrop-blur-xl border border-white p-8 rounded-3xl shadow-xl z-10 relative">
         <div class="text-center mb-6">
-            <h2 class="text-3xl font-black text-slate-800 tracking-tight">aiS</h2>
+            <h2 class="text-3xl font-black text-slate-800 tracking-tight">iaS</h2>
             <p class="text-slate-500 font-medium mt-1">Recuperação de Senha</p>
         </div>
 

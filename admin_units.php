@@ -15,7 +15,7 @@ $msgType = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
     
-    // ==================== REGIONAIS ====================
+    // ==================== REGIONiaS ====================
     if ($action === 'create_regional') {
         $name = trim($_POST['name'] ?? '');
         if ($name) {
@@ -93,7 +93,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Buscar todas as regionais e suas unidades
+// Buscar todas as regioniaS e suas unidades
 $stmtReg = $pdo->query("SELECT * FROM regionals ORDER BY name ASC");
 $regionals = $stmtReg->fetchAll();
 
@@ -134,7 +134,7 @@ include 'includes/header.php';
                 <div class="flex flex-col md:flex-row md:items-center justify-between mb-8 animate-slide-up">
                     <div>
                         <h1 class="text-3xl md:text-4xl font-bold tracking-tight mb-2 drop-shadow-sm text-slate-800">
-                            Regionais e Unidades
+                            RegioniaS e Unidades
                         </h1>
                         <p class="text-base text-slate-500 font-medium opacity-0 animate-fade-in delay-200">
                             Configure o catálogo de escolas do SENAI.
@@ -150,12 +150,12 @@ include 'includes/header.php';
                 <?php endif; ?>
 
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <!-- Coluna Regionais -->
+                    <!-- Coluna RegioniaS -->
                     <div class="lg:col-span-1">
                         <div class="bg-white/70 backdrop-blur-md border border-white/80 rounded-3xl p-6 shadow-sm overflow-hidden animate-slide-up delay-200">
                             <div class="flex justify-between items-center mb-6">
                                 <h2 class="text-xl font-bold text-slate-800 flex items-center gap-2">
-                                    <i class="ph-fill ph-map-pin text-senai-orange"></i> Regionais (DR)
+                                    <i class="ph-fill ph-map-pin text-senai-orange"></i> RegioniaS (DR)
                                 </h2>
                                 <button onclick="openModal('createRegionalModal')" class="w-8 h-8 rounded-full bg-senai-orange/10 text-senai-orange hover:bg-senai-orange hover:text-white flex items-center justify-center transition-colors shadow-sm" title="Nova Regional">
                                     <i class="ph-bold ph-plus"></i>
@@ -241,7 +241,7 @@ include 'includes/header.php';
     </main>
 </div>
 
-<!-- ==================== MODAIS REGIONAIS ==================== -->
+<!-- ==================== MODiaS REGIONiaS ==================== -->
 <div id="createRegionalModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
     <div class="bg-white rounded-3xl shadow-xl w-full max-w-sm overflow-hidden scale-95 opacity-0 transition-all duration-300" id="createRegionalModalContent">
         <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
@@ -283,7 +283,7 @@ include 'includes/header.php';
     </div>
 </div>
 
-<!-- ==================== MODAIS UNIDADES ==================== -->
+<!-- ==================== MODiaS UNIDADES ==================== -->
 <div id="createUnitModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
     <div class="bg-white rounded-3xl shadow-xl w-full max-w-md overflow-hidden scale-95 opacity-0 transition-all duration-300" id="createUnitModalContent">
         <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">

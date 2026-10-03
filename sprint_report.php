@@ -193,7 +193,7 @@ usort($questions_processed, function($a, $b) {
 $top_questions = array_slice($questions_processed, 0, 3);
 $bottom_questions = array_slice(array_reverse($questions_processed), 0, 3);
 
-// Métricas Gerais (Saúde da Turma, Tempo Médio, Total Questions)
+// Métricas GeriaS (Saúde da Turma, Tempo Médio, Total Questions)
 $stmtQCount = $pdo->prepare("SELECT COUNT(*) FROM sprint_questions WHERE sprint_id = ?");
 $stmtQCount->execute([$sprint_id]);
 $total_qs_possible = max(1, (int)$stmtQCount->fetchColumn());
@@ -581,7 +581,7 @@ include 'includes/header.php';
                         <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
                             <!-- Top 3 Questions -->
                             <div>
-                                <h4 class="font-bold text-green-600 mb-4 flex items-center gap-2"><i class="ph-bold ph-check-circle"></i> As 3 Questões Mais Fáceis</h4>
+                                <h4 class="font-bold text-green-600 mb-4 flex items-center gap-2"><i class="ph-bold ph-check-circle"></i> As 3 Questões MiaS Fáceis</h4>
                                 <div class="space-y-3">
                                     <?php foreach($top_questions as $i => $tq): ?>
                                         <div class="bg-green-50 border border-green-100 p-3 rounded-xl flex items-center justify-between">
@@ -596,7 +596,7 @@ include 'includes/header.php';
                             
                             <!-- Bottom 3 Questions -->
                             <div>
-                                <h4 class="font-bold text-red-500 mb-4 flex items-center gap-2"><i class="ph-bold ph-warning"></i> As 3 Questões Mais Difíceis</h4>
+                                <h4 class="font-bold text-red-500 mb-4 flex items-center gap-2"><i class="ph-bold ph-warning"></i> As 3 Questões MiaS Difíceis</h4>
                                 <div class="space-y-3">
                                     <?php foreach($bottom_questions as $i => $bq): ?>
                                         <div class="bg-red-50 border border-red-100 p-3 rounded-xl flex items-center justify-between">
@@ -657,7 +657,7 @@ include 'includes/header.php';
                                         <?php if ($isCritical && isset($distractors[$q['id']][0])): ?>
                                             <div class="mt-3 text-xs bg-red-100/70 p-3 rounded-xl border border-red-200 inline-block w-full">
                                                 <strong class="text-red-700 flex items-center gap-1.5 mb-1.5">
-                                                    <i class="ph-bold ph-warning"></i> Principal Pegadinha (Distrator mais marcado):
+                                                    <i class="ph-bold ph-warning"></i> Principal Pegadinha (Distrator miaS marcado):
                                                 </strong>
                                                 <div class="bg-white/80 p-2 rounded-lg text-slate-800 font-medium border border-white">
                                                     <?= htmlspecialchars($distractors[$q['id']][0]['option_text']) ?>
@@ -798,7 +798,7 @@ include 'includes/header.php';
             ]
         },
         options: {
-            indexAxis: 'y', // Transforma em barras horizontais
+            indexAxis: 'y', // Transforma em barras horizontiaS
             responsive: true,
             maintainAspectRatio: false,
             scales: {

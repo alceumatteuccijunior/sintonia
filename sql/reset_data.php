@@ -35,11 +35,11 @@ try {
     $pdo->exec("TRUNCATE TABLE courses");
     echo "<p>✅ Cursos, Módulos e Banco de Questões apagados.</p>";
 
-    // 4. Limpar Regionais e Unidades
+    // 4. Limpar RegioniaS e Unidades
     // Nota: Como o FK no users é ON DELETE SET NULL, o unit_id dos admins virará NULL.
     $pdo->exec("TRUNCATE TABLE units");
     $pdo->exec("TRUNCATE TABLE regionals");
-    echo "<p>✅ Catálogo de Escolas (Regionais e Unidades) apagado.</p>";
+    echo "<p>✅ Catálogo de Escolas (RegioniaS e Unidades) apagado.</p>";
 
     // 5. Excluir usuários que NÃO SÃO administradores
     $stmtUsers = $pdo->exec("DELETE FROM users WHERE role != 'admin'");

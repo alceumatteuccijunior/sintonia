@@ -93,7 +93,7 @@ include 'includes/header.php';
             <div class="w-8 h-8 rounded-lg bg-senai-orange text-white flex items-center justify-center shadow-sm">
                 <i class="ph-bold ph-student"></i>
             </div>
-            <span class="font-bold text-slate-800 text-lg tracking-tight">aiS Aluno</span>
+            <span class="font-bold text-slate-800 text-lg tracking-tight">iaS Aluno</span>
         </div>
         
         <div class="flex items-center gap-4">
@@ -178,7 +178,7 @@ include 'includes/header.php';
                     <div class="flex items-center gap-3 w-full md:w-auto">
                         <div class="flex-1 md:w-32 bg-slate-50 border border-slate-100 rounded-2xl p-4 text-center shadow-sm">
                             <i class="ph-fill ph-target text-2xl text-senai-cyan mb-1"></i>
-                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Acertos Totais</p>
+                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Acertos TotiaS</p>
                             <p class="text-2xl font-black text-slate-700"><?= $myScore ?></p>
                         </div>
                         

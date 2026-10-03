@@ -36,7 +36,7 @@ $prompt .= "- Capacidade de Maior Atenção: {$data['worst_capacity']}\n";
 
 $prompt .= "\nEscreva um RESUMO EXECUTIVO (em no máximo 3 parágrafos curtos) focado em: 
 1. Como está a curva de aprendizagem do aluno (ele evoluiu, estagnou ou piorou?). 
-2. Quais são as competências mais fortes e mais fracas dele atualmente. 
+2. QuiaS são as competências miaS fortes e miaS fracas dele atualmente. 
 3. Qual recomendação de estudo você daria a ele hoje.
 Use uma linguagem profissional e direta para apresentação de slides.";
 
@@ -46,7 +46,7 @@ $postData = [
     'messages' => [
         [
             'role' => 'system',
-            'content' => 'Você é um Assistente Pedagógico (aiS). Responda apenas com o texto do relatório executivo, sem introduções extras.'
+            'content' => 'Você é um Assistente Pedagógico (iaS). Responda apenas com o texto do relatório executivo, sem introduções extras.'
         ],
         [
             'role' => 'user',

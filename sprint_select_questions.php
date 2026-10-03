@@ -74,7 +74,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmtQs->execute([$course_id]);
             $questoes = $stmtQs->fetchAll();
             
-            // Buscar quais questões já foram usadas para ESTA turma em sprints anteriores
+            // Buscar quiaS questões já foram usadas para ESTA turma em sprints anteriores
             $stmtUsed = $pdo->prepare("
                 SELECT DISTINCT sq.question_id 
                 FROM sprint_questions sq 
@@ -171,7 +171,7 @@ include 'includes/header.php';
                 <div class="flex flex-col mb-6 animate-slide-up">
                     <h1 class="text-3xl font-bold tracking-tight mb-2 text-slate-800 flex items-center gap-3">
                         Selecione as Questões
-                        <button onclick="openHelpModal('Selecionar Questões (Passo 2)', 'Neste segundo passo, escolha quais questões comporão a avaliação.<br><br><b>Como montar a prova:</b><br>- Você pode usar a barra lateral para filtrar questões por Competência ou Módulo.<br>- Marque as caixas de seleção (checkboxes) das questões desejadas.<br>- Questões que esta turma já respondeu em outras provas estarão marcadas para evitar repetição.<br>- Quando terminar, clique em <b>Finalizar e Salvar Sprint</b> no painel lateral.')" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 hover:text-senai-blue hover:bg-blue-50 transition-colors shadow-inner" title="Como Usar">
+                        <button onclick="openHelpModal('Selecionar Questões (Passo 2)', 'Neste segundo passo, escolha quiaS questões comporão a avaliação.<br><br><b>Como montar a prova:</b><br>- Você pode usar a barra lateral para filtrar questões por Competência ou Módulo.<br>- Marque as caixas de seleção (checkboxes) das questões desejadas.<br>- Questões que esta turma já respondeu em outras provas estarão marcadas para evitar repetição.<br>- Quando terminar, clique em <b>Finalizar e Salvar Sprint</b> no painel lateral.')" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 hover:text-senai-blue hover:bg-blue-50 transition-colors shadow-inner" title="Como Usar">
                             <i class="ph-bold ph-question text-lg"></i>
                         </button>
                     </h1>

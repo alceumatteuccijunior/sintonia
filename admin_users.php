@@ -38,9 +38,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $loginLink = "$protocol://$host$uri/";
                 
                 // Enviar E-mail
-                $emailBody = "Olá <strong>{$name}</strong>,<br><br>Sua conta na plataforma aiS acaba de ser criada!<br><br>Suas credenciais de acesso temporárias são:<br><strong>E-mail:</strong> {$email}<br><strong>Senha:</strong> {$temp_password}<br><br><a href='{$loginLink}' style='display:inline-block; padding:10px 20px; background-color:#4f46e5; color:white; text-decoration:none; border-radius:5px;'>Acessar o aiS</a><br><br><em>Aviso: Por questões de segurança, no seu primeiro login o sistema exigirá que você crie uma nova senha definitiva.</em>";
+                $emailBody = "Olá <strong>{$name}</strong>,<br><br>Sua conta na plataforma iaS acaba de ser criada!<br><br>Suas credenciiaS de acesso temporárias são:<br><strong>E-mail:</strong> {$email}<br><strong>Senha:</strong> {$temp_password}<br><br><a href='{$loginLink}' style='display:inline-block; padding:10px 20px; background-color:#4f46e5; color:white; text-decoration:none; border-radius:5px;'>Acessar o iaS</a><br><br><em>Aviso: Por questões de segurança, no seu primeiro login o sistema exigirá que você crie uma nova senha definitiva.</em>";
                 
-                send_system_email($email, "Bem-vindo ao aiS - Suas Credenciais", $emailBody);
+                send_system_email($email, "Bem-vindo ao iaS - Suas CredenciiaS", $emailBody);
                 
                 $msg = "Usuário '$name' cadastrado com sucesso! Um e-mail com a senha foi enviado para o usuário.";
                 $msgType = 'success';
@@ -91,8 +91,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 $uri = rtrim(dirname($_SERVER['REQUEST_URI']), '/\\');
                                 $loginLink = "$protocol://$host$uri/";
                                 
-                                $emailBody = "Olá <strong>{$name}</strong>,<br><br>Você acaba de ser cadastrado na plataforma aiS!<br><br>Suas credenciais de acesso provisórias são:<br><strong>E-mail:</strong> {$email}<br><strong>Senha:</strong> {$temp_password}<br><br><a href='{$loginLink}' style='display:inline-block; padding:10px 20px; background-color:#4f46e5; color:white; text-decoration:none; border-radius:5px;'>Acessar o aiS</a><br><br><em>Aviso: No seu primeiro acesso, o sistema pedirá que crie uma senha definitiva.</em>";
-                                send_system_email($email, "Bem-vindo ao aiS - Suas Credenciais", $emailBody);
+                                $emailBody = "Olá <strong>{$name}</strong>,<br><br>Você acaba de ser cadastrado na plataforma iaS!<br><br>Suas credenciiaS de acesso provisórias são:<br><strong>E-mail:</strong> {$email}<br><strong>Senha:</strong> {$temp_password}<br><br><a href='{$loginLink}' style='display:inline-block; padding:10px 20px; background-color:#4f46e5; color:white; text-decoration:none; border-radius:5px;'>Acessar o iaS</a><br><br><em>Aviso: No seu primeiro acesso, o sistema pedirá que crie uma senha definitiva.</em>";
+                                send_system_email($email, "Bem-vindo ao iaS - Suas CredenciiaS", $emailBody);
                             } else {
                                 $errorCount++;
                             }

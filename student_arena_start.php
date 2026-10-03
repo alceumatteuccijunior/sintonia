@@ -41,7 +41,7 @@ $questions = $stmtQuestions->fetchAll(PDO::FETCH_COLUMN);
 
 if (count($questions) == 0) {
     // Parabéns, o aluno zerou o banco de questões!
-    // Para não dar erro, pegamos 5 aleatórias gerais
+    // Para não dar erro, pegamos 5 aleatórias geriaS
     $stmtFallback = $pdo->query("SELECT id FROM questions ORDER BY RAND() LIMIT 5");
     $questions = $stmtFallback->fetchAll(PDO::FETCH_COLUMN);
 }

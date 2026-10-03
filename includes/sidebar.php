@@ -93,7 +93,7 @@ $currentPage = $currentPage ?? 'dashboard';
                     class="w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-2.5 group <?= $currentPage === 'admin_units' ? 'text-senai-orange bg-white shadow-sm border border-orange-100' : 'text-slate-600 hover:bg-white hover:shadow-sm hover:text-senai-orange' ?>">
                     <i
                         class="ph-fill ph-buildings <?= $currentPage === 'admin_units' ? 'text-senai-orange' : 'text-slate-400 group-hover:text-senai-orange transition-colors' ?>"></i>
-                    <span class="truncate block w-full">Regionais & Escolas</span>
+                    <span class="truncate block w-full">RegioniaS & Escolas</span>
                 </a>
             </li>
             <li>
