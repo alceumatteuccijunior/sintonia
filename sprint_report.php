@@ -316,8 +316,11 @@ include 'includes/header.php';
                         <a href="sprint_report_slides.php?id=<?= $sprint_id ?>" target="_blank" class="bg-senai-cyan text-white px-4 py-2 rounded-xl font-bold shadow-sm hover:shadow-md transition-all text-sm flex items-center gap-2">
                             <i class="ph-bold ph-presentation-chart"></i> Slides (IA)
                         </a>
-                        <button id="print-btn" onclick="document.querySelectorAll('details').forEach(d => d.open = true); window.print();" class="bg-senai-blue text-white px-4 py-2 rounded-xl font-bold shadow-sm hover:shadow-md transition-all text-sm flex items-center gap-2">
-                            <i class="ph-bold ph-printer"></i> Gerar PDF
+                        <a href="sprint_export_word.php?id=<?= $sprint_id ?>" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl font-bold shadow-sm hover:shadow-md transition-all text-sm flex items-center gap-2">
+                            <i class="ph-bold ph-file-doc"></i> Exportar Word (MSEP)
+                        </a>
+                        <button id="print-btn" onclick="document.querySelectorAll('details').forEach(d => d.open = true); window.print();" class="bg-slate-700 text-white px-4 py-2 rounded-xl font-bold shadow-sm hover:shadow-md transition-all text-sm flex items-center gap-2">
+                            <i class="ph-bold ph-printer"></i> Imprimir PDF
                         </button>
                     </div>
                 </div>
