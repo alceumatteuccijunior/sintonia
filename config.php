@@ -6,8 +6,8 @@ ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
 define('DB_HOST', 'localhost');      // Host do MySQL
-define('DB_NAME', 'ia191379_aiS');    // Nome do banco de dados que será criado
-define('DB_USER', 'ia191379_aiS');           // Usuário do MySQL (altere se necessário)
+define('DB_NAME', 'ia191379_ais');    // Nome do banco de dados que será criado
+define('DB_USER', 'ia191379_ais');           // Usuário do MySQL (altere se necessário)
 define('DB_PASS', 'bCUQV2S5dGcT96K4cg5C');               // Senha do MySQL (altere se necessário)
 define('OPENAI_API_KEY', 'sua_chave_aqui');
 
