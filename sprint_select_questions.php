@@ -1,5 +1,6 @@
 <?php
 session_start();
+date_default_timezone_set('America/Sao_Paulo');
 if (!isset($_SESSION['user_id']) || !in_array($_SESSION['user_role'], ['admin', 'teacher'])) {
     header("Location: index.php");
     exit;
@@ -36,13 +37,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 $pdo->beginTransaction();
                 
-                // Determina status inicial: se agendada para o futuro, status = 'scheduled'
+                // Determina status inicial e sanitiza horários de agendamento
                 $status = 'active';
-                if ($schedule_mode === 'scheduled' && $start_time) {
-                    $startTimeDt = new DateTime($start_time);
-                    $now = new DateTime();
-                    if ($startTimeDt > $now) {
-                        $status = 'scheduled';
+                if ($schedule_mode === 'immediate') {
+                    $start_time = null;
+                    $end_time = null;
+                    $status = 'active';
+                } else {
+                    if ($start_time) {
+                        $start_time = date('Y-m-d H:i:s', strtotime($start_time));
+                        if (strtotime($start_time) > time()) {
+                            $status = 'scheduled';
+                        }
+                    }
+                    if ($end_time) {
+                        $end_time = date('Y-m-d H:i:s', strtotime($end_time));
+                        // Se por equívoco o prazo final for menor ou igual à data de início, anula end_time
+                        if ($start_time && strtotime($end_time) <= strtotime($start_time)) {
+                            $end_time = null;
+                        }
                     }
                 }
 

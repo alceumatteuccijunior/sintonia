@@ -1,5 +1,6 @@
 <?php
 session_start();
+date_default_timezone_set('America/Sao_Paulo');
 if (!isset($_SESSION['user_id']) || $_SESSION['user_role'] !== 'student') {
     header("Location: index.php");
     exit;
@@ -24,6 +25,11 @@ if (!$classe) {
     header("Location: student_setup.php");
     exit;
 }
+
+// Auto-liberação de sprints agendadas cujo horário de início já chegou
+try {
+    $pdo->exec("UPDATE sprints SET status = 'active' WHERE status = 'scheduled' AND start_time IS NOT NULL AND start_time <= NOW()");
+} catch (Exception $e) {}
 
 // Pega sprints ativas ou agendadas da turma dele
 $stmtSprints = $pdo->prepare("
@@ -227,8 +233,15 @@ include 'includes/header.php';
                     <?php foreach ($sprints as $s): 
                         
                         // Estado da Sprint para este aluno
-                        $isScheduled = (!empty($s['start_time']) && strtotime($s['start_time']) > time()) || ($s['status'] === 'scheduled' && (empty($s['start_time']) || strtotime($s['start_time']) > time()));
-                        $isExpired = (!empty($s['end_time']) && strtotime($s['end_time']) < time() && empty($s['completed_at']));
+                        $startTimeTs = !empty($s['start_time']) ? strtotime($s['start_time']) : null;
+                        $endTimeTs = !empty($s['end_time']) ? strtotime($s['end_time']) : null;
+                        $nowTs = time();
+
+                        // Está agendada para o futuro?
+                        $isScheduled = ($startTimeTs && $startTimeTs > $nowTs) || ($s['status'] === 'scheduled' && (!$startTimeTs || $startTimeTs > $nowTs));
+                        
+                        // Prazo limite expirou? (Apenas se NÃO for agendada futura, aluno NÃO iniciou e NÃO concluiu)
+                        $isExpired = !$isScheduled && ($endTimeTs && $endTimeTs < $nowTs && empty($s['started_at']) && empty($s['completed_at']));
 
                         $statusText = "Disponível";
                         $statusColor = "bg-green-100 text-green-700";
@@ -240,15 +253,8 @@ include 'includes/header.php';
                         if ($isScheduled) {
                             $statusText = "Agendada";
                             $statusColor = "bg-indigo-100 text-indigo-700 border border-indigo-200";
-                            $formattedStart = !empty($s['start_time']) ? date('d/m/Y \à\s H:i', strtotime($s['start_time'])) : 'Em breve';
+                            $formattedStart = $startTimeTs ? date('d/m/Y \à\s H:i', $startTimeTs) : 'Em breve';
                             $btnText = "Liberada em " . $formattedStart;
-                            $btnColor = "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed";
-                            $btnLink = "#";
-                            $isDisabled = true;
-                        } elseif ($isExpired) {
-                            $statusText = "Prazo Encerrado";
-                            $statusColor = "bg-red-100 text-red-700";
-                            $btnText = "Avaliação Expirada";
                             $btnColor = "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed";
                             $btnLink = "#";
                             $isDisabled = true;
@@ -284,6 +290,13 @@ include 'includes/header.php';
                                 $statusColor = "bg-senai-blue/10 text-senai-blue";
                                 $btnText = "Continuar Prova";
                             }
+                        } elseif ($isExpired) {
+                            $statusText = "Prazo Encerrado";
+                            $statusColor = "bg-red-100 text-red-700";
+                            $btnText = "Avaliação Expirada";
+                            $btnColor = "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed";
+                            $btnLink = "#";
+                            $isDisabled = true;
                         }
                     ?>
                         <div class="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm hover:shadow-lg transition-all group flex flex-col h-full relative overflow-hidden">
@@ -302,6 +315,16 @@ include 'includes/header.php';
                             <h3 class="text-xl font-bold text-slate-800 mb-1 line-clamp-2">
                                 <?= htmlspecialchars($s['name']) ?>
                             </h3>
+
+                            <?php if ($isScheduled && $startTimeTs): ?>
+                                <div class="text-[11px] font-bold text-indigo-600 bg-indigo-50/70 border border-indigo-100 rounded-xl px-3 py-1.5 my-2 flex items-center gap-1.5">
+                                    <i class="ph-bold ph-calendar"></i> Inicia: <?= date('d/m/Y \à\s H:i', $startTimeTs) ?>
+                                </div>
+                            <?php elseif ($endTimeTs && !$s['completed_at']): ?>
+                                <div class="text-[11px] font-semibold text-slate-500 bg-slate-50 border border-slate-200/70 rounded-xl px-3 py-1.5 my-2 flex items-center gap-1.5">
+                                    <i class="ph-bold ph-clock-afternoon"></i> Prazo até: <?= date('d/m/Y \à\s H:i', $endTimeTs) ?>
+                                </div>
+                            <?php endif; ?>
                             
                             <div class="flex items-center gap-4 text-xs font-semibold text-slate-500 mb-6 mt-2">
                                 <span class="flex items-center gap-1.5"><i class="ph-fill ph-clock text-senai-orange"></i> <?= $s['time_limit_minutes'] ?> min</span>

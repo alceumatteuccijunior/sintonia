@@ -1,5 +1,6 @@
 <?php
 session_start();
+date_default_timezone_set('America/Sao_Paulo');
 if (!isset($_SESSION['user_id']) || $_SESSION['user_role'] !== 'student') {
     header("Location: index.php");
     exit;
@@ -25,28 +26,29 @@ if (!$sprint) {
     exit;
 }
 
-// Validação de Agendamento: impede realização antes do horário marcado
-if (!empty($sprint['start_time']) && strtotime($sprint['start_time']) > time()) {
+// 1. Busca tentativa do aluno (se já iniciou previamente)
+$stmtAttempt = $pdo->prepare("SELECT * FROM sprint_attempts WHERE sprint_id = ? AND student_id = ?");
+$stmtAttempt->execute([$sprint_id, $student_id]);
+$attempt = $stmtAttempt->fetch();
+
+// Validação de Agendamento: impede início antes do horário marcado
+if (!$attempt && !empty($sprint['start_time']) && strtotime($sprint['start_time']) > time()) {
     $formattedDate = date('d/m/Y \à\s H:i', strtotime($sprint['start_time']));
     header("Location: student_dashboard.php?error=" . urlencode("Esta avaliação está agendada para {$formattedDate} e ainda não foi liberada."));
     exit;
 }
 
-// Validação de Prazo Limite Expirado
-if (!empty($sprint['end_time']) && strtotime($sprint['end_time']) < time()) {
+// Validação de Prazo Limite Expirado (impede início após o término do prazo)
+if (!$attempt && !empty($sprint['end_time']) && strtotime($sprint['end_time']) < time()) {
     header("Location: student_dashboard.php?error=" . urlencode("O prazo para realização desta avaliação expirou em " . date('d/m/Y \à\s H:i', strtotime($sprint['end_time'])) . "."));
     exit;
 }
 
-// Se estava como scheduled e já chegou o horário, atualiza para active
+// Se estava como scheduled e já chegou o horário, atualiza para active no banco
 if ($sprint['status'] === 'scheduled') {
     $pdo->prepare("UPDATE sprints SET status = 'active' WHERE id = ?")->execute([$sprint_id]);
+    $sprint['status'] = 'active';
 }
-
-// 1. Lógica de Tentativa (Attempt) e Timer
-$stmtAttempt = $pdo->prepare("SELECT * FROM sprint_attempts WHERE sprint_id = ? AND student_id = ?");
-$stmtAttempt->execute([$sprint_id, $student_id]);
-$attempt = $stmtAttempt->fetch();
 
 if (!$attempt) {
     // Inicia a tentativa agora

@@ -1,5 +1,6 @@
 <?php
 session_start();
+date_default_timezone_set('America/Sao_Paulo');
 header('Content-Type: application/json');
 
 if (!isset($_SESSION['user_id']) || !in_array($_SESSION['user_role'], ['admin', 'teacher'])) {
@@ -42,14 +43,16 @@ if (!$sprint) {
 }
 
 if ($action === 'reschedule') {
-    $start_time = !empty($_POST['start_time']) ? $_POST['start_time'] : null;
-    $end_time = !empty($_POST['end_time']) ? $_POST['end_time'] : null;
+    $start_time = !empty($_POST['start_time']) ? date('Y-m-d H:i:s', strtotime($_POST['start_time'])) : null;
+    $end_time = !empty($_POST['end_time']) ? date('Y-m-d H:i:s', strtotime($_POST['end_time'])) : null;
+
+    if ($start_time && $end_time && strtotime($end_time) <= strtotime($start_time)) {
+        $end_time = null;
+    }
 
     $status = $sprint['status'];
     if ($start_time) {
-        $startDt = new DateTime($start_time);
-        $now = new DateTime();
-        if ($startDt > $now) {
+        if (strtotime($start_time) > time()) {
             $status = 'scheduled';
         } else {
             if ($status === 'scheduled') {

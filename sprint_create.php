@@ -1,5 +1,6 @@
 <?php
 session_start();
+date_default_timezone_set('America/Sao_Paulo');
 if (!isset($_SESSION['user_id']) || !in_array($_SESSION['user_role'], ['admin', 'teacher'])) {
     header("Location: index.php");
     exit;
@@ -219,12 +220,13 @@ include 'includes/header.php';
         if (show) {
             fields.classList.remove('hidden');
             if (!startInput.value) {
-                // Sugere daqui a 7 dias às 08:00
+                // Sugere daqui a 7 dias às 08:00 no fuso local do navegador
                 const nextWeek = new Date();
                 nextWeek.setDate(nextWeek.getDate() + 7);
                 nextWeek.setHours(8, 0, 0, 0);
-                const isoStr = nextWeek.toISOString().slice(0, 16);
-                startInput.value = isoStr;
+                const pad = n => String(n).padStart(2, '0');
+                const localStr = `${nextWeek.getFullYear()}-${pad(nextWeek.getMonth() + 1)}-${pad(nextWeek.getDate())}T${pad(nextWeek.getHours())}:${pad(nextWeek.getMinutes())}`;
+                startInput.value = localStr;
             }
         } else {
             fields.classList.add('hidden');
