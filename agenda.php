@@ -217,38 +217,47 @@ include 'includes/header.php';
     ?>
 
     <main id="main-content" class="flex-1 flex flex-col relative h-full w-full">
-        <!-- Header da Página -->
-        <header class="h-16 flex items-center justify-between px-6 md:px-8 bg-white/70 backdrop-blur-md border-b border-white shadow-sm relative z-20">
-            <div class="flex items-center gap-3">
-                <button onclick="toggleSidebar()" class="md:hidden w-8 h-8 flex items-center justify-center text-slate-500 hover:bg-slate-100 rounded-lg">
-                    <i class="ph-bold ph-list text-lg"></i>
-                </button>
-                <div class="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shadow-inner">
-                    <i class="ph-fill ph-calendar-blank text-xl"></i>
-                </div>
-                <div>
-                    <h1 class="font-bold text-slate-800 text-lg tracking-tight flex items-center gap-2">
-                        Agenda de Sprints
-                        <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700">Cronograma</span>
-                    </h1>
-                    <p class="text-[11px] text-slate-400 font-medium">Planejamento, acompanhamento e governança de provas diagnósticas</p>
-                </div>
-            </div>
-
-            <div class="flex items-center gap-3">
-                <button onclick="toggleHelpCards()" class="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-white/80 hover:bg-white text-slate-600 text-xs font-bold shadow-sm transition-all">
-                    <i class="ph-bold ph-question text-senai-blue"></i> Como Usar
-                </button>
-
-                <a href="sprint_create.php" class="bg-senai-blue text-white px-4 py-2 rounded-xl text-xs font-bold shadow-[0_4px_12px_-2px_rgba(26,66,138,0.4)] hover:shadow-lg hover:-translate-y-0.5 transition-all flex items-center gap-2">
-                    <i class="ph-bold ph-plus"></i> Nova Sprint
-                </a>
+        <!-- Header Flutuante Padrão do Sistema -->
+        <header class="h-14 flex items-center justify-between px-4 md:px-6 absolute top-0 w-full z-20 pointer-events-none">
+            <button onclick="toggleSidebar()" class="pointer-events-auto w-10 h-10 flex items-center justify-center bg-white/50 hover:bg-white rounded-xl backdrop-blur-md shadow-sm border border-white/60 transition-all active:scale-95 group text-senai-dark hover:text-senai-cyan" title="Alternar Menu">
+                <i id="sidebar-icon" class="ph-bold ph-list text-xl transition-transform duration-300"></i>
+            </button>
+            <div class="flex-1"></div>
+            
+            <div class="pointer-events-auto text-[11px] font-bold text-slate-600 flex items-center gap-1.5 bg-white/70 backdrop-blur-xl border border-white/80 shadow-sm px-4 py-2 rounded-full mr-2">
+                <i class="ph-fill ph-calendar text-indigo-600"></i> Agenda & Cronograma
             </div>
         </header>
 
         <!-- Área Rolável de Conteúdo -->
-        <div id="content-scroll-area" class="flex-1 overflow-y-auto no-scrollbar w-full p-4 md:p-8 relative z-10">
-            <div class="max-w-7xl mx-auto space-y-6">
+        <div id="content-scroll-area" class="flex-1 overflow-y-auto no-scrollbar w-full flex flex-col items-center pt-20 pb-20 relative z-10 px-4 md:px-8">
+            <div class="w-full max-w-7xl space-y-6">
+
+                <!-- Título da Página e Ações Rápidas -->
+                <div class="flex flex-col md:flex-row md:items-center justify-between animate-slide-up gap-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-11 h-11 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center shadow-inner shrink-0">
+                            <i class="ph-fill ph-calendar-blank text-2xl"></i>
+                        </div>
+                        <div>
+                            <h1 class="font-bold text-slate-800 text-2xl md:text-3xl tracking-tight flex items-center gap-2">
+                                Agenda de Sprints
+                                <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-indigo-100 text-indigo-700">Cronograma</span>
+                            </h1>
+                            <p class="text-xs md:text-sm text-slate-500 font-medium">Planejamento, acompanhamento e governança de provas diagnósticas</p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-3">
+                        <button onclick="toggleHelpCards()" class="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 bg-white/80 hover:bg-white text-slate-600 text-xs font-bold shadow-sm transition-all">
+                            <i class="ph-bold ph-question text-senai-blue"></i> Como Usar
+                        </button>
+
+                        <a href="sprint_create.php" class="bg-senai-blue text-white px-5 py-2.5 rounded-xl text-xs font-bold shadow-[0_4px_12px_-2px_rgba(26,66,138,0.4)] hover:shadow-lg hover:-translate-y-0.5 transition-all flex items-center gap-2">
+                            <i class="ph-bold ph-plus"></i> Nova Sprint
+                        </a>
+                    </div>
+                </div>
 
                 <!-- Cards de Apoio / Onboarding (Expansíveis/Retráteis) -->
                 <div id="help-cards-container" class="grid grid-cols-1 md:grid-cols-3 gap-4 animate-slide-up">
@@ -818,3 +827,4 @@ include 'includes/header.php';
 </script>
 
 <?php include 'includes/footer.php'; ?>
+
