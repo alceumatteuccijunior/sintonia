@@ -21,9 +21,11 @@ Sua interface foca intensamente na usabilidade e estética, utilizando **Tailwin
 
 2. **Aplicação Segura, Inteligente e Agendada (Sprints & Agenda)**
    A criação de provas, apelidadas de *Sprints*, permite customização extrema:
-   - **Agendamento Inteligente:** Possibilidade de programar a prova com antecedência (ex: 10 dias antes). O sistema bloqueia o acesso dos alunos até a data e hora exatas de liberação (`start_time`), com data limite opcional (`end_time`).
+   - **Agendamento Inteligente & Fuso de Brasília (`America/Sao_Paulo`):** Programe avaliações com antecedência (ex: 10 dias antes). O sistema opera com precisão atômica no fuso de Brasília, bloqueando o acesso dos alunos até a data e hora exatas de liberação (`start_time`).
+   - **Ciclo de Vida Dinâmico de Liberação:** No exato minuto de início, a prova se auto-ativa dinamicamente para `active`, liberando o botão *"Iniciar Prova"*.
+   - **Prazo Limite Protegido (`end_time`):** Impede novos acessos após o encerramento do prazo, enquanto protege alunos que já iniciaram a prova para que possam concluí-la normalmente dentro do seu tempo limite.
    - **Agenda Interativa (Google Calendar Style):** Nova visão em calendário mensal e lista cronológica para planejamento e governança de aplicações.
-   - **Definição de Tempo Limite** (contagem regressiva máxima).
+   - **Definição de Tempo Limite** (contagem regressiva máxima com auto-submissão).
    - **Definição de Tempo Mínimo** de entrega (trava de segurança para obrigar o estudante a dedicar tempo de leitura, impedindo "chutes rápidos").
    - Motor de seleção inteligente de questões via filtros combinados com alerta de questões já aplicadas à turma.
    - **Sistema Anti-Cola:** O cronômetro persiste em tempo real e monitora perda de foco (saídas de abas). Após 3 avisos, a prova é encerrada automaticamente.
@@ -70,7 +72,9 @@ Sua interface foca intensamente na usabilidade e estética, utilizando **Tailwin
 
 ### 🎓 Visão do Aluno (Gamificação e Experiência)
 - **Visualização Técnica Cristalina com Zoom:** Questões com circuitos, diagramas e esquemas contam com exibição destacada e Lightbox interativo (zoom em alta resolução). Questões sem imagens mantêm layout limpo sem nenhum impacto.
-- **Proteção Anti-Vazamento (Agendadas):** O aluno visualiza as provas futuras no seu dashboard com data/hora de liberação, mas com acesso e botão de início bloqueados até o momento marcado.
+- **Proteção Anti-Vazamento (Agendadas):** O aluno visualiza as provas futuras no seu dashboard com data/hora de liberação (`Liberada em DD/MM/AAAA às HH:MM`), mas com acesso e botão de início bloqueados até o momento marcado.
+- **Liberação Automática em Tempo Real:** No exato minuto de início, a avaliação é liberada dinamicamente, transformando o botão em *"Iniciar Prova"*.
+- **Proteção de Tentativas em Andamento:** Se o horário limite (`end_time`) expirar enquanto o aluno estiver respondendo à prova, sua sessão permanece ativa até a conclusão do seu tempo limite individual (`time_limit_minutes`), garantindo a entrega sem interrupções.
 - **Motor de Prova Anti-Cola:** O sistema trava a avaliação e submete sozinha se o aluno tentar sair da aba do navegador 3 vezes (Tracking de Foco).
 - **Devolutiva Humanizada:** O aluno recebe no e-mail o seu boletim completo em PDF.
 - **Sistema de Leveling (XP):** Cada resposta correta gera pontos de experiência, promovendo o aluno a Patentes superiores.
@@ -90,6 +94,7 @@ Sua interface foca intensamente na usabilidade e estética, utilizando **Tailwin
 
 - **Backend:** PHP 8+ (Estruturado, PDO, focado em altíssima performance, disparos nativos via `mail()`).
 - **Banco de Dados:** MySQL/MariaDB.
+- **Fuso Horário & Sincronismo:** Padronização integral em `America/Sao_Paulo` (Horário Oficial de Brasília / UTC-3) no PHP e na sessão MySQL (`SET time_zone = '-03:00'`), blindando agendamentos e cronômetros contra discrepâncias de servidores em UTC.
 - **Frontend:** HTML5, Vanilla JavaScript.
 - **Estilização e UI:** TailwindCSS (CDN), Phosphor Icons.
 - **Visualização de Dados:** Chart.js.
