@@ -31,6 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file'])) {
         $teacherId = $_SESSION['user_id'];
         
         $totalQuestoes = 0;
+        $importedQuestions = [];
         $fileHandle = fopen($file['tmp_name'], 'r');
         
         // Pular cabeçalho
@@ -79,6 +80,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file'])) {
             $stmtInsert->execute([$moduleId, $capacity, $command, $difficulty, $tag, $teacherId]);
             $questionId = $pdo->lastInsertId();
             
+            $importedQuestions[] = [
+                'id' => (int)$questionId,
+                'command' => (mb_strlen($command) > 85 ? mb_substr($command, 0, 85) . '...' : $command),
+                'course' => $courseName,
+                'module' => $moduleName,
+                'capacity' => $capacity,
+                'difficulty' => $difficulty
+            ];
+            
             // 3. Insert Options
             $optsToInsert = [
                 ['text' => $optCorrect, 'correct' => 1],
@@ -108,7 +118,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file'])) {
         
         echo json_encode([
             'success' => true,
-            'message' => "Importação concluída com sucesso! $totalQuestoes questão(ões) foram importadas."
+            'message' => "Importação concluída com sucesso! $totalQuestoes questão(ões) foram importadas.",
+            'count' => $totalQuestoes,
+            'imported_questions' => $importedQuestions
         ]);
         
     } catch (Exception $e) {

@@ -26,9 +26,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             $pdo->beginTransaction();
             
-            // Insert Question
-            $stmtQ = $pdo->prepare("INSERT INTO questions (module_id, capacity, context, command, difficulty, teacher_id) VALUES (?, ?, ?, ?, ?, ?)");
-            $stmtQ->execute([$module_id, $capacity, $context, $command, $difficulty, $_SESSION['user_id']]);
+            // Processa imagem de apoio se enviada
+            $image_url = null;
+            if (isset($_FILES['image_file']) && $_FILES['image_file']['error'] === UPLOAD_ERR_OK) {
+                $ext = strtolower(pathinfo($_FILES['image_file']['name'], PATHINFO_EXTENSION));
+                $allowed = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg'];
+                if (in_array($ext, $allowed) && $_FILES['image_file']['size'] <= 10 * 1024 * 1024) {
+                    $uploadDir = __DIR__ . '/uploads/questions/';
+                    if (!is_dir($uploadDir)) @mkdir($uploadDir, 0755, true);
+                    $newFileName = 'q_' . time() . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
+                    if (move_uploaded_file($_FILES['image_file']['tmp_name'], $uploadDir . $newFileName)) {
+                        $image_url = 'uploads/questions/' . $newFileName;
+                    }
+                }
+            }
+
+            // Insert Question com image_url opcional
+            $stmtQ = $pdo->prepare("INSERT INTO questions (module_id, capacity, context, command, difficulty, image_url, teacher_id) VALUES (?, ?, ?, ?, ?, ?, ?)");
+            $stmtQ->execute([$module_id, $capacity, $context, $command, $difficulty, $image_url, $_SESSION['user_id']]);
             $question_id = $pdo->lastInsertId();
             
             // Insert Options
@@ -102,7 +117,7 @@ include 'includes/header.php';
                     </div>
                 <?php endif; ?>
 
-                <form method="POST" action="question_create.php" class="bg-white/80 backdrop-blur-md border border-white/80 rounded-3xl p-6 md:p-10 shadow-sm animate-fade-in delay-200">
+                <form method="POST" action="question_create.php" enctype="multipart/form-data" class="bg-white/80 backdrop-blur-md border border-white/80 rounded-3xl p-6 md:p-10 shadow-sm animate-fade-in delay-200">
                     
                     <div class="space-y-8">
                         <!-- Metadados da Questão -->
@@ -151,6 +166,36 @@ include 'includes/header.php';
                             <textarea name="command" rows="3" required placeholder="Qual é o procedimento correto para..." class="w-full px-5 py-4 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-senai-blue/20 focus:border-senai-blue bg-slate-50/50 font-bold text-slate-800 resize-y"></textarea>
                         </div>
 
+                        <!-- Imagem de Apoio (Opcional) -->
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 mb-2 flex items-center justify-between">
+                                <span class="flex items-center gap-2">
+                                    <i class="ph-bold ph-image text-indigo-600"></i> Imagem de Apoio
+                                    <span class="text-slate-400 font-normal text-xs">(Opcional)</span>
+                                </span>
+                                <span class="text-[11px] text-slate-400 font-medium">Circuitos, diagramas, esquemas ou tabelas</span>
+                            </label>
+                            
+                            <div class="border-2 border-dashed border-slate-200 hover:border-senai-blue/50 rounded-2xl p-5 text-center transition-all bg-slate-50/50 cursor-pointer" onclick="document.getElementById('image_file_input').click()">
+                                <input type="file" id="image_file_input" name="image_file" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml" class="hidden" onchange="previewManualImage(this)">
+                                
+                                <div id="image-placeholder">
+                                    <div class="w-12 h-12 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto mb-2 shadow-inner">
+                                        <i class="ph-bold ph-cloud-arrow-up text-2xl"></i>
+                                    </div>
+                                    <p class="text-xs font-bold text-slate-700">Clique para selecionar uma imagem da sua máquina</p>
+                                    <p class="text-[10px] text-slate-400 mt-0.5">Formatos aceitos: PNG, JPG, WEBP, GIF, SVG (Máx: 10MB)</p>
+                                </div>
+                                
+                                <div id="image-preview-container" class="hidden relative">
+                                    <img id="image-preview" src="#" alt="Preview da Imagem" class="max-h-56 mx-auto rounded-xl border border-slate-200 shadow-sm object-contain bg-white">
+                                    <button type="button" onclick="removeManualImage(event)" class="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-2 shadow-md transition-colors" title="Remover imagem">
+                                        <i class="ph-bold ph-trash text-xs"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Alternativas -->
                         <div class="pt-6 border-t border-slate-100">
                             <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2">
@@ -183,5 +228,34 @@ include 'includes/header.php';
         </div>
     </main>
 </div>
+
+<script>
+function previewManualImage(input) {
+    if (input.files && input.files[0]) {
+        const file = input.files[0];
+        if (file.size > 10 * 1024 * 1024) {
+            alert('A imagem deve ter no máximo 10MB.');
+            input.value = '';
+            return;
+        }
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('image-preview').src = e.target.result;
+            document.getElementById('image-preview-container').classList.remove('hidden');
+            document.getElementById('image-placeholder').classList.add('hidden');
+        };
+        reader.readAsDataURL(file);
+    }
+}
+
+function removeManualImage(e) {
+    e.stopPropagation();
+    const input = document.getElementById('image_file_input');
+    input.value = '';
+    document.getElementById('image-preview').src = '#';
+    document.getElementById('image-preview-container').classList.add('hidden');
+    document.getElementById('image-placeholder').classList.remove('hidden');
+}
+</script>
 
 <?php include 'includes/footer.php'; ?>

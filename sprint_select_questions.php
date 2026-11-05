@@ -298,9 +298,16 @@ include 'includes/header.php';
                                     </div>
                                     
                                     <div class="flex justify-between items-start mb-3 pr-8">
-                                        <span class="text-[10px] font-bold px-2 py-1 rounded-md bg-slate-100 text-slate-600 uppercase tracking-wider truncate max-w-[150px]" title="<?= htmlspecialchars($q['module_name']) ?>">
-                                            <?= htmlspecialchars($q['module_name']) ?>
-                                        </span>
+                                        <div class="flex items-center gap-1.5 flex-wrap">
+                                            <span class="text-[10px] font-bold px-2 py-1 rounded-md bg-slate-100 text-slate-600 uppercase tracking-wider truncate max-w-[150px]" title="<?= htmlspecialchars($q['module_name']) ?>">
+                                                <?= htmlspecialchars($q['module_name']) ?>
+                                            </span>
+                                            <?php if (!empty($q['image_url'])): ?>
+                                                <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200 flex items-center gap-1" title="Questão com Imagem de Apoio">
+                                                    <i class="ph-bold ph-image"></i> Imagem
+                                                </span>
+                                            <?php endif; ?>
+                                        </div>
                                     </div>
                                     
                                     <?php if ($isUsed): ?>
@@ -377,6 +384,12 @@ include 'includes/header.php';
             <div class="mb-5 bg-slate-50 p-4 rounded-xl border border-slate-200">
                 <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Contexto</h4>
                 <p class="text-sm text-slate-700" id="modal-context"></p>
+            </div>
+
+            <!-- Imagem de Apoio (se houver) -->
+            <div id="modal-image-container" class="mb-5 bg-slate-50/80 p-4 rounded-2xl border border-slate-200 text-center hidden">
+                <span class="text-xs text-slate-500 font-bold uppercase tracking-wider block mb-2">Figura / Imagem de Apoio</span>
+                <img id="modal-image-preview" src="#" alt="Imagem de apoio" class="max-h-72 mx-auto rounded-xl border border-slate-200 shadow-sm object-contain bg-white">
             </div>
             
             <div class="mb-6">
@@ -483,7 +496,19 @@ include 'includes/header.php';
             <span class="text-[10px] font-bold px-2 py-1 rounded-md bg-slate-100 text-slate-600 uppercase tracking-wider">${q.module_name}</span>
             <span class="text-[10px] font-bold px-2 py-1 rounded-md bg-senai-cyan/10 text-senai-cyan uppercase tracking-wider">CAP: ${q.capacity}</span>
             <span class="text-[10px] font-bold px-2 py-1 rounded-md ${diffColor} uppercase tracking-wider">${q.difficulty}</span>
+            ${q.image_url ? '<span class="text-[10px] font-bold px-2 py-1 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200 flex items-center gap-1 uppercase tracking-wider"><i class="ph-bold ph-image"></i> Imagem</span>' : ''}
         `;
+
+        // Imagem de apoio
+        const imgBox = document.getElementById('modal-image-container');
+        const imgEl = document.getElementById('modal-image-preview');
+        if (q.image_url) {
+            imgEl.src = q.image_url;
+            imgBox.classList.remove('hidden');
+        } else {
+            imgEl.src = '#';
+            imgBox.classList.add('hidden');
+        }
 
         const optsContainer = document.getElementById('modal-options');
         optsContainer.innerHTML = '';

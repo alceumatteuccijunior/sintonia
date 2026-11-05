@@ -112,7 +112,7 @@ $bottom_capacities = array_slice(array_reverse($capacities_processed), 0, 3);
 
 // 5. Questões
 $stmtQ = $pdo->prepare("
-    SELECT q.id, q.command, q.capacity, m.name as module_name,
+    SELECT q.id, q.command, q.capacity, q.image_url, m.name as module_name,
            COUNT(sa.id) as total_answers,
            SUM(IF(sa.is_correct = 1, 1, 0)) as correct_answers
     FROM sprint_questions sq
@@ -547,6 +547,11 @@ $slideNumber = 1;
                             <span class="text-[9px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-600 uppercase">Q<?= $q['id'] ?></span>
                             <span class="text-[9px] font-bold px-2 py-0.5 rounded bg-senai-cyan/10 text-senai-cyan uppercase">CAP: <?= htmlspecialchars($q['capacity']) ?></span>
                             <span class="text-[9px] font-bold text-slate-500 uppercase max-w-[200px] truncate" title="<?= htmlspecialchars($q['module_name']) ?>"><?= htmlspecialchars($q['module_name']) ?></span>
+                            <?php if (!empty($q['image_url'])): ?>
+                                <span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 flex items-center gap-0.5" title="Possui Imagem de Apoio">
+                                    <i class="ph-bold ph-image text-[10px]"></i> Imagem
+                                </span>
+                            <?php endif; ?>
                         </div>
                         <div class="font-black text-sm px-2 py-1 rounded <?= $badgeColor ?>">
                             <?= $qRate ?>% ACERTO

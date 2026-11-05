@@ -112,7 +112,22 @@ include 'includes/header.php';
                 </div>
                 
                 <div class="text-slate-500 text-sm mb-4 leading-relaxed font-medium"><?= nl2br(htmlspecialchars($q['context'])) ?></div>
-                <div class="text-slate-800 text-lg md:text-xl font-bold mb-8 leading-tight"><?= htmlspecialchars($q['command']) ?></div>
+                <div class="text-slate-800 text-lg md:text-xl font-bold mb-6 leading-tight"><?= htmlspecialchars($q['command']) ?></div>
+                
+                <!-- Imagem de Apoio (se houver) -->
+                <?php if (!empty($q['image_url'])): ?>
+                    <div class="mb-6 p-4 bg-slate-50/80 rounded-2xl border border-slate-200 text-center">
+                        <div class="flex items-center justify-between text-xs text-slate-500 font-bold mb-2 px-1">
+                            <span class="flex items-center gap-1.5 text-indigo-700">
+                                <i class="ph-bold ph-image text-sm"></i> Figura / Imagem de Apoio
+                            </span>
+                            <button type="button" onclick="openReviewLightbox('<?= htmlspecialchars($q['image_url']) ?>')" class="text-senai-blue hover:underline flex items-center gap-1 text-[11px] font-bold">
+                                <i class="ph-bold ph-magnifying-glass-plus"></i> Ampliar
+                            </button>
+                        </div>
+                        <img src="<?= htmlspecialchars($q['image_url']) ?>" alt="Imagem de apoio" onclick="openReviewLightbox('<?= htmlspecialchars($q['image_url']) ?>')" class="max-h-72 w-auto mx-auto rounded-xl border border-slate-200 shadow-sm cursor-zoom-in object-contain bg-white hover:shadow-md transition-shadow">
+                    </div>
+                <?php endif; ?>
                 
                 <div class="space-y-3">
                     <?php foreach($opts as $i => $opt): 
@@ -157,5 +172,35 @@ include 'includes/header.php';
         </div>
     </main>
 </div>
+
+<!-- Modal Lightbox Zoom para Alunos -->
+<div id="reviewLightboxModal" class="fixed inset-0 z-[70] bg-slate-950/85 backdrop-blur-md hidden items-center justify-center p-4 cursor-zoom-out" onclick="closeReviewLightbox()">
+    <div class="relative max-w-5xl max-h-[92vh] flex items-center justify-center" onclick="event.stopPropagation()">
+        <img id="review-lightbox-img" src="#" alt="Visualização ampliada" class="max-h-[90vh] max-w-[90vw] rounded-2xl shadow-2xl border border-white/20 object-contain bg-white">
+        <button type="button" onclick="closeReviewLightbox()" class="absolute -top-4 -right-4 w-10 h-10 rounded-full bg-white text-slate-800 shadow-lg flex items-center justify-center hover:bg-slate-100 transition-colors" title="Fechar ampliação">
+            <i class="ph-bold ph-x text-lg"></i>
+        </button>
+    </div>
+</div>
+
+<script>
+function openReviewLightbox(src) {
+    if (!src) return;
+    document.getElementById('review-lightbox-img').src = src;
+    const modal = document.getElementById('reviewLightboxModal');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+
+function closeReviewLightbox() {
+    const modal = document.getElementById('reviewLightboxModal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+}
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeReviewLightbox();
+});
+</script>
 
 <?php include 'includes/footer.php'; ?>

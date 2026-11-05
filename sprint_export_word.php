@@ -168,6 +168,22 @@ header("Expires: 0");
         <?php if (!empty($q['command'])): ?>
             <div class="command-text"><?= nl2br(htmlspecialchars($q['command'])) ?></div>
         <?php endif; ?>
+
+        <?php if (!empty($q['image_url'])): ?>
+            <?php
+            $imgSrc = $q['image_url'];
+            $localPath = __DIR__ . '/' . $q['image_url'];
+            if (file_exists($localPath) && is_file($localPath)) {
+                $ext = pathinfo($localPath, PATHINFO_EXTENSION);
+                $mime = 'image/' . ($ext === 'jpg' ? 'jpeg' : $ext);
+                $data = file_get_contents($localPath);
+                $imgSrc = 'data:' . $mime . ';base64,' . base64_encode($data);
+            }
+            ?>
+            <div style="text-align: center; margin: 15px 0;">
+                <img src="<?= $imgSrc ?>" style="max-width: 450px; max-height: 320px;" alt="Figura de Apoio">
+            </div>
+        <?php endif; ?>
         
         <ul class="options">
             <?php 

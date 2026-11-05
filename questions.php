@@ -120,26 +120,31 @@ include 'includes/header.php';
 </div>
 
 <!-- Modal de Importação CSV -->
-<div id="importModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
-    <div class="bg-white rounded-3xl shadow-xl w-full max-w-2xl overflow-hidden scale-95 opacity-0 transition-all duration-300 flex flex-col max-h-[90vh]" id="importModalContent">
+<div id="importModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-3xl overflow-hidden scale-95 opacity-0 transition-all duration-300 flex flex-col max-h-[92vh]" id="importModalContent">
         
-        <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 shrink-0">
-            <h3 class="font-bold text-lg text-slate-800 flex items-center gap-2"><i class="ph-bold ph-upload-simple text-indigo-500"></i> Importação em Massa (CSV)</h3>
-            <button onclick="closeModal('importModal')" class="text-slate-400 hover:text-red-500 transition-colors"><i class="ph-bold ph-x text-xl"></i></button>
+        <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/70 shrink-0">
+            <h3 class="font-bold text-lg text-slate-800 flex items-center gap-2" id="import-modal-title">
+                <i class="ph-bold ph-upload-simple text-indigo-600"></i> Importação em Massa (CSV)
+            </h3>
+            <button onclick="closeModal('importModal')" class="text-slate-400 hover:text-red-500 transition-colors rounded-full p-1 hover:bg-slate-100">
+                <i class="ph-bold ph-x text-xl"></i>
+            </button>
         </div>
         
-        <div class="p-6 overflow-y-auto flex-1">
-            <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-5 mb-6 text-sm text-indigo-900">
+        <!-- STEP 1: Upload CSV -->
+        <div id="step-csv-upload" class="p-6 overflow-y-auto flex-1">
+            <div class="bg-indigo-50 border border-indigo-100 rounded-2xl p-5 mb-6 text-sm text-indigo-900">
                 <h4 class="font-bold mb-2 flex items-center gap-2"><i class="ph-fill ph-info"></i> Como Importar?</h4>
                 <p class="mb-3">Para cadastrar dezenas de questões de uma vez, você precisa preencher uma planilha no formato CSV. Siga as regras:</p>
-                <ul class="list-disc pl-5 space-y-1.5 mb-4 text-indigo-800">
+                <ul class="list-disc pl-5 space-y-1.5 mb-4 text-indigo-800 text-xs md:text-sm">
                     <li>Baixe a planilha modelo abaixo e não altere a ordem das colunas (Curso, Módulo, Capacidade, Enunciado, etc).</li>
                     <li>Se o <b>Curso</b> ou <b>Módulo</b> digitado no CSV não existir no sistema, eles serão <b>criados automaticamente</b>.</li>
                     <li>A coluna <b>Tag</b> serve para identificar as questões de uma prova específica (ex: "SAEP2026TI2"), facilitando na hora de criar uma Sprint!</li>
                     <li>Salve o arquivo no formato <code>.csv</code> separado por vírgula e faça o upload abaixo.</li>
                 </ul>
                 
-                <a href="template_questoes.csv" download class="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-bold transition-all shadow-sm">
+                <a href="template_questoes.csv" download class="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-xs md:text-sm font-bold transition-all shadow-sm">
                     <i class="ph-bold ph-download-simple"></i> Baixar Template CSV
                 </a>
             </div>
@@ -148,7 +153,7 @@ include 'includes/header.php';
                 <div class="border-2 border-dashed border-slate-300 rounded-2xl p-8 text-center hover:bg-slate-50 hover:border-indigo-400 transition-all cursor-pointer relative" id="dropzone">
                     <input type="file" id="csv_file" name="csv_file" accept=".csv" required class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onchange="updateFileName(this)">
                     
-                    <div id="upload-icon" class="w-16 h-16 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-500 mx-auto mb-4">
+                    <div id="upload-icon" class="w-16 h-16 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 mx-auto mb-4">
                         <i class="ph-fill ph-file-csv text-3xl"></i>
                     </div>
                     
@@ -167,21 +172,76 @@ include 'includes/header.php';
                 </div>
             </form>
         </div>
+
+        <!-- STEP 2: Vincular Imagens às Questões (Pós-Importação) -->
+        <div id="step-link-images" class="p-6 overflow-y-auto flex-1 hidden flex-col">
+            <!-- Banner de Pergunta -->
+            <div class="bg-gradient-to-r from-emerald-500/10 via-indigo-500/10 to-blue-500/10 border border-indigo-200/60 rounded-2xl p-5 mb-5">
+                <div class="flex items-start gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-sm mt-0.5">
+                        <i class="ph-bold ph-image text-xl"></i>
+                    </div>
+                    <div class="flex-1">
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700" id="imported-count-badge">✓ Questões importadas</span>
+                            <span class="text-xs text-slate-400">Etapa Opcional</span>
+                        </div>
+                        <h4 class="text-base font-bold text-slate-800 mt-1">Deseja vincular imagem a alguma dessas questões agora?</h4>
+                        <p class="text-xs md:text-sm text-slate-600 mt-1 leading-relaxed">
+                            Muitas questões utilizam <b>circuitos, esquemas, tabelas ou diagramas</b> de apoio. Você pode carregar as imagens diretamente do seu computador para as questões desejadas. As que não necessitarem de imagem continuarão normalmente.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Busca rápida dentro das importadas -->
+            <div class="flex items-center justify-between gap-3 mb-4">
+                <div class="relative flex-1">
+                    <i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                    <input type="text" id="filter-imported-input" placeholder="Filtrar por trecho do enunciado ou módulo..." oninput="filterImportedList(this.value)" class="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs md:text-sm text-slate-700 outline-none focus:ring-1 focus:ring-indigo-500 transition-all">
+                </div>
+                <span class="text-xs font-bold text-slate-400 shrink-0" id="imported-list-counter">0 questões</span>
+            </div>
+
+            <!-- Lista de Questões Importadas com Botão de Upload -->
+            <div class="space-y-3 flex-1 overflow-y-auto max-h-[380px] pr-1" id="imported-questions-list">
+                <!-- Injetado dinamicamente via JS -->
+            </div>
+
+            <!-- Rodapé com Ações -->
+            <div class="mt-6 pt-4 border-t border-slate-100 flex justify-between items-center shrink-0">
+                <button type="button" onclick="window.location.reload()" class="px-5 py-2.5 rounded-xl font-bold text-sm text-slate-500 hover:bg-slate-100 transition-colors">
+                    Concluir Mais Tarde
+                </button>
+                <button type="button" onclick="window.location.reload()" class="px-6 py-2.5 rounded-xl font-bold text-sm bg-senai-blue text-white hover:bg-[#153673] transition-all shadow-md flex items-center gap-2">
+                    <i class="ph-bold ph-check"></i> Finalizar e Ver Cursos
+                </button>
+            </div>
+        </div>
+
     </div>
 </div>
 
 <script>
+    let importedQuestionsGlobal = [];
+
     function openModal(id) {
         const modal = document.getElementById(id);
         const content = document.getElementById(id + 'Content');
         modal.classList.remove('hidden');
         modal.classList.add('flex');
         
-        // Reset form
+        // Reset form & steps
         document.getElementById('importForm').reset();
         document.getElementById('file-title').textContent = 'Selecione o arquivo .csv';
         document.getElementById('file-desc').textContent = 'ou arraste e solte ele aqui';
         document.getElementById('import-alert').classList.add('hidden');
+        
+        // Exibe Step 1 e oculta Step 2
+        document.getElementById('step-csv-upload').classList.remove('hidden');
+        document.getElementById('step-link-images').classList.add('hidden');
+        document.getElementById('step-link-images').classList.remove('flex');
+        document.getElementById('import-modal-title').innerHTML = '<i class="ph-bold ph-upload-simple text-indigo-600"></i> Importação em Massa (CSV)';
         
         setTimeout(() => {
             content.classList.remove('scale-95', 'opacity-0');
@@ -195,6 +255,10 @@ include 'includes/header.php';
         setTimeout(() => {
             modal.classList.add('hidden');
             modal.classList.remove('flex');
+            // Se concluiu importação, recarrega para atualizar dados
+            if (importedQuestionsGlobal.length > 0) {
+                window.location.reload();
+            }
         }, 300);
     }
 
@@ -227,14 +291,20 @@ include 'includes/header.php';
             
             const result = await response.json();
             
-            alertBox.classList.remove('hidden');
             if(result.success) {
-                alertBox.classList.add('bg-green-50', 'text-green-700', 'border', 'border-green-200');
-                alertBox.innerHTML = '<div class="flex items-start gap-2"><i class="ph-fill ph-check-circle text-lg mt-0.5"></i> <div>' + result.message + '</div></div>';
+                importedQuestionsGlobal = result.imported_questions || [];
                 
-                // Recarrega a página após 2 segundos para atualizar a lista
-                setTimeout(() => window.location.reload(), 2000);
+                if (importedQuestionsGlobal.length > 0) {
+                    // Transiciona para a tela de vincular imagens
+                    showLinkImagesStep(result.count || importedQuestionsGlobal.length);
+                } else {
+                    alertBox.classList.remove('hidden');
+                    alertBox.classList.add('bg-green-50', 'text-green-700', 'border', 'border-green-200');
+                    alertBox.innerHTML = '<div class="flex items-start gap-2"><i class="ph-fill ph-check-circle text-lg mt-0.5"></i> <div>' + result.message + '</div></div>';
+                    setTimeout(() => window.location.reload(), 2000);
+                }
             } else {
+                alertBox.classList.remove('hidden');
                 alertBox.classList.add('bg-red-50', 'text-red-700', 'border', 'border-red-200');
                 alertBox.innerHTML = '<div class="flex items-start gap-2"><i class="ph-fill ph-warning-circle text-lg mt-0.5"></i> <div>' + result.message + '</div></div>';
                 btn.disabled = false;
@@ -246,6 +316,146 @@ include 'includes/header.php';
             alertBox.innerHTML = '<div class="flex items-start gap-2"><i class="ph-fill ph-warning-circle text-lg mt-0.5"></i> <div>Erro de comunicação com o servidor.</div></div>';
             btn.disabled = false;
             btn.innerHTML = '<i class="ph-bold ph-check"></i> Processar Importação';
+        }
+    }
+
+    function showLinkImagesStep(count) {
+        document.getElementById('step-csv-upload').classList.add('hidden');
+        const step2 = document.getElementById('step-link-images');
+        step2.classList.remove('hidden');
+        step2.classList.add('flex');
+        
+        document.getElementById('import-modal-title').innerHTML = '<i class="ph-bold ph-images text-indigo-600"></i> Vincular Imagens às Questões Importadas';
+        document.getElementById('imported-count-badge').textContent = `✓ ${count} questão(ões) importadas`;
+        document.getElementById('imported-list-counter').textContent = `${importedQuestionsGlobal.length} questão(ões)`;
+        
+        renderImportedQuestionsList(importedQuestionsGlobal);
+    }
+
+    function renderImportedQuestionsList(list) {
+        const container = document.getElementById('imported-questions-list');
+        container.innerHTML = '';
+        
+        if (list.length === 0) {
+            container.innerHTML = '<div class="text-center py-8 text-slate-400 text-sm">Nenhuma questão encontrada com o filtro.</div>';
+            return;
+        }
+        
+        list.forEach((q, index) => {
+            const card = document.createElement('div');
+            card.id = `q-imported-card-${q.id}`;
+            card.className = 'p-3.5 bg-slate-50/70 hover:bg-slate-50 border border-slate-200 rounded-2xl transition-all flex flex-col md:flex-row md:items-center justify-between gap-3';
+            
+            card.innerHTML = `
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2 mb-1.5 flex-wrap">
+                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-200 text-slate-700 uppercase">#${index + 1}</span>
+                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-700 truncate max-w-[200px]" title="${q.module}">${q.module}</span>
+                        ${q.capacity ? `<span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-senai-cyan/15 text-senai-blue">CAP: ${q.capacity}</span>` : ''}
+                    </div>
+                    <p class="text-xs font-semibold text-slate-800 line-clamp-2" title="${q.command}">${q.command}</p>
+                </div>
+                
+                <div class="shrink-0 flex items-center gap-2" id="q-upload-zone-${q.id}">
+                    <input type="file" id="import-file-input-${q.id}" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml" class="hidden" onchange="uploadImageForImportedQ(${q.id}, this)">
+                    <button type="button" onclick="document.getElementById('import-file-input-${q.id}').click()" class="px-3.5 py-2 bg-white hover:bg-indigo-50 text-indigo-600 hover:text-indigo-700 border border-indigo-200 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm active:scale-95">
+                        <i class="ph-bold ph-cloud-arrow-up text-sm"></i> Vincular Imagem
+                    </button>
+                </div>
+            `;
+            container.appendChild(card);
+        });
+    }
+
+    function filterImportedList(term) {
+        term = term.toLowerCase().trim();
+        if (!term) {
+            renderImportedQuestionsList(importedQuestionsGlobal);
+            return;
+        }
+        const filtered = importedQuestionsGlobal.filter(q => 
+            (q.command && q.command.toLowerCase().includes(term)) ||
+            (q.module && q.module.toLowerCase().includes(term)) ||
+            (q.capacity && q.capacity.toLowerCase().includes(term))
+        );
+        renderImportedQuestionsList(filtered);
+    }
+
+    async function uploadImageForImportedQ(questionId, input) {
+        if (!input.files || !input.files[0]) return;
+        const file = input.files[0];
+        
+        if (file.size > 10 * 1024 * 1024) {
+            alert('A imagem deve ter no máximo 10MB.');
+            input.value = '';
+            return;
+        }
+        
+        const zone = document.getElementById(`q-upload-zone-${questionId}`);
+        const originalContent = zone.innerHTML;
+        zone.innerHTML = `<span class="text-xs font-bold text-indigo-600 flex items-center gap-1"><i class="ph-bold ph-spinner animate-spin"></i> Enviando...</span>`;
+        
+        const formData = new FormData();
+        formData.append('action', 'upload');
+        formData.append('question_id', questionId);
+        formData.append('image', file);
+        
+        try {
+            const res = await fetch('question_image_ajax.php', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await res.json();
+            
+            if (data.success) {
+                zone.innerHTML = `
+                    <div class="flex items-center gap-2">
+                        <img src="${data.image_url}" alt="Preview" class="w-10 h-10 object-contain rounded-lg border border-slate-200 bg-white">
+                        <span class="text-xs font-bold text-emerald-600 flex items-center gap-1"><i class="ph-bold ph-check-circle text-emerald-500"></i> Vinculada</span>
+                        <button type="button" onclick="removeImageForImportedQ(${questionId})" class="p-1.5 text-slate-400 hover:text-red-500 rounded-lg hover:bg-red-50 transition-colors" title="Remover imagem">
+                            <i class="ph-bold ph-trash"></i>
+                        </button>
+                    </div>
+                `;
+            } else {
+                alert(data.error || 'Erro ao enviar imagem.');
+                zone.innerHTML = originalContent;
+            }
+        } catch (err) {
+            alert('Erro de comunicação ao enviar imagem.');
+            zone.innerHTML = originalContent;
+        }
+    }
+
+    async function removeImageForImportedQ(questionId) {
+        if (!confirm('Deseja remover a imagem vinculada a esta questão?')) return;
+        
+        const zone = document.getElementById(`q-upload-zone-${questionId}`);
+        zone.innerHTML = `<span class="text-xs font-bold text-slate-400 flex items-center gap-1"><i class="ph-bold ph-spinner animate-spin"></i> Removendo...</span>`;
+        
+        try {
+            const formData = new FormData();
+            formData.append('action', 'remove');
+            formData.append('question_id', questionId);
+            
+            const res = await fetch('question_image_ajax.php', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await res.json();
+            
+            if (data.success) {
+                zone.innerHTML = `
+                    <input type="file" id="import-file-input-${questionId}" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml" class="hidden" onchange="uploadImageForImportedQ(${questionId}, this)">
+                    <button type="button" onclick="document.getElementById('import-file-input-${questionId}').click()" class="px-3.5 py-2 bg-white hover:bg-indigo-50 text-indigo-600 hover:text-indigo-700 border border-indigo-200 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm active:scale-95">
+                        <i class="ph-bold ph-cloud-arrow-up text-sm"></i> Vincular Imagem
+                    </button>
+                `;
+            } else {
+                alert(data.error || 'Erro ao remover imagem.');
+            }
+        } catch (err) {
+            alert('Erro de comunicação.');
         }
     }
 </script>

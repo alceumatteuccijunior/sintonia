@@ -173,14 +173,24 @@ include 'includes/header.php';
                                  onclick="showQuestionDetails(<?= $q['id'] ?>)">
                                 
                                 <div class="flex justify-between items-start mb-3">
-                                    <span class="text-[10px] font-bold px-2 py-1 rounded-md bg-slate-100 text-slate-600 uppercase tracking-wider truncate max-w-[150px]" title="<?= htmlspecialchars($q['module_name']) ?>">
-                                        <?= htmlspecialchars($q['module_name']) ?>
-                                    </span>
-                                    <?php if (in_array($_SESSION['user_role'], ['admin', 'teacher'])): ?>
-                                    <a href="?course_id=<?= $courseId ?>&delete_q=<?= $q['id'] ?>" onclick="event.stopPropagation(); return confirm('Tem certeza que deseja excluir/ocultar esta questão? Ela não aparecerá miaS para ser selecionada em novas provas.');" class="w-7 h-7 rounded-full bg-red-50 hover:bg-red-100 text-red-400 hover:text-red-600 flex items-center justify-center transition-colors" title="Excluir Questão">
-                                        <i class="ph-bold ph-trash"></i>
-                                    </a>
-                                    <?php endif; ?>
+                                    <div class="flex items-center gap-1.5 flex-wrap">
+                                        <span class="text-[10px] font-bold px-2 py-1 rounded-md bg-slate-100 text-slate-600 uppercase tracking-wider truncate max-w-[150px]" title="<?= htmlspecialchars($q['module_name']) ?>">
+                                            <?= htmlspecialchars($q['module_name']) ?>
+                                        </span>
+                                        <span id="badge-img-<?= $q['id'] ?>" class="<?= !empty($q['image_url']) ? '' : 'hidden' ?> text-[10px] font-bold px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200 flex items-center gap-1" title="Questão com Imagem de Apoio">
+                                            <i class="ph-bold ph-image"></i> Imagem
+                                        </span>
+                                    </div>
+                                    <div class="flex items-center gap-1">
+                                        <?php if (in_array($_SESSION['user_role'], ['admin', 'teacher'])): ?>
+                                        <button type="button" onclick="event.stopPropagation(); openManageImageModal(<?= $q['id'] ?>)" class="w-7 h-7 rounded-full bg-indigo-50 hover:bg-indigo-100 text-indigo-600 flex items-center justify-center transition-colors" title="Adicionar / Alterar Imagem">
+                                            <i class="ph-bold ph-image"></i>
+                                        </button>
+                                        <a href="?course_id=<?= $courseId ?>&delete_q=<?= $q['id'] ?>" onclick="event.stopPropagation(); return confirm('Tem certeza que deseja excluir/ocultar esta questão? Ela não aparecerá mais para ser selecionada em novas provas.');" class="w-7 h-7 rounded-full bg-red-50 hover:bg-red-100 text-red-400 hover:text-red-600 flex items-center justify-center transition-colors" title="Excluir Questão">
+                                            <i class="ph-bold ph-trash"></i>
+                                        </a>
+                                        <?php endif; ?>
+                                    </div>
                                 </div>
                                 
                                 <p class="text-sm font-semibold text-slate-800 mb-4 line-clamp-4 flex-grow" title="<?= htmlspecialchars($q['command']) ?>">
@@ -223,9 +233,16 @@ include 'includes/header.php';
             <h3 class="font-bold text-lg text-slate-800 flex items-center gap-2">
                 <i class="ph-bold ph-magnifying-glass-plus text-senai-blue"></i> Detalhes da Questão
             </h3>
-            <button onclick="closeDetailsModal()" class="text-slate-400 hover:text-red-500 transition-colors bg-white rounded-full p-1 shadow-sm border border-slate-200">
-                <i class="ph-bold ph-x text-lg"></i>
-            </button>
+            <div class="flex items-center gap-2">
+                <?php if (in_array($_SESSION['user_role'], ['admin', 'teacher'])): ?>
+                <button type="button" onclick="openManageImageModal(currentDetailsQuestionId)" class="px-3 py-1.5 rounded-xl bg-indigo-50 text-indigo-700 hover:bg-indigo-100 text-xs font-bold transition-all flex items-center gap-1.5 border border-indigo-200 shadow-sm active:scale-95">
+                    <i class="ph-bold ph-image"></i> <span id="modal-manage-img-btn-text">Gerenciar Imagem</span>
+                </button>
+                <?php endif; ?>
+                <button onclick="closeDetailsModal()" class="text-slate-400 hover:text-red-500 transition-colors bg-white rounded-full p-1 shadow-sm border border-slate-200">
+                    <i class="ph-bold ph-x text-lg"></i>
+                </button>
+            </div>
         </div>
         
         <div class="p-6 overflow-y-auto flex-1 bg-white">
@@ -236,6 +253,19 @@ include 'includes/header.php';
             <div class="mb-5 bg-slate-50 p-4 rounded-xl border border-slate-200">
                 <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Contexto</h4>
                 <p class="text-sm text-slate-700" id="modal-context"></p>
+            </div>
+
+            <!-- Imagem de Apoio (se houver) -->
+            <div id="modal-image-container" class="mb-5 bg-slate-50/80 p-4 rounded-2xl border border-slate-200 text-center hidden">
+                <div class="flex items-center justify-between text-xs text-slate-500 font-bold mb-2 px-1">
+                    <span class="flex items-center gap-1.5 text-indigo-700">
+                        <i class="ph-bold ph-image text-sm"></i> Figura / Imagem de Apoio
+                    </span>
+                    <button type="button" onclick="openLightbox(document.getElementById('modal-image-preview').src)" class="text-senai-blue hover:underline flex items-center gap-1 text-[11px] font-bold">
+                        <i class="ph-bold ph-magnifying-glass-plus"></i> Ampliar
+                    </button>
+                </div>
+                <img id="modal-image-preview" src="#" alt="Imagem de apoio" onclick="openLightbox(this.src)" class="max-h-72 mx-auto rounded-xl border border-slate-200 shadow-sm object-contain bg-white cursor-zoom-in hover:shadow-md transition-all">
             </div>
             
             <div class="mb-6">
@@ -253,9 +283,69 @@ include 'includes/header.php';
     </div>
 </div>
 
+<!-- Modal Gerenciar Imagem de Apoio -->
+<div id="manageImageModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden scale-95 opacity-0 transition-all duration-300 flex flex-col" id="manageImageModalContent">
+        
+        <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/80 shrink-0">
+            <h3 class="font-bold text-base text-slate-800 flex items-center gap-2">
+                <i class="ph-bold ph-image text-indigo-600"></i> Imagem de Apoio da Questão
+            </h3>
+            <button onclick="closeManageImageModal()" class="text-slate-400 hover:text-red-500 transition-colors bg-white rounded-full p-1 shadow-sm border border-slate-200">
+                <i class="ph-bold ph-x text-lg"></i>
+            </button>
+        </div>
+        
+        <div class="p-6">
+            <p class="text-xs text-slate-500 mb-4">
+                Vincule ou atualize a imagem de apoio (circuitos, gráficos, esquemas técnicos) para esta questão.
+            </p>
+
+            <!-- Preview atual -->
+            <div id="manage-img-preview-box" class="border-2 border-dashed border-slate-200 rounded-2xl p-4 text-center mb-5 bg-slate-50/50 min-h-[160px] flex flex-col items-center justify-center">
+                <div id="manage-no-img-text" class="text-slate-400 text-xs">
+                    <i class="ph-bold ph-image-square text-3xl mb-1 text-slate-300 block"></i>
+                    Nenhuma imagem vinculada a esta questão.
+                </div>
+                <div id="manage-has-img-box" class="hidden relative w-full">
+                    <img id="manage-img-display" src="#" alt="Preview" class="max-h-56 mx-auto rounded-xl border border-slate-200 shadow-sm object-contain bg-white">
+                </div>
+            </div>
+
+            <!-- Status do Upload -->
+            <div id="manage-img-status" class="hidden mb-4 p-3 rounded-xl text-xs font-bold text-center"></div>
+
+            <input type="file" id="manage-img-file-input" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml" class="hidden" onchange="uploadManageImageFile(this)">
+
+            <!-- Ações -->
+            <div class="flex items-center justify-between gap-3 pt-4 border-t border-slate-100">
+                <button type="button" id="btn-remove-manage-img" onclick="removeManageImageFile()" class="hidden px-4 py-2 rounded-xl text-xs font-bold text-red-600 hover:bg-red-50 transition-colors flex items-center gap-1.5">
+                    <i class="ph-bold ph-trash"></i> Remover Imagem
+                </button>
+                <div class="flex-1"></div>
+                <button type="button" onclick="document.getElementById('manage-img-file-input').click()" id="btn-select-manage-img" class="px-5 py-2.5 rounded-xl font-bold text-xs bg-indigo-600 text-white hover:bg-indigo-700 transition-all shadow-sm flex items-center gap-2">
+                    <i class="ph-bold ph-cloud-arrow-up"></i> Escolher Imagem
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Lightbox Modal para Zoom -->
+<div id="lightboxModal" class="fixed inset-0 z-[70] bg-slate-950/85 backdrop-blur-md hidden items-center justify-center p-4 cursor-zoom-out" onclick="closeLightbox()">
+    <div class="relative max-w-5xl max-h-[92vh] flex items-center justify-center" onclick="event.stopPropagation()">
+        <img id="lightbox-image" src="#" alt="Zoom" class="max-h-[90vh] max-w-[90vw] rounded-2xl shadow-2xl border border-white/20 object-contain bg-white">
+        <button type="button" onclick="closeLightbox()" class="absolute -top-4 -right-4 w-10 h-10 rounded-full bg-white text-slate-800 shadow-lg flex items-center justify-center hover:bg-slate-100 transition-colors" title="Fechar visualização">
+            <i class="ph-bold ph-x text-lg"></i>
+        </button>
+    </div>
+</div>
+
 <script>
     // Dicionário de questões em JSON
     const questionsData = <?= json_encode($questoes_json, JSON_INVALID_UTF8_SUBSTITUTE) ?>;
+    let currentDetailsQuestionId = null;
+    let currentManageQuestionId = null;
 
     // Elementos de Filtro
     const fModule = document.getElementById('filter-module');
@@ -305,6 +395,7 @@ include 'includes/header.php';
     function showQuestionDetails(id) {
         const q = questionsData[id];
         if(!q) return;
+        currentDetailsQuestionId = id;
 
         // Limpa e popula dados
         document.getElementById('modal-context').textContent = q.context || 'Nenhum contexto fornecido.';
@@ -319,7 +410,23 @@ include 'includes/header.php';
             <span class="text-[10px] font-bold px-2 py-1 rounded-md bg-slate-100 text-slate-600 uppercase tracking-wider">${q.module_name}</span>
             <span class="text-[10px] font-bold px-2 py-1 rounded-md bg-senai-cyan/10 text-senai-cyan uppercase tracking-wider">CAP: ${q.capacity}</span>
             <span class="text-[10px] font-bold px-2 py-1 rounded-md ${diffColor} uppercase tracking-wider">${q.difficulty}</span>
+            ${q.image_url ? '<span class="text-[10px] font-bold px-2 py-1 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200 flex items-center gap-1 uppercase tracking-wider"><i class="ph-bold ph-image"></i> Imagem</span>' : ''}
         `;
+
+        // Imagem de apoio
+        const imgBox = document.getElementById('modal-image-container');
+        const imgEl = document.getElementById('modal-image-preview');
+        const btnImgLabel = document.getElementById('modal-manage-img-btn-text');
+        
+        if (q.image_url) {
+            imgEl.src = q.image_url;
+            imgBox.classList.remove('hidden');
+            if (btnImgLabel) btnImgLabel.textContent = 'Editar Imagem';
+        } else {
+            imgEl.src = '#';
+            imgBox.classList.add('hidden');
+            if (btnImgLabel) btnImgLabel.textContent = 'Adicionar Imagem';
+        }
 
         const optsContainer = document.getElementById('modal-options');
         optsContainer.innerHTML = '';
@@ -369,6 +476,198 @@ include 'includes/header.php';
             modal.classList.remove('flex');
         }, 300);
     }
+
+    // Modal Gerenciar Imagem
+    function openManageImageModal(id) {
+        currentManageQuestionId = id;
+        const q = questionsData[id];
+        if (!q) return;
+
+        const modal = document.getElementById('manageImageModal');
+        const content = document.getElementById('manageImageModalContent');
+        const noImgText = document.getElementById('manage-no-img-text');
+        const hasImgBox = document.getElementById('manage-has-img-box');
+        const imgDisplay = document.getElementById('manage-img-display');
+        const btnRemove = document.getElementById('btn-remove-manage-img');
+        const statusBox = document.getElementById('manage-img-status');
+        
+        statusBox.classList.add('hidden');
+        document.getElementById('manage-img-file-input').value = '';
+
+        if (q.image_url) {
+            imgDisplay.src = q.image_url;
+            hasImgBox.classList.remove('hidden');
+            noImgText.classList.add('hidden');
+            btnRemove.classList.remove('hidden');
+        } else {
+            imgDisplay.src = '#';
+            hasImgBox.classList.add('hidden');
+            noImgText.classList.remove('hidden');
+            btnRemove.classList.add('hidden');
+        }
+
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        setTimeout(() => {
+            content.classList.remove('scale-95', 'opacity-0');
+        }, 10);
+    }
+
+    function closeManageImageModal() {
+        const modal = document.getElementById('manageImageModal');
+        const content = document.getElementById('manageImageModalContent');
+        content.classList.add('scale-95', 'opacity-0');
+        setTimeout(() => {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }, 300);
+    }
+
+    async function uploadManageImageFile(input) {
+        if (!input.files || !input.files[0] || !currentManageQuestionId) return;
+        const file = input.files[0];
+        
+        if (file.size > 10 * 1024 * 1024) {
+            alert('A imagem deve ter no máximo 10MB.');
+            input.value = '';
+            return;
+        }
+
+        const statusBox = document.getElementById('manage-img-status');
+        const btnSelect = document.getElementById('btn-select-manage-img');
+        
+        statusBox.classList.remove('hidden', 'bg-red-50', 'text-red-700', 'bg-green-50', 'text-green-700');
+        statusBox.classList.add('bg-indigo-50', 'text-indigo-700');
+        statusBox.innerHTML = '<i class="ph-bold ph-spinner animate-spin"></i> Enviando imagem...';
+        btnSelect.disabled = true;
+
+        const formData = new FormData();
+        formData.append('action', 'upload');
+        formData.append('question_id', currentManageQuestionId);
+        formData.append('image', file);
+
+        try {
+            const res = await fetch('question_image_ajax.php', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                // Atualiza dados locais
+                questionsData[currentManageQuestionId].image_url = data.image_url;
+                
+                // Atualiza UI do modal de gerenciamento
+                document.getElementById('manage-img-display').src = data.image_url;
+                document.getElementById('manage-has-img-box').classList.remove('hidden');
+                document.getElementById('manage-no-img-text').classList.add('hidden');
+                document.getElementById('btn-remove-manage-img').classList.remove('hidden');
+                
+                // Atualiza badge no card da questão
+                const cardBadge = document.getElementById(`badge-img-${currentManageQuestionId}`);
+                if (cardBadge) cardBadge.classList.remove('hidden');
+
+                // Se o modal de detalhes estiver aberto com essa questão, atualiza também
+                if (currentDetailsQuestionId === currentManageQuestionId) {
+                    document.getElementById('modal-image-preview').src = data.image_url;
+                    document.getElementById('modal-image-container').classList.remove('hidden');
+                    const btnImgLabel = document.getElementById('modal-manage-img-btn-text');
+                    if (btnImgLabel) btnImgLabel.textContent = 'Editar Imagem';
+                }
+
+                statusBox.classList.remove('bg-indigo-50', 'text-indigo-700');
+                statusBox.classList.add('bg-green-50', 'text-green-700');
+                statusBox.innerHTML = '<i class="ph-bold ph-check-circle"></i> Imagem vinculada com sucesso!';
+            } else {
+                statusBox.classList.remove('bg-indigo-50', 'text-indigo-700');
+                statusBox.classList.add('bg-red-50', 'text-red-700');
+                statusBox.textContent = data.error || 'Erro ao enviar imagem.';
+            }
+        } catch (e) {
+            statusBox.classList.remove('bg-indigo-50', 'text-indigo-700');
+            statusBox.classList.add('bg-red-50', 'text-red-700');
+            statusBox.textContent = 'Erro de comunicação ao enviar imagem.';
+        } finally {
+            btnSelect.disabled = false;
+        }
+    }
+
+    async function removeManageImageFile() {
+        if (!currentManageQuestionId || !confirm('Deseja realmente remover a imagem vinculada a esta questão?')) return;
+
+        const statusBox = document.getElementById('manage-img-status');
+        statusBox.classList.remove('hidden', 'bg-red-50', 'text-red-700', 'bg-green-50', 'text-green-700');
+        statusBox.classList.add('bg-indigo-50', 'text-indigo-700');
+        statusBox.innerHTML = '<i class="ph-bold ph-spinner animate-spin"></i> Removendo imagem...';
+
+        try {
+            const formData = new FormData();
+            formData.append('action', 'remove');
+            formData.append('question_id', currentManageQuestionId);
+
+            const res = await fetch('question_image_ajax.php', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                // Atualiza dados locais
+                questionsData[currentManageQuestionId].image_url = null;
+                
+                // Atualiza UI do modal de gerenciamento
+                document.getElementById('manage-img-display').src = '#';
+                document.getElementById('manage-has-img-box').classList.add('hidden');
+                document.getElementById('manage-no-img-text').classList.remove('hidden');
+                document.getElementById('btn-remove-manage-img').classList.add('hidden');
+
+                // Atualiza badge no card da questão
+                const cardBadge = document.getElementById(`badge-img-${currentManageQuestionId}`);
+                if (cardBadge) cardBadge.classList.add('hidden');
+
+                // Se o modal de detalhes estiver aberto com essa questão, oculta imagem
+                if (currentDetailsQuestionId === currentManageQuestionId) {
+                    document.getElementById('modal-image-preview').src = '#';
+                    document.getElementById('modal-image-container').classList.add('hidden');
+                    const btnImgLabel = document.getElementById('modal-manage-img-btn-text');
+                    if (btnImgLabel) btnImgLabel.textContent = 'Adicionar Imagem';
+                }
+
+                statusBox.classList.remove('bg-indigo-50', 'text-indigo-700');
+                statusBox.classList.add('bg-green-50', 'text-green-700');
+                statusBox.innerHTML = '<i class="ph-bold ph-check-circle"></i> Imagem removida com sucesso!';
+            } else {
+                statusBox.classList.remove('bg-indigo-50', 'text-indigo-700');
+                statusBox.classList.add('bg-red-50', 'text-red-700');
+                statusBox.textContent = data.error || 'Erro ao remover imagem.';
+            }
+        } catch (e) {
+            statusBox.classList.remove('bg-indigo-50', 'text-indigo-700');
+            statusBox.classList.add('bg-red-50', 'text-red-700');
+            statusBox.textContent = 'Erro de comunicação ao remover imagem.';
+        }
+    }
+
+    // Lightbox
+    function openLightbox(src) {
+        if (!src || src === '#' || src.endsWith('#')) return;
+        document.getElementById('lightbox-image').src = src;
+        const lb = document.getElementById('lightboxModal');
+        lb.classList.remove('hidden');
+        lb.classList.add('flex');
+    }
+
+    function closeLightbox() {
+        const lb = document.getElementById('lightboxModal');
+        lb.classList.add('hidden');
+        lb.classList.remove('flex');
+    }
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            closeLightbox();
+        }
+    });
 </script>
 
 <?php include 'includes/footer.php'; ?>

@@ -96,6 +96,11 @@ include 'includes/header.php';
                 
                 <div id="q-context" class="text-slate-400 text-sm mb-4 leading-relaxed font-medium"></div>
                 <div id="q-command" class="text-white text-2xl font-bold mb-8 leading-tight"></div>
+
+                <!-- Imagem de Apoio (se houver) -->
+                <div id="q-image-container" class="mb-8 p-4 bg-slate-900/60 rounded-2xl border border-slate-700 text-center hidden">
+                    <img id="q-image" src="#" alt="Imagem de apoio" class="max-h-80 mx-auto rounded-xl border border-slate-700 shadow-md object-contain bg-white">
+                </div>
                 
                 <div id="q-options" class="space-y-4 flex-1">
                     <!-- Gerado via JS -->
@@ -133,6 +138,16 @@ include 'includes/header.php';
         
         document.getElementById('q-context').innerText = q.context || '';
         document.getElementById('q-command').innerText = q.command || '';
+
+        const imgContainer = document.getElementById('q-image-container');
+        const imgEl = document.getElementById('q-image');
+        if (q.image_url) {
+            imgEl.src = q.image_url;
+            imgContainer.classList.remove('hidden');
+        } else {
+            imgEl.src = '#';
+            imgContainer.classList.add('hidden');
+        }
         
         const optsContainer = document.getElementById('q-options');
         optsContainer.innerHTML = '';

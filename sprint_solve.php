@@ -319,6 +319,31 @@ include 'includes/header.php';
                         <?= nl2br(htmlspecialchars($question['command'])) ?>
                     </div>
 
+                    <!-- Imagem de Apoio (se houver) -->
+                    <?php if (!empty($question['image_url'])): ?>
+                        <div class="mb-8 p-4 md:p-6 bg-slate-50/80 rounded-2xl border border-slate-200 text-center">
+                            <div class="flex items-center justify-between text-xs text-slate-500 font-bold mb-3 px-2">
+                                <span class="flex items-center gap-1.5 text-indigo-700">
+                                    <i class="ph-bold ph-image text-sm"></i> Figura / Imagem de Apoio
+                                </span>
+                                <button type="button" onclick="openStudentLightbox('<?= htmlspecialchars($question['image_url']) ?>')" class="text-senai-blue hover:underline flex items-center gap-1 text-[11px] font-bold">
+                                    <i class="ph-bold ph-magnifying-glass-plus"></i> Ampliar Imagem
+                                </button>
+                            </div>
+                            <div class="inline-block relative group">
+                                <img src="<?= htmlspecialchars($question['image_url']) ?>" 
+                                     alt="Imagem de apoio da questão" 
+                                     onclick="openStudentLightbox('<?= htmlspecialchars($question['image_url']) ?>')" 
+                                     class="max-h-[380px] md:max-h-[480px] w-auto mx-auto rounded-xl border border-slate-200 shadow-sm cursor-zoom-in group-hover:shadow-md transition-all object-contain bg-white">
+                                <div class="absolute inset-0 bg-slate-900/10 opacity-0 group-hover:opacity-100 rounded-xl transition-opacity flex items-center justify-center pointer-events-none">
+                                    <span class="bg-white/95 backdrop-blur-sm text-slate-800 text-xs font-bold px-3 py-1.5 rounded-full shadow-sm flex items-center gap-1.5">
+                                        <i class="ph-bold ph-magnifying-glass-plus"></i> Clique para ampliar
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    <?php endif; ?>
+
                     <!-- Alternativas -->
                     <div class="space-y-4">
                         <?php foreach ($options as $index => $opt): 
@@ -403,6 +428,16 @@ include 'includes/header.php';
             Aviso <span id="warning-count">0</span> de 3
         </p>
         <button type="button" onclick="document.getElementById('modal-anticheat').classList.add('hidden')" class="w-full py-3 rounded-xl font-bold text-white bg-senai-blue shadow-md hover:bg-[#153673] transition-colors">Entendi, voltar para prova</button>
+    </div>
+</div>
+
+<!-- Modal Lightbox Zoom para Alunos -->
+<div id="studentLightboxModal" class="fixed inset-0 z-[70] bg-slate-950/85 backdrop-blur-md hidden items-center justify-center p-4 cursor-zoom-out" onclick="closeStudentLightbox()">
+    <div class="relative max-w-5xl max-h-[92vh] flex items-center justify-center" onclick="event.stopPropagation()">
+        <img id="student-lightbox-img" src="#" alt="Visualização ampliada" class="max-h-[90vh] max-w-[90vw] rounded-2xl shadow-2xl border border-white/20 object-contain bg-white">
+        <button type="button" onclick="closeStudentLightbox()" class="absolute -top-4 -right-4 w-10 h-10 rounded-full bg-white text-slate-800 shadow-lg flex items-center justify-center hover:bg-slate-100 transition-colors" title="Fechar ampliação">
+            <i class="ph-bold ph-x text-lg"></i>
+        </button>
     </div>
 </div>
 
@@ -543,6 +578,25 @@ include 'includes/header.php';
             document.getElementById('warning-count').textContent = warningCount;
             document.getElementById('modal-anticheat').classList.remove('hidden');
         }
+    });
+
+    // Lightbox para imagens técnicas
+    function openStudentLightbox(src) {
+        if (!src) return;
+        document.getElementById('student-lightbox-img').src = src;
+        const modal = document.getElementById('studentLightboxModal');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    }
+
+    function closeStudentLightbox() {
+        const modal = document.getElementById('studentLightboxModal');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeStudentLightbox();
     });
 </script>
 

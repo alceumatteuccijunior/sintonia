@@ -12,9 +12,11 @@ Sua interface foca intensamente na usabilidade e estética, utilizando **Tailwin
 
 ## 🚀 Para que serve o iaS? Principais Atribuições:
 
-1. **Gestão Estruturada do Conhecimento (Banco de Questões)**
+1. **Gestão Estruturada do Conhecimento (Banco de Questões & Mídia de Apoio)**
    Armazena questões e separa o acervo por Curso, Módulo, Capacidade e Dificuldade. A recente integração de **Tags/Lotes (ex: SAEP2026)** permite catalogar milhares de questões de provas específicas para seleção com 1 clique.
-   - **Importação Massiva (CSV):** O sistema aceita a criação de centenas de questões instantaneamente.
+   - **Imagens de Apoio Técnicas:** Suporte completo a diagramas, circuitos elétricos, esquemas técnicos, tabelas e gráficos (`image_url`). Totalmente seguro para produção: questões puramente textuais permanecem 100% limpas sem caixas vazias ou tags quebradas.
+   - **Fluxo Ágil Pós-Importação em Massa:** Ao subir uma planilha CSV, o sistema pergunta instantaneamente: *"Deseja vincular imagens a alguma dessas questões agora?"*. O docente pode selecionar as questões que exigem imagens e fazer o upload direto de sua máquina em segundos.
+   - **Gestão Individual e Contínua:** No Banco de Questões (`questions_view.php`), cada questão exibe badge indicativo e permite adicionar, editar ou remover a imagem a qualquer momento.
    - **Preservação de Dados:** A exclusão de questões é lógica (*Soft Delete*), garantindo que históricos e notas de alunos do passado não sejam perdidos.
 
 2. **Aplicação Segura, Inteligente e Agendada (Sprints & Agenda)**
@@ -58,15 +60,16 @@ Sua interface foca intensamente na usabilidade e estética, utilizando **Tailwin
 ### 👨‍🏫 Visão Docente (A Sala de Aula)
 - **Agenda de Sprints (Google Calendar):** Calendário mensal interativo com chips coloridos por status (*Agendada*, *Ativa*, *Concluída*), cards de apoio e modal de reagendamento em 1 clique via AJAX.
 - **Agendamento Prévio de Provas:** Programe a data e hora exata de liberação (`start_time`) e encerramento opcional (`end_time`).
-- **Banco de Questões Mapeado:** Inserção via painel ou CSV. Aceita randomização inteligente (sempre embaralha `A, B, C, D`).
-- **Criação Rápida de Sprints:** Associa turmas, escolhe quantidade de questões por Lote/Tag ou Dificuldade com checagem anti-repetição.
+- **Banco de Questões com Imagens de Apoio:** Inserção via painel ou CSV. Suporte a upload de esquemas, circuitos elétricos, tabelas e gráficos da máquina local, com gerenciamento direto na listagem ou pós-importação em massa.
+- **Criação Rápida de Sprints:** Associa turmas, escolhe quantidade de questões por Lote/Tag ou Dificuldade com checagem anti-repetição e pré-visualização de imagem.
 - **Controles Anti-Falta de Foco:** Limite Máximo de tempo de prova e **Tempo Mínimo Obrigatório** (para inibir chuta-chuta).
 - **Raio-X Analítico em Tempo Real:** Descubra exatamente *qual capacidade* o aluno errou (sem focar na "nota vazia").
 - **Tutor IA (Apoio ao Docente):** Um chat integrado com a inteligência do banco que gera automaticamente "Planos de Aula Corretivos" baseados nos piores desempenhos da sala.
-- **Exportação Coletiva:** Gere as Devolutivas em Slides PDF para usar em Projetor/Sala de Aula.
+- **Exportação Coletiva & Word:** Gere as Devolutivas em Slides PDF e exporte a avaliação para Microsoft Word (.doc) com as imagens de apoio 100% incorporadas (Base64).
 - **Gestão de Lixeira (Soft Delete):** Remova alunos de turmas antigas e envie-os para uma aba "Lixeira" antes de exclusão permanente.
 
 ### 🎓 Visão do Aluno (Gamificação e Experiência)
+- **Visualização Técnica Cristalina com Zoom:** Questões com circuitos, diagramas e esquemas contam com exibição destacada e Lightbox interativo (zoom em alta resolução). Questões sem imagens mantêm layout limpo sem nenhum impacto.
 - **Proteção Anti-Vazamento (Agendadas):** O aluno visualiza as provas futuras no seu dashboard com data/hora de liberação, mas com acesso e botão de início bloqueados até o momento marcado.
 - **Motor de Prova Anti-Cola:** O sistema trava a avaliação e submete sozinha se o aluno tentar sair da aba do navegador 3 vezes (Tracking de Foco).
 - **Devolutiva Humanizada:** O aluno recebe no e-mail o seu boletim completo em PDF.
@@ -102,13 +105,15 @@ Sua interface foca intensamente na usabilidade e estética, utilizando **Tailwin
 ├── class_*.php / classes.php  # Módulos do Professor para Gestão de Turmas
 ├── dashboard.php              # Dashboard Global (Visão Professor)
 ├── import_*.php               # Rotinas de importação de CSV (Usuários e Questões)
-├── includes/                  # Componentes reutilizáveis (Header, Sidebar, Mailer, ModiaS)
-├── migrate_*.php              # Scripts dinâmicos de Update do BD (Ex: migrate_sprint_schedule.php)
-├── questions*.php             # Repositório Central de Questões e Cadastro Manual/CSV
+├── includes/                  # Componentes reutilizáveis (Header, Sidebar, Mailer, Modais)
+├── migrate_*.php              # Scripts dinâmicos de Update do BD (Ex: migrate_questions_image.php)
+├── questions*.php             # Repositório Central de Questões, Cadastro Manual/CSV e Gestão de Imagens
+├── question_image_ajax.php    # Endpoint seguro AJAX para upload/remoção de imagens de questões
 ├── reset_password.php         # Fluxo obrigatório de troca de senha inicial
-├── sprint_*.php               # Motor Core das Provas (Create, Solve, Report, Select, PDF)
+├── sprint_*.php               # Motor Core das Provas (Create, Solve, Report, Select, PDF, Word)
 ├── student_*.php              # O Universo do Aluno (Dashboard, Arena, Duelos, Ranking)
-├── template_*.csv             # Templates oficiiaS padronizados para download e preenchimento
+├── template_*.csv             # Templates oficiais padronizados para download e preenchimento
+├── uploads/questions/         # Armazenamento isolado e seguro das imagens de apoio técnico
 └── README.md                  # Documentação Completa do Projeto
 ```
 
@@ -117,8 +122,8 @@ Sua interface foca intensamente na usabilidade e estética, utilizando **Tailwin
 ## 🚀 Como Executar Localmente
 
 1. Suba um servidor web com suporte a PHP (Apache/Nginx via XAMPP, Laragon, Docker).
-2. Ajuste o arquivo `config.php` com as credenciiaS do banco MySQL.
-3. Para configurar o ambiente e habilitar 100% dos recursos miaS recentes, execute os scripts de banco de dados na ordem:
+2. Ajuste o arquivo `config.php` com as credenciais do banco MySQL.
+3. Para configurar o ambiente e habilitar 100% dos recursos mais recentes, execute os scripts de banco de dados na ordem:
    - Configurações antigas do BD (Se necessário)
    - `migrate_admin.php` (Gera o Admin Master)
    - `migrate_profile_pic.php` (Avatares)
@@ -127,6 +132,7 @@ Sua interface foca intensamente na usabilidade e estética, utilizando **Tailwin
    - `migrate_questions_active.php` (Soft Delete)
    - `migrate_sprint_min_time.php` (Trava de Leitura)
    - `migrate_sprint_schedule.php` (Agenda & Sprints Agendadas)
+   - `migrate_questions_image.php` (Suporte a Imagens de Apoio nas Questões)
 4. Acesse o sistema. Para o fluxo de envio de e-mails funcionar localmente, ative uma configuração SMTP ou ambiente de emulação na sua infraestrutura PHP.
 
 ---
