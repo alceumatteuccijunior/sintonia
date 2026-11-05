@@ -15,14 +15,32 @@ if (!$sprint_id) {
     exit;
 }
 
-// Verifica se a sprint existe e está ativa
-$stmtSprint = $pdo->prepare("SELECT * FROM sprints WHERE id = ? AND status = 'active'");
+// Verifica se a sprint existe e está disponível (active ou scheduled)
+$stmtSprint = $pdo->prepare("SELECT * FROM sprints WHERE id = ? AND status IN ('active', 'scheduled')");
 $stmtSprint->execute([$sprint_id]);
 $sprint = $stmtSprint->fetch();
 
 if (!$sprint) {
     header("Location: student_dashboard.php");
     exit;
+}
+
+// Validação de Agendamento: impede realização antes do horário marcado
+if (!empty($sprint['start_time']) && strtotime($sprint['start_time']) > time()) {
+    $formattedDate = date('d/m/Y \à\s H:i', strtotime($sprint['start_time']));
+    header("Location: student_dashboard.php?error=" . urlencode("Esta avaliação está agendada para {$formattedDate} e ainda não foi liberada."));
+    exit;
+}
+
+// Validação de Prazo Limite Expirado
+if (!empty($sprint['end_time']) && strtotime($sprint['end_time']) < time()) {
+    header("Location: student_dashboard.php?error=" . urlencode("O prazo para realização desta avaliação expirou em " . date('d/m/Y \à\s H:i', strtotime($sprint['end_time'])) . "."));
+    exit;
+}
+
+// Se estava como scheduled e já chegou o horário, atualiza para active
+if ($sprint['status'] === 'scheduled') {
+    $pdo->prepare("UPDATE sprints SET status = 'active' WHERE id = ?")->execute([$sprint_id]);
 }
 
 // 1. Lógica de Tentativa (Attempt) e Timer

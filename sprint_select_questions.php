@@ -17,6 +17,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $time_limit = $_POST['time_limit_minutes'] ?? '';
     $time_min = (!empty($_POST['time_min_minutes'])) ? (int)$_POST['time_min_minutes'] : null;
     $teacher_id = $_POST['teacher_id'] ?? $_SESSION['user_id'];
+    $schedule_mode = $_POST['schedule_mode'] ?? 'immediate';
+    $start_time = !empty($_POST['start_time']) ? $_POST['start_time'] : null;
+    $end_time = !empty($_POST['end_time']) ? $_POST['end_time'] : null;
     
     // Processamento Final (Salvando a Sprint)
     if (isset($_POST['save_sprint'])) {
@@ -33,9 +36,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 $pdo->beginTransaction();
                 
-                // Insere a Sprint como 'active' para que os alunos já possam ver
-                $stmt = $pdo->prepare("INSERT INTO sprints (teacher_id, class_id, name, time_limit_minutes, time_min_minutes, status) VALUES (?, ?, ?, ?, ?, 'active')");
-                $stmt->execute([$teacher_id, $class_id, $name, $time_limit, $time_min]);
+                // Determina status inicial: se agendada para o futuro, status = 'scheduled'
+                $status = 'active';
+                if ($schedule_mode === 'scheduled' && $start_time) {
+                    $startTimeDt = new DateTime($start_time);
+                    $now = new DateTime();
+                    if ($startTimeDt > $now) {
+                        $status = 'scheduled';
+                    }
+                }
+
+                // Insere a Sprint com suporte a start_time e end_time
+                $stmt = $pdo->prepare("INSERT INTO sprints (teacher_id, class_id, name, time_limit_minutes, time_min_minutes, status, start_time, end_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+                $stmt->execute([$teacher_id, $class_id, $name, $time_limit, $time_min, $status, $start_time, $end_time]);
                 $sprint_id = $pdo->lastInsertId();
                 
                 // Insere as Questões
@@ -46,7 +59,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 
                 $pdo->commit();
-                $success = "Sprint criada com sucesso! " . count($selected_questions) . " questões selecionadas.";
+                if ($status === 'scheduled') {
+                    $formattedDate = date('d/m/Y \à\s H:i', strtotime($start_time));
+                    $success = "Sprint agendada com sucesso para {$formattedDate}! (" . count($selected_questions) . " questões selecionadas)";
+                } else {
+                    $success = "Sprint criada e liberada com sucesso! (" . count($selected_questions) . " questões selecionadas)";
+                }
             } catch (Exception $e) {
                 $pdo->rollBack();
                 $error = "Erro ao salvar a Sprint: " . $e->getMessage();
@@ -87,12 +105,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Coletar dados para os filtros e carregar as alternativas
             $modulos_unicos = [];
             $capacidades_unicas = [];
+            $tags_unicas = [];
             $questoes_json = [];
 
             foreach ($questoes as &$q) {
                 $modulos_unicos[$q['module_id']] = $q['module_name'];
                 if (!empty($q['capacity'])) {
                     $capacidades_unicas[$q['capacity']] = $q['capacity'];
+                }
+                if (!empty($q['import_tag'])) {
+                    $tags_unicas[$q['import_tag']] = $q['import_tag'];
                 }
 
                 // Buscar alternativas desta questão
@@ -107,6 +129,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             asort($modulos_unicos);
             ksort($capacidades_unicas);
+            asort($tags_unicas);
 
         } else {
             $error = "Turma não encontrada.";
@@ -147,11 +170,20 @@ include 'includes/header.php';
             <div class="w-full max-w-5xl">
                 
                 <?php if ($success): ?>
-                    <div class="bg-green-50 text-green-600 p-6 rounded-2xl text-center shadow-sm animate-slide-up mb-8">
-                        <i class="ph-fill ph-check-circle text-5xl mb-4"></i>
-                        <h2 class="text-2xl font-bold mb-2">Pronto!</h2>
-                        <p class="text-lg font-medium mb-6"><?= htmlspecialchars($success) ?></p>
-                        <a href="dashboard.php" class="bg-green-600 text-white px-8 py-3 rounded-xl font-bold shadow-md hover:bg-green-700 transition-colors inline-block">Voltar ao Dashboard</a>
+                    <div class="bg-green-50 text-green-700 p-8 rounded-3xl text-center shadow-sm animate-slide-up mb-8 border border-green-200">
+                        <div class="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i class="ph-fill ph-check-circle text-4xl"></i>
+                        </div>
+                        <h2 class="text-2xl font-bold mb-2">Sucesso!</h2>
+                        <p class="text-base font-medium mb-6 text-slate-700"><?= htmlspecialchars($success) ?></p>
+                        <div class="flex items-center justify-center gap-3 flex-wrap">
+                            <a href="agenda.php" class="bg-indigo-600 text-white px-6 py-3 rounded-xl font-bold shadow-md hover:bg-indigo-700 transition-colors inline-flex items-center gap-2">
+                                <i class="ph-bold ph-calendar"></i> Ver na Agenda
+                            </a>
+                            <a href="dashboard.php" class="bg-white text-slate-700 border border-slate-200 px-6 py-3 rounded-xl font-bold shadow-sm hover:bg-slate-50 transition-colors inline-block">
+                                Voltar ao Dashboard
+                            </a>
+                        </div>
                     </div>
                 <?php else: ?>
 
@@ -238,6 +270,9 @@ include 'includes/header.php';
                     <input type="hidden" name="time_limit_minutes" value="<?= htmlspecialchars($time_limit) ?>">
                     <input type="hidden" name="time_min_minutes" value="<?= htmlspecialchars($_POST['time_min_minutes'] ?? '') ?>">
                     <input type="hidden" name="teacher_id" value="<?= htmlspecialchars($teacher_id) ?>">
+                    <input type="hidden" name="schedule_mode" value="<?= htmlspecialchars($schedule_mode) ?>">
+                    <input type="hidden" name="start_time" value="<?= htmlspecialchars($start_time ?? '') ?>">
+                    <input type="hidden" name="end_time" value="<?= htmlspecialchars($end_time ?? '') ?>">
                     <input type="hidden" name="save_sprint" value="1">
                     
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="questions-grid">

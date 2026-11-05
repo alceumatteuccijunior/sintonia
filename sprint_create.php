@@ -10,6 +10,10 @@ $pdo = getPDOConnection(true);
 $stmtClasses = $pdo->query("SELECT id, name, year, semester FROM classes ORDER BY year DESC, semester DESC, name ASC");
 $classes = $stmtClasses->fetchAll();
 
+$prefill_date = $_GET['date'] ?? '';
+$prefill_start = !empty($_GET['start_time']) ? $_GET['start_time'] : ($prefill_date ? $prefill_date . 'T08:00' : '');
+$is_scheduled_init = !empty($prefill_start);
+
 $teachers = [];
 if ($_SESSION['user_role'] === 'admin') {
     $stmtT = $pdo->query("SELECT id, name FROM users WHERE role IN ('teacher', 'admin') ORDER BY name ASC");
@@ -136,6 +140,65 @@ include 'includes/header.php';
                                 </div>
                             </div>
 
+                            <!-- Seção de Agendamento -->
+                            <div class="p-6 bg-slate-50/80 border border-slate-200/80 rounded-2xl space-y-4">
+                                <div class="flex items-center justify-between">
+                                    <label class="block text-sm font-bold text-slate-800 flex items-center gap-2">
+                                        <i class="ph-fill ph-calendar-plus text-lg text-indigo-600"></i> Disponibilização da Avaliação
+                                    </label>
+                                    <span class="text-[11px] font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 px-2.5 py-1 rounded-full">Novo</span>
+                                </div>
+
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    <label class="relative flex items-center p-3.5 rounded-xl border border-slate-200 bg-white cursor-pointer hover:border-senai-blue/50 transition-all group">
+                                        <input type="radio" name="schedule_mode" value="immediate" <?= !$is_scheduled_init ? 'checked' : '' ?> onchange="toggleScheduleFields(false)" class="text-senai-blue focus:ring-senai-blue w-4 h-4 mr-3">
+                                        <div>
+                                            <p class="text-sm font-bold text-slate-800">Liberar Imediatamente</p>
+                                            <p class="text-[11px] text-slate-500">Ativa assim que finalizar a criação.</p>
+                                        </div>
+                                    </label>
+
+                                    <label class="relative flex items-center p-3.5 rounded-xl border border-slate-200 bg-white cursor-pointer hover:border-indigo-400 transition-all group">
+                                        <input type="radio" name="schedule_mode" value="scheduled" <?= $is_scheduled_init ? 'checked' : '' ?> onchange="toggleScheduleFields(true)" class="text-indigo-600 focus:ring-indigo-500 w-4 h-4 mr-3">
+                                        <div>
+                                            <p class="text-sm font-bold text-slate-800 flex items-center gap-1.5">
+                                                Agendar no Calendário <i class="ph-bold ph-calendar text-indigo-600"></i>
+                                            </p>
+                                            <p class="text-[11px] text-slate-500">Define data e horário de liberação.</p>
+                                        </div>
+                                    </label>
+                                </div>
+
+                                <!-- Campos de Data e Hora de Início/Fim -->
+                                <div id="schedule-fields" class="space-y-4 pt-3 <?= !$is_scheduled_init ? 'hidden' : '' ?>">
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label class="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1">
+                                                <i class="ph-bold ph-clock-countdown text-indigo-600"></i> Data e Hora de Início (Liberação)
+                                            </label>
+                                            <input type="datetime-local" id="input_start_time" name="start_time" value="<?= htmlspecialchars($prefill_start) ?>" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all bg-white text-slate-800 font-medium text-sm">
+                                            <p class="text-[10px] text-slate-400 mt-1">Quando os alunos poderão iniciar a prova.</p>
+                                        </div>
+
+                                        <div>
+                                            <label class="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1">
+                                                <i class="ph-bold ph-calendar-x text-slate-400"></i> Data e Hora Limite (Opcional)
+                                            </label>
+                                            <input type="datetime-local" name="end_time" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all bg-white text-slate-800 font-medium text-sm">
+                                            <p class="text-[10px] text-slate-400 mt-1">Após esse horário a prova expira para novos acessos.</p>
+                                        </div>
+                                    </div>
+
+                                    <!-- Card de Apoio / Dica -->
+                                    <div class="p-4 bg-indigo-50 border border-indigo-100 rounded-xl flex items-start gap-3">
+                                        <i class="ph-fill ph-shield-check text-indigo-600 text-2xl shrink-0 mt-0.5"></i>
+                                        <div class="text-xs text-indigo-900 leading-relaxed">
+                                            <strong>Bloqueio de vazamento garantido:</strong> A avaliação aparecerá na nova <strong>Agenda</strong> dos docentes e no painel dos alunos com status <em>"Agendada"</em>. O sistema impede rigorosamente que qualquer aluno inicie a prova antes do horário marcado!
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                             <div class="pt-4 mt-8 border-t border-slate-100 flex justify-end">
                                 <button type="submit" class="bg-senai-blue text-white px-8 py-3.5 rounded-xl font-semibold shadow-[0_4px_15px_-3px_rgba(26,66,138,0.4)] hover:shadow-[0_8px_20px_-3px_rgba(26,66,138,0.5)] hover:-translate-y-0.5 transition-all flex items-center gap-2 group">
                                     Avançar para Questões <i class="ph-bold ph-arrow-right group-hover:translate-x-1 transition-transform"></i>
@@ -148,5 +211,25 @@ include 'includes/header.php';
         </div>
     </main>
 </div>
+
+<script>
+    function toggleScheduleFields(show) {
+        const fields = document.getElementById('schedule-fields');
+        const startInput = document.getElementById('input_start_time');
+        if (show) {
+            fields.classList.remove('hidden');
+            if (!startInput.value) {
+                // Sugere daqui a 7 dias às 08:00
+                const nextWeek = new Date();
+                nextWeek.setDate(nextWeek.getDate() + 7);
+                nextWeek.setHours(8, 0, 0, 0);
+                const isoStr = nextWeek.toISOString().slice(0, 16);
+                startInput.value = isoStr;
+            }
+        } else {
+            fields.classList.add('hidden');
+        }
+    }
+</script>
 
 <?php include 'includes/footer.php'; ?>

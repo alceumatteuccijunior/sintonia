@@ -17,11 +17,13 @@ Sua interface foca intensamente na usabilidade e estética, utilizando **Tailwin
    - **Importação Massiva (CSV):** O sistema aceita a criação de centenas de questões instantaneamente.
    - **Preservação de Dados:** A exclusão de questões é lógica (*Soft Delete*), garantindo que históricos e notas de alunos do passado não sejam perdidos.
 
-2. **Aplicação Segura e Inteligente (Sprints)**
+2. **Aplicação Segura, Inteligente e Agendada (Sprints & Agenda)**
    A criação de provas, apelidadas de *Sprints*, permite customização extrema:
-   - Definição de **Tempo Limite** (contagem regressiva máxima).
-   - Definição de **Tempo Mínimo** de entrega (trava de segurança para obrigar o estudante a dedicar tempo de leitura, impedindo "chutes rápidos").
-   - Motor de seleção inteligente de questões via filtros combinados.
+   - **Agendamento Inteligente:** Possibilidade de programar a prova com antecedência (ex: 10 dias antes). O sistema bloqueia o acesso dos alunos até a data e hora exatas de liberação (`start_time`), com data limite opcional (`end_time`).
+   - **Agenda Interativa (Google Calendar Style):** Nova visão em calendário mensal e lista cronológica para planejamento e governança de aplicações.
+   - **Definição de Tempo Limite** (contagem regressiva máxima).
+   - **Definição de Tempo Mínimo** de entrega (trava de segurança para obrigar o estudante a dedicar tempo de leitura, impedindo "chutes rápidos").
+   - Motor de seleção inteligente de questões via filtros combinados com alerta de questões já aplicadas à turma.
    - **Sistema Anti-Cola:** O cronômetro persiste em tempo real e monitora perda de foco (saídas de abas). Após 3 avisos, a prova é encerrada automaticamente.
 
 3. **Diagnóstico Cirúrgico para Docentes e Feedback Ativo**
@@ -47,14 +49,17 @@ Sua interface foca intensamente na usabilidade e estética, utilizando **Tailwin
 ## 🌟 Lista Completa de Funcionalidades
 
 ### 🏛️ Administração e Diretoria (Multi-Tenant)
+- **Agenda Global de Aplicações:** Visão executiva em calendário (Google Agenda Style) de todas as provas do estado/regional, com filtros cruzados por Regional, Unidade Escolar, Curso, Turma, Módulo, Docente e Status.
 - **Painel Macro de Desempenho:** Filtre os dados e o histórico de provas por Estado, Regional, Escola e Curso.
 - **Importação Automatizada SAEP:** Com 1 único arquivo CSV do Governo, o sistema constrói toda a hierarquia, cadastra todos os alunos, professores, turmas e históricos de Sprints automaticamente.
 - **Onboarding Automático:** Disparo de credenciais temporárias por E-mail para alunos importados.
 - **Gestão de Usuários:** Adição, edição e exclusão (Soft Delete para proteção de relatórios históricos) de alunos, professores e diretores.
 
 ### 👨‍🏫 Visão Docente (A Sala de Aula)
+- **Agenda de Sprints (Google Calendar):** Calendário mensal interativo com chips coloridos por status (*Agendada*, *Ativa*, *Concluída*), cards de apoio e modal de reagendamento em 1 clique via AJAX.
+- **Agendamento Prévio de Provas:** Programe a data e hora exata de liberação (`start_time`) e encerramento opcional (`end_time`).
 - **Banco de Questões Mapeado:** Inserção via painel ou CSV. Aceita randomização inteligente (sempre embaralha `A, B, C, D`).
-- **Criação Rápida de Sprints:** Associa turmas, escolhe quantidade de questões por Lote/Tag ou Dificuldade.
+- **Criação Rápida de Sprints:** Associa turmas, escolhe quantidade de questões por Lote/Tag ou Dificuldade com checagem anti-repetição.
 - **Controles Anti-Falta de Foco:** Limite Máximo de tempo de prova e **Tempo Mínimo Obrigatório** (para inibir chuta-chuta).
 - **Raio-X Analítico em Tempo Real:** Descubra exatamente *qual capacidade* o aluno errou (sem focar na "nota vazia").
 - **Tutor IA (Apoio ao Docente):** Um chat integrado com a inteligência do banco que gera automaticamente "Planos de Aula Corretivos" baseados nos piores desempenhos da sala.
@@ -62,6 +67,7 @@ Sua interface foca intensamente na usabilidade e estética, utilizando **Tailwin
 - **Gestão de Lixeira (Soft Delete):** Remova alunos de turmas antigas e envie-os para uma aba "Lixeira" antes de exclusão permanente.
 
 ### 🎓 Visão do Aluno (Gamificação e Experiência)
+- **Proteção Anti-Vazamento (Agendadas):** O aluno visualiza as provas futuras no seu dashboard com data/hora de liberação, mas com acesso e botão de início bloqueados até o momento marcado.
 - **Motor de Prova Anti-Cola:** O sistema trava a avaliação e submete sozinha se o aluno tentar sair da aba do navegador 3 vezes (Tracking de Foco).
 - **Devolutiva Humanizada:** O aluno recebe no e-mail o seu boletim completo em PDF.
 - **Sistema de Leveling (XP):** Cada resposta correta gera pontos de experiência, promovendo o aluno a Patentes superiores.
@@ -92,11 +98,12 @@ Sua interface foca intensamente na usabilidade e estética, utilizando **Tailwin
 ```
 /
 ├── admin_*.php                # Módulos Administrativos (Dashboard, Exportações SAEP, IA)
+├── agenda.php / agenda_*.php  # Módulo de Cronograma e Agenda (Google Calendar Style)
 ├── class_*.php / classes.php  # Módulos do Professor para Gestão de Turmas
 ├── dashboard.php              # Dashboard Global (Visão Professor)
 ├── import_*.php               # Rotinas de importação de CSV (Usuários e Questões)
 ├── includes/                  # Componentes reutilizáveis (Header, Sidebar, Mailer, ModiaS)
-├── migrate_*.php              # Scripts dinâmicos de Update do BD (Ex: migrate_sprint_min_time.php)
+├── migrate_*.php              # Scripts dinâmicos de Update do BD (Ex: migrate_sprint_schedule.php)
 ├── questions*.php             # Repositório Central de Questões e Cadastro Manual/CSV
 ├── reset_password.php         # Fluxo obrigatório de troca de senha inicial
 ├── sprint_*.php               # Motor Core das Provas (Create, Solve, Report, Select, PDF)
@@ -119,6 +126,7 @@ Sua interface foca intensamente na usabilidade e estética, utilizando **Tailwin
    - `migrate_questions_tag.php` (Filtros Avançados)
    - `migrate_questions_active.php` (Soft Delete)
    - `migrate_sprint_min_time.php` (Trava de Leitura)
+   - `migrate_sprint_schedule.php` (Agenda & Sprints Agendadas)
 4. Acesse o sistema. Para o fluxo de envio de e-mails funcionar localmente, ative uma configuração SMTP ou ambiente de emulação na sua infraestrutura PHP.
 
 ---
@@ -129,7 +137,7 @@ Sua interface foca intensamente na usabilidade e estética, utilizando **Tailwin
 - **courses / modules:** Estrutura curricular.
 - **questions / question_options:** Acervo completo (`is_active`, `import_tag`, opções randômicas na query).
 - **classes / class_students:** Agrupamento e vínculos.
-- **sprints / sprint_questions:** Entidade de Avaliação. Parâmetros de tempo (`time_limit_minutes`, `time_min_minutes`).
+- **sprints / sprint_questions:** Entidade de Avaliação. Parâmetros de tempo (`time_limit_minutes`, `time_min_minutes`, `start_time`, `end_time`, `status`).
 - **student_answers / sprint_attempts:** Centro de dados analíticos, guardando cada clique do estudante para os relatórios.
 
 ---

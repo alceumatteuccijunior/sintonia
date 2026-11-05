@@ -25,7 +25,7 @@ if (!$classe) {
     exit;
 }
 
-// Pega sprints ativas da turma dele
+// Pega sprints ativas ou agendadas da turma dele
 $stmtSprints = $pdo->prepare("
     SELECT s.*, 
            (SELECT count(*) FROM sprint_questions WHERE sprint_id = s.id) as total_questions,
@@ -33,7 +33,7 @@ $stmtSprints = $pdo->prepare("
            a.completed_at
     FROM sprints s
     LEFT JOIN sprint_attempts a ON a.sprint_id = s.id AND a.student_id = ?
-    WHERE s.class_id = ? AND s.status = 'active' AND s.teacher_id IS NOT NULL
+    WHERE s.class_id = ? AND s.status IN ('active', 'scheduled') AND s.teacher_id IS NOT NULL
     ORDER BY s.created_at DESC
 ");
 $stmtSprints->execute([$student_id, $classe['id']]);
@@ -203,9 +203,16 @@ include 'includes/header.php';
                 </div>
             </div>
 
+            <?php if (!empty($_GET['error'])): ?>
+                <div class="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-2xl flex items-center gap-3 animate-slide-up">
+                    <i class="ph-fill ph-warning-circle text-2xl text-red-500 shrink-0"></i>
+                    <p class="text-sm font-semibold"><?= htmlspecialchars($_GET['error']) ?></p>
+                </div>
+            <?php endif; ?>
+
             <div class="mb-6 flex items-center justify-between">
                 <h2 class="text-xl font-bold text-slate-800 flex items-center gap-2">
-                    <i class="ph-bold ph-sword text-senai-orange"></i> Avaliações Disponíveis
+                    <i class="ph-bold ph-sword text-senai-orange"></i> Avaliações da Turma
                 </h2>
             </div>
 
@@ -220,14 +227,32 @@ include 'includes/header.php';
                     <?php foreach ($sprints as $s): 
                         
                         // Estado da Sprint para este aluno
+                        $isScheduled = (!empty($s['start_time']) && strtotime($s['start_time']) > time()) || ($s['status'] === 'scheduled' && (empty($s['start_time']) || strtotime($s['start_time']) > time()));
+                        $isExpired = (!empty($s['end_time']) && strtotime($s['end_time']) < time() && empty($s['completed_at']));
+
                         $statusText = "Disponível";
                         $statusColor = "bg-green-100 text-green-700";
                         $btnText = "Iniciar Prova";
-                        $btnColor = "bg-senai-orange hover:bg-[#d94b1a] shadow-[0_4px_15px_-3px_rgba(242,92,39,0.4)]";
+                        $btnColor = "bg-senai-orange hover:bg-[#d94b1a] text-white shadow-[0_4px_15px_-3px_rgba(242,92,39,0.4)]";
                         $btnLink = "sprint_solve.php?id=" . $s['id'];
                         $isDisabled = false;
 
-                        if ($s['completed_at']) {
+                        if ($isScheduled) {
+                            $statusText = "Agendada";
+                            $statusColor = "bg-indigo-100 text-indigo-700 border border-indigo-200";
+                            $formattedStart = !empty($s['start_time']) ? date('d/m/Y \à\s H:i', strtotime($s['start_time'])) : 'Em breve';
+                            $btnText = "Liberada em " . $formattedStart;
+                            $btnColor = "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed";
+                            $btnLink = "#";
+                            $isDisabled = true;
+                        } elseif ($isExpired) {
+                            $statusText = "Prazo Encerrado";
+                            $statusColor = "bg-red-100 text-red-700";
+                            $btnText = "Avaliação Expirada";
+                            $btnColor = "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed";
+                            $btnLink = "#";
+                            $isDisabled = true;
+                        } elseif ($s['completed_at']) {
                             if ($s['feedback_released']) {
                                 $statusText = "Corrigida";
                                 $statusColor = "bg-green-100 text-green-700";

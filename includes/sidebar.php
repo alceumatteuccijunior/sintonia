@@ -36,6 +36,14 @@ $currentPage = $currentPage ?? 'dashboard';
                 </a>
             </li>
             <li>
+                <a href="agenda.php"
+                    class="w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-2.5 group <?= $currentPage === 'agenda' ? 'text-senai-blue bg-white shadow-sm' : 'text-slate-600 hover:bg-white hover:shadow-sm hover:text-senai-blue' ?>">
+                    <i
+                        class="ph-fill ph-calendar-blank <?= $currentPage === 'agenda' ? 'text-senai-blue' : 'text-slate-400 group-hover:text-senai-blue transition-colors' ?>"></i>
+                    <span class="truncate block w-full">Agenda</span>
+                </a>
+            </li>
+            <li>
                 <a href="questions.php"
                     class="w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-2.5 group <?= $currentPage === 'questions' ? 'text-senai-blue bg-white shadow-sm' : 'text-slate-600 hover:bg-white hover:shadow-sm hover:text-senai-blue' ?>">
                     <i
