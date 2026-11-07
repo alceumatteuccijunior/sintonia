@@ -142,6 +142,13 @@ include 'includes/header.php';
                 </div>
             </form>
 
+            <div class="mt-8 pt-6 border-t border-slate-100 text-center">
+                <p class="text-[11px] text-slate-400 leading-relaxed">
+                    Desenvolvido por <strong class="text-slate-600 font-semibold">Alceu Matteucci Junior</strong><br>
+                    e <strong class="text-slate-600 font-semibold">Equipe Pedagógica do SENAI Luzerna</strong>
+                </p>
+            </div>
+
         </div>
     </div>
 </div>

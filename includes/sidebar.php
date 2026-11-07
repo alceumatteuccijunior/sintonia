@@ -76,43 +76,43 @@ $currentPage = $currentPage ?? 'dashboard';
                 </a>
             </li>
         </ul>
-        
+
         <?php if (isset($_SESSION['user_role']) && $_SESSION['user_role'] === 'admin'): ?>
-        <h3 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 px-3 mt-6">Administração</h3>
-        <ul class="space-y-1">
-            <li>
-                <a href="admin_dashboard.php"
-                    class="w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-2.5 group <?= $currentPage === 'admin_dashboard' ? 'text-senai-orange bg-white shadow-sm border border-orange-100' : 'text-slate-600 hover:bg-white hover:shadow-sm hover:text-senai-orange' ?>">
-                    <i
-                        class="ph-fill ph-globe <?= $currentPage === 'admin_dashboard' ? 'text-senai-orange' : 'text-slate-400 group-hover:text-senai-orange transition-colors' ?>"></i>
-                    <span class="truncate block w-full">Visão Global</span>
-                </a>
-            </li>
-            <li>
-                <a href="admin_users.php"
-                    class="w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-2.5 group <?= $currentPage === 'admin_users' ? 'text-senai-orange bg-white shadow-sm border border-orange-100' : 'text-slate-600 hover:bg-white hover:shadow-sm hover:text-senai-orange' ?>">
-                    <i
-                        class="ph-fill ph-users-three <?= $currentPage === 'admin_users' ? 'text-senai-orange' : 'text-slate-400 group-hover:text-senai-orange transition-colors' ?>"></i>
-                    <span class="truncate block w-full">Gestão de Usuários</span>
-                </a>
-            </li>
-            <li>
-                <a href="admin_units.php"
-                    class="w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-2.5 group <?= $currentPage === 'admin_units' ? 'text-senai-orange bg-white shadow-sm border border-orange-100' : 'text-slate-600 hover:bg-white hover:shadow-sm hover:text-senai-orange' ?>">
-                    <i
-                        class="ph-fill ph-buildings <?= $currentPage === 'admin_units' ? 'text-senai-orange' : 'text-slate-400 group-hover:text-senai-orange transition-colors' ?>"></i>
-                    <span class="truncate block w-full">RegioniaS & Escolas</span>
-                </a>
-            </li>
-            <li>
-                <a href="import_saep.php"
-                    class="w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-2.5 group <?= $currentPage === 'import_saep' ? 'text-indigo-600 bg-white shadow-sm border border-indigo-100' : 'text-slate-600 hover:bg-white hover:shadow-sm hover:text-indigo-600' ?>">
-                    <i
-                        class="ph-fill ph-upload-simple <?= $currentPage === 'import_saep' ? 'text-indigo-600' : 'text-slate-400 group-hover:text-indigo-600 transition-colors' ?>"></i>
-                    <span class="truncate block w-full">Importar SAEP</span>
-                </a>
-            </li>
-        </ul>
+            <h3 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 px-3 mt-6">Administração</h3>
+            <ul class="space-y-1">
+                <li>
+                    <a href="admin_dashboard.php"
+                        class="w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-2.5 group <?= $currentPage === 'admin_dashboard' ? 'text-senai-orange bg-white shadow-sm border border-orange-100' : 'text-slate-600 hover:bg-white hover:shadow-sm hover:text-senai-orange' ?>">
+                        <i
+                            class="ph-fill ph-globe <?= $currentPage === 'admin_dashboard' ? 'text-senai-orange' : 'text-slate-400 group-hover:text-senai-orange transition-colors' ?>"></i>
+                        <span class="truncate block w-full">Visão Global</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="admin_users.php"
+                        class="w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-2.5 group <?= $currentPage === 'admin_users' ? 'text-senai-orange bg-white shadow-sm border border-orange-100' : 'text-slate-600 hover:bg-white hover:shadow-sm hover:text-senai-orange' ?>">
+                        <i
+                            class="ph-fill ph-users-three <?= $currentPage === 'admin_users' ? 'text-senai-orange' : 'text-slate-400 group-hover:text-senai-orange transition-colors' ?>"></i>
+                        <span class="truncate block w-full">Gestão de Usuários</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="admin_units.php"
+                        class="w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-2.5 group <?= $currentPage === 'admin_units' ? 'text-senai-orange bg-white shadow-sm border border-orange-100' : 'text-slate-600 hover:bg-white hover:shadow-sm hover:text-senai-orange' ?>">
+                        <i
+                            class="ph-fill ph-buildings <?= $currentPage === 'admin_units' ? 'text-senai-orange' : 'text-slate-400 group-hover:text-senai-orange transition-colors' ?>"></i>
+                        <span class="truncate block w-full">Regionais & Escolas</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="import_saep.php"
+                        class="w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-2.5 group <?= $currentPage === 'import_saep' ? 'text-indigo-600 bg-white shadow-sm border border-indigo-100' : 'text-slate-600 hover:bg-white hover:shadow-sm hover:text-indigo-600' ?>">
+                        <i
+                            class="ph-fill ph-upload-simple <?= $currentPage === 'import_saep' ? 'text-indigo-600' : 'text-slate-400 group-hover:text-indigo-600 transition-colors' ?>"></i>
+                        <span class="truncate block w-full">Importar SAEP</span>
+                    </a>
+                </li>
+            </ul>
         <?php endif; ?>
     </div>
 
@@ -133,15 +133,29 @@ $currentPage = $currentPage ?? 'dashboard';
                 </p>
 
                 <p class="text-[10px] text-senai-blue font-semibold uppercase tracking-wider">
-                    <?php 
-                        if ($_SESSION['user_role'] === 'admin') echo 'Administrador';
-                        elseif ($_SESSION['user_role'] === 'teacher') echo 'Professor';
-                        else echo 'Aluno';
+                    <?php
+                    if ($_SESSION['user_role'] === 'admin')
+                        echo 'Administrador';
+                    elseif ($_SESSION['user_role'] === 'teacher')
+                        echo 'Professor';
+                    else
+                        echo 'Aluno';
                     ?>
                 </p>
             </div>
             <i class="ph-bold ph-sign-out text-slate-400 group-hover:text-red-500 text-xs transition-colors"
                 title="Sair"></i>
         </a>
+
+        <!-- Créditos e Autoria -->
+        <div class="mt-2.5 pt-2 border-t border-slate-200/50 text-center">
+            <button type="button"
+                onclick="openHelpModal('Sobre o Sistema iaS', '<div class=\'space-y-3 text-sm\'><p class=\'font-bold text-slate-800 text-base\'>iaS — Plataforma de Inteligência Pedagógica e Avaliação</p><p>Ecossistema educacional desenvolvido para potencializar a aprendizagem técnica, diagnósticos por capacidades SAEP e gestão pedagógica de alta performance.</p><div class=\'p-4 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-2.5 mt-3\'><p class=\'text-xs font-bold uppercase tracking-wider text-senai-blue flex items-center gap-1.5\'><i class=\'ph-fill ph-code\'></i> Créditos e Autoria Oficial</p><p class=\'text-slate-700\'><strong>Desenvolvedor & Arquitetura de Software:</strong><br>Alceu Matteucci Junior</p><p class=\'text-slate-700\'><strong>Concepção Metodológica & Pedagógica:</strong><br>Equipe Pedagógica do SENAI Luzerna</p></div><p class=\'text-xs text-slate-400 pt-2\'>© ' + new Date().getFullYear() + ' Alceu Matteucci Junior & SENAI Luzerna. Todos os direitos reservados.</p></div>')"
+                class="w-full text-[10px] text-slate-400 hover:text-senai-blue transition-colors leading-tight flex flex-col items-center gap-0.5 group cursor-pointer"
+                title="Ver créditos e autoria do sistema">
+                <span>Desenvolvido por <strong class="text-slate-600 group-hover:text-senai-blue font-semibold">Alceu Matteucci Junior</strong></span>
+                <span class="text-[9px] text-slate-400 group-hover:text-slate-500">&amp; Equipe Pedagógica do SENAI Luzerna</span>
+            </button>
+        </div>
     </div>
 </aside>

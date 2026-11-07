@@ -160,6 +160,17 @@ Sua interface foca intensamente na usabilidade e estética, utilizando **Tailwin
 
 ## 🎯 Por que o iaS é Inovador?
 
-O **iaS** resolve o eterno problema do ensino digital - a falta de foco do aluno - através do choque de Gamificação. Além de entregar um sistema esteticamente belíssimo que encanta usuários, ele é rígido com métricas e antifraude, blindando os relatórios de "chutes" irreiaS através do motor de tempo e travas de saída de abas. O uso de E-mails automatizados para *Onboarding* e envio instantâneo do Feedback humanizam o software, conectando instituição, aluno e resultados em tempo real.
+O **iaS** resolve o eterno problema do ensino digital - a falta de foco do aluno - através do choque de Gamificação. Além de entregar um sistema esteticamente belíssimo que encanta usuários, ele é rígido com métricas e antifraude, blindando os relatórios de "chutes" irreais através do motor de tempo e travas de saída de abas. O uso de E-mails automatizados para *Onboarding* e envio instantâneo do Feedback humanizam o software, conectando instituição, aluno e resultados em tempo real.
+
+---
+
+## 👨‍💻 Autoria e Créditos de Desenvolvimento
+
+Este sistema foi idealizado, projetado e desenvolvido por:
+
+- **Alceu Matteucci Junior** — *Desenvolvedor Líder & Arquitetura de Software*
+- **Equipe Pedagógica do SENAI Luzerna** — *Concepção Metodológica, Diretrizes Educacionais e Validação Pedagógica*
+
+© Todos os direitos reservados.
 
 **iaS - Evolução em cada desafio.**

@@ -1,8 +1,18 @@
 <!DOCTYPE html>
+<!--
+ ============================================================================
+ Sistema iaS - Plataforma de Inteligência Pedagógica e Avaliação
+ Desenvolvido por: Alceu Matteucci Junior e Equipe Pedagógica do SENAI Luzerna
+ Todos os direitos reservados.
+ ============================================================================
+-->
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="author" content="Alceu Matteucci Junior & Equipe Pedagógica do SENAI Luzerna">
+    <meta name="copyright" content="© Alceu Matteucci Junior & SENAI Luzerna. Todos os direitos reservados.">
+    <meta name="generator" content="iaS - Assistente Pedagógico SENAI">
     <title>iaS - Assistente Pedagógico SENAI</title>
     <link rel="icon" type="image/png" href="icon.png?v=1">
 

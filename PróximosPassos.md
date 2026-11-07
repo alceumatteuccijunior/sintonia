@@ -1,5 +1,6 @@
 # 🚀 Arquitetura e Roteiro de IA Institucional (RAG & Copilot Pedagógico SENAI)
-> **Documento Estratégico e Técnico de Especificação**  
+> **Documento Estratégico e Técnico de Especificação (v2.0 — Revisado & Otimizado para Produção)**  
+> **Autoria:** Alceu Matteucci Junior & Equipe Pedagógica do SENAI Luzerna  
 > **Status:** Pronto para Implementação Sob Demanda  
 > **Objetivo:** Transformar o iaS em uma plataforma de IA de Alta Performance baseada nas diretrizes, matrizes SAEP e metodologias oficiais do SENAI através de RAG (*Retrieval-Augmented Generation*).
 
@@ -11,9 +12,10 @@ Atualmente, o iaS possui integrações pontuais com modelos de linguagem (chamad
 
 Este plano estabelece a evolução definitiva para um **Ecossistema Institucional de IA RAG**, onde:
 1. **Zero Alucinação:** A IA é proibida de inferir ou supor regras fora dos documentos institucionais homologados.
-2. **Citação de Fontes:** Toda recomendação, plano ou análise referencia a norma, manual ou página de onde a informação foi extraída.
+2. **Citação de Fontes:** Toda recomendação, plano ou análise referencia a norma, manual, seção e **página exata** de onde a informação foi extraída.
 3. **Independência da T.I.:** Coordenadores e administradores pedagógicos (sem conhecimento de programação) têm controle total para alimentar, atualizar, ativar ou desativar documentos normativos através de uma interface visual amigável.
 4. **Alinhamento SAEP/SENAI:** Questões, diagnósticos e planos de aula refletem com 100% de precisão as capacidades técnicas, conhecimentos e critérios da Metodologia SENAI de Educação Profissional.
+5. **Conformidade LGPD (Anonimização):** Nenhum dado pessoal sensível (nome completo, e-mail ou matrícula de alunos) é enviado às APIs externas; apenas identificadores anônimos e métricas pedagógicas agregadas trafegam nos prompts.
 
 ---
 
@@ -28,21 +30,26 @@ O **Alimentador de IA** (`admin_ai_knowledge.php`) será a central administrativ
 * **Entrada Direta de Texto** (Para comunicados rápidos ou diretrizes pontuais).
 
 ### 2.2 Taxonomia e Categorização (Metadados Estratégicos)
-Ao fazer upload de um documento, o usuário não-programador preenche apenas 3 ou 4 campos intuitivos:
+Ao fazer upload de um documento, o usuário não-programador preenche apenas campos intuitivos:
 
 | Campo | Opções / Exemplo | Objetivo no RAG |
 | :--- | :--- | :--- |
 | **Tipo de Documento (`document_type`)** | `metodologia_geral`, `criterios_saep`, `plano_curso`, `apostila_tecnica` | Permite que a IA filtre **apenas os trechos relevantes** conforme a ferramenta em uso. |
 | **Vínculo de Curso (`course_id`)** | *Global (Todos os Cursos)* ou curso específico (ex: *Téc. em Eletrotécnica*) | Impede que regras curriculares de Mecânica se misturem com as de TI. |
+| **Vínculo de Módulo (`module_id`)** | *Todos os Módulos* ou UC específica (opcional) | Refina buscas para apostilas de uma Unidade Curricular específica. |
 | **Título Amigável** | Ex: *"Guia de Elaboração de Itens SAEP 2026"* | Facilita a identificação e a citação da fonte pela IA. |
 | **Versão / Ano** | Ex: `2026.1` | Gestão de ciclo de vida e substituição de materiais legados. |
 | **Status** | `Ativo`, `Em Processamento`, `Desativado` | Permite desligar um documento antigo com 1 clique sem apagá-lo. |
+
+### 2.3 Bônus: Auto-Cadastro Curricular a partir do Plano de Curso
+* Quando o administrador fizer upload de um **Plano de Curso (`plano_curso`)**, o sistema oferecerá o botão: **"Extrair Unidades Curriculares e Capacidades Automaticamente"**.
+* A IA lerá a matriz curricular do PDF e apresentará uma prévia das Unidades Curriculares (`modules`) e Capacidades Técnicas/Básicas (`capacities`) para cadastrá-las no banco com 1 clique, eliminando horas de digitação manual.
 
 ---
 
 ## 🗄️ 3. Modelagem de Dados no MySQL
 
-Estrutura de tabelas para suportar o armazenamento de documentos, fragmentação semântica e auditoria:
+Estrutura de tabelas para suportar o armazenamento de documentos, fragmentação semântica, cache e auditoria:
 
 ### 3.1 Tabela `ai_knowledge_documents` (Metadados dos Documentos)
 ```sql
@@ -55,6 +62,7 @@ CREATE TABLE IF NOT EXISTS ai_knowledge_documents (
     file_size INT NOT NULL,
     document_type ENUM('metodologia_geral', 'criterios_saep', 'plano_curso', 'apostila_tecnica') NOT NULL,
     course_id INT NULL, -- NULL = Global institucional
+    module_id INT NULL, -- NULL = Todos os módulos do curso
     version VARCHAR(50) DEFAULT '1.0',
     total_chunks INT DEFAULT 0,
     status ENUM('processing', 'ready', 'error', 'disabled') DEFAULT 'processing',
@@ -63,6 +71,7 @@ CREATE TABLE IF NOT EXISTS ai_knowledge_documents (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE SET NULL,
+    FOREIGN KEY (module_id) REFERENCES modules(id) ON DELETE SET NULL,
     FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ```
@@ -75,7 +84,7 @@ CREATE TABLE IF NOT EXISTS ai_knowledge_chunks (
     chunk_index INT NOT NULL,
     content MEDIUMTEXT NOT NULL,
     token_count INT NOT NULL,
-    page_number INT NULL, -- Página de onde o fragmento foi extraído (para citação)
+    page_number INT NULL, -- Página exata de onde o fragmento foi extraído (para citação)
     embedding_json MEDIUMTEXT NULL, -- Vetor de float serializado em JSON (ex: 1536 dimensões)
     metadata_json JSON NULL, -- Tags auxiliares (ex: modulo, capacidade, capitulo)
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -84,12 +93,26 @@ CREATE TABLE IF NOT EXISTS ai_knowledge_chunks (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ```
 
-### 3.3 Tabela `ai_generation_logs` (Telemetria, Governança e Custos)
+### 3.3 Tabela `ai_response_cache` (Cache Inteligente para Economia de Custos)
+> **Por que esta tabela é fundamental?** Se 35 alunos de uma turma errarem a mesma questão marcando a alternativa B e clicarem em *"Compreender meu erro"*, o sistema gera a explicação socrática na 1ª vez e responde instantaneamente (a custo zero) para os outros 34 alunos!
+```sql
+CREATE TABLE IF NOT EXISTS ai_response_cache (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    cache_key VARCHAR(128) NOT NULL UNIQUE, -- SHA-256 de (feature_type + target_id + params)
+    feature_type VARCHAR(50) NOT NULL,
+    response_payload LONGTEXT NOT NULL,
+    hits INT DEFAULT 1,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    expires_at DATETIME NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+```
+
+### 3.4 Tabela `ai_generation_logs` (Telemetria, Governança e Custos)
 ```sql
 CREATE TABLE IF NOT EXISTS ai_generation_logs (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
-    feature_type ENUM('question_generate', 'exam_audit', 'tutor_student', 'distractor_analysis', 'lesson_plan', 'copilot_chat') NOT NULL,
+    feature_type ENUM('question_generate', 'exam_audit', 'tutor_student', 'distractor_analysis', 'lesson_plan', 'copilot_chat', 'curriculum_extract') NOT NULL,
     model_used VARCHAR(50) NOT NULL,
     prompt_tokens INT DEFAULT 0,
     completion_tokens INT DEFAULT 0,
@@ -104,131 +127,110 @@ CREATE TABLE IF NOT EXISTS ai_generation_logs (
 
 ---
 
-## ⚙️ 4. Pipeline de Ingestão de Documentos (Backend)
+## ⚙️ 4. Pipeline Híbrido de Ingestão de Documentos (Compatível 100% com cPanel)
 
-O fluxo de processamento ao enviar um documento ocorre em segundo plano (ou via AJAX com barra de progresso visual):
+> **Desafio de Hospedagem Compartilhada (cPanel):** Servidores compartilhados frequentemente bloqueiam binários Linux como `pdftotext` ou estouram `max_execution_time` ao processar PDFs de 200 páginas no PHP.  
+> **Solução Arquitetural Híbrida:** Extração assistida no cliente (*Client-Side Parsing*) + Processamento em lotes (*Chunk Batching*) via AJAX.
 
 ```mermaid
 flowchart TD
-    Upload["1. Upload do Arquivo (PDF / DOCX)"] --> Validation["2. Validação de Extensão e Tamanho"]
-    Validation --> Parser["3. Extração de Texto Limpo (Parser Nativo / Utilitário)"]
-    Parser --> Chunking["4. Fragmentação Semântica (500 a 800 tokens com Overlap de 100)"]
-    Chunking --> Embedder["5. Chamada de Embeddings em Lote (ex: text-embedding-3-small)"]
+    Upload["1. Seleção do Arquivo (PDF / DOCX / TXT)"] --> ClientExtract["2. Extração Página a Página via PDF.js / Mammoth.js no Navegador"]
+    ClientExtract --> Chunking["3. Fragmentação Semântica (600 tokens com Overlap de 100) + Preservação da Página"]
+    Chunking --> BatchAjax["4. Envio em Lotes (Batches de 10 Chunks) via AJAX com Barra de Progresso"]
+    BatchAjax --> Embedder["5. PHP gera Embeddings em Lote na API (text-embedding-3-small)"]
     Embedder --> DBInsert["6. Gravação na Tabela ai_knowledge_chunks"]
-    DBInsert --> StatusUpdate["7. Atualização do Documento para 'ready'"]
+    DBInsert --> StatusUpdate["7. Documento marcado como 'ready'"]
 ```
 
-### 4.1 Estratégia de Fragmentação (Chunking)
-* **Tamanho Ideal:** ~600 tokens por fragmento.
-* **Sobreposição (Overlap):** ~100 tokens entre fragmentos subsequentes. Isso garante que frases com capacidades ou fórmulas não sejam cortadas pela metade.
-* **Metadados embutidos em cada Chunk:** Todo fragmento herda o `document_id`, `page_number` e as tags do documento mãe.
-
-### 4.2 Modelo de Embeddings Recomendado
-* **OpenAI `text-embedding-3-small`**:
-  * Altíssimo desempenho semântico;
-  * Custo irrisório: **$0.02 por milhão de tokens** (cerca de 10 centavos de real para indexar dezenas de apostilas inteiras).
-* **Gemini `text-embedding-004`**: Alternativa igualmente veloz e econômica.
+### 4.1 Vantagens dessa Engenharia
+* **Zero dependência de extensões externas no servidor:** Funciona em qualquer cPanel padrão.
+* **Zero Timeout:** Apostilas de 300 páginas são processadas em lotes de 10 fragmentos com barra de progresso em tempo real (`Processando página 45 de 180...`).
+* **Preservação Exata da Página (`page_number`):** O `PDF.js` sabe exatamente em qual página cada parágrafo está, permitindo citações perfeitas (`Página 42`).
 
 ---
 
 ## 🔍 5. Mecanismo de Busca Híbrida (Hybrid Retrieval)
 
-Como o sistema roda em PHP e MySQL (sem necessidade de banco vetorial externo complexo), a recuperação opera de forma híbrida e ultrarrápida:
+Como o sistema roda em PHP e MySQL (sem necessidade de banco vetorial pago externo), a recuperação opera em duas etapas ultrarrápidas:
 
-1. **Filtro Rígido:** `document_id IN (documentos ativos do curso X ou globais) AND document_type = :target_type`.
-2. **Cálculo de Similaridade de Cosseno (Cosine Similarity):**
-   * Função otimizada em PHP (`includes/ai_embeddings.php`) que calcula a distância entre o vetor da pergunta do usuário e os vetores armazenados em `embedding_json`.
-   * Alternativamente, pré-filtro usando o índice `FULLTEXT (content)` do MySQL para selecionar os 30 melhores candidatos e refinar via Cosseno em memória.
-3. **Top-K Chunks:** O sistema seleciona os **3 a 5 fragmentos mais relevantes** (com pontuação de relevância > 0.70).
-4. **Injeção de Contexto Blindada:** Os trechos são incorporados ao prompt do sistema com delimitação clara para evitar injeção de prompt e alucinação.
+1. **Filtro Rígido SQL:** Filtra `ai_knowledge_documents` ativos do `course_id` atual (ou globais) e do `document_type` exigido pela ferramenta.
+2. **Scoring Híbrido (BM25 Full-Text + Cosine Similarity Vetorial):**
+   * Calcula a similaridade de cosseno em memória no PHP entre o vetor da consulta e os vetores dos chunks candidatos (`dot_product(A, B)`), combinada com o score lexical de palavras-chave técnicas (siglas de normas como `NR-10`, `NBR 5410`, códigos de capacidades).
+3. **Top-K Chunks:** Seleciona os **4 fragmentos mais relevantes** (score > 0.70).
+4. **Injeção de Contexto Blindada:** Os trechos são injetados no prompt com tags XML estruturadas (`<documento titulo="..." pagina="...">...</documento>`).
 
 ---
 
 ## 🛠️ 6. As 4 Aplicações Práticas (Consumo do Core)
 
 ### 6.1 Módulo 1: Gerador de Questões no Padrão SAEP (`questions_ai_generate.php`)
-* **Interface:** Dropdowns para selecionar Curso, Módulo, Capacidade Cadastrada e Nível de Dificuldade (Básico, Intermediário, Avançado).
-* **Contexto RAG injetado:**
-  * Fragmentos do *Guia de Elaboração de Itens SAEP*;
-  * Fragmentos do *Plano de Curso* que definem os conhecimentos da capacidade selecionada.
-* **Instrução Rígida:**
-  * OBRIGATÓRIO: Estruturar em Texto-base contextualizado, Situação-Problema prática e Comando claro.
-  * OBRIGATÓRIO: 4 ou 5 alternativas. Os distratores devem representar erros conceituais recorrentes previstos na metodologia, nunca respostas absurdas ou óbvias.
-  * OBRIGATÓRIO: Justificativa detalhada do gabarito.
-* **Ação do Usuário:** Botão *"Aprovar e Salvar no Banco de Questões"* (insere diretamente em `questions` e `question_options`).
+* **Interface:** Dropdowns para Curso, Módulo, Capacidade Cadastrada, Dificuldade e Contexto Industrial desejado.
+* **Contexto RAG injetado:** Fragmentos do *Guia de Elaboração de Itens SAEP* + *Plano de Curso*.
+* **Saída Estruturada (`JSON Schema` estrito):**
+  * `base_text`: Texto-base contextualizado com situação real da indústria;
+  * `problem_statement`: Situação-problema e comando claro da questão;
+  * `options`: 4 ou 5 alternativas, cada uma contendo `text`, `is_correct` e `distractor_rationale` (explicação técnica de qual erro conceitual aquele distrator representa);
+  * `normative_reference`: Fonte do Plano de Curso utilizada.
+* **Ação do Usuário:** Botão *"Aprovar e Salvar no Banco de Questões"* com 1 clique.
 
 ### 6.2 Módulo 2: Auditor de Provas e Itens (`sprint_ai_audit.php`)
-* **Uso:** Na tela de montagem de prova (`sprint_create.php` ou `sprint_manage.php`), o coordenador clica em *"Auditar com IA"*.
-* **A IA analisa as questões selecionadas contra as regras oficiais do Guia SAEP:**
-  * ❌ *Alerta de Desproporção:* "A alternativa C tem o triplo de extensão das outras, induzindo o aluno ao acerto."
-  * ❌ *Alerta de Dupla Negação:* "A questão 4 usa 'não é incorreto afirmar', prática desaconselhada pelo item 4.1 do manual."
-  * ❌ *Alerta de Pegadinha:* "O item 8 avalia memorização de código de norma em vez de competência prática."
-  * ✅ *Nota de Conformidade:* Dá uma nota de 0 a 100 de alinhamento ao padrão SENAI.
+* **Uso:** Na tela de gestão de prova, o professor/coordenador clica em *"Auditar Qualidade SAEP"*.
+* **Análise Automatizada contra o Guia Oficial:**
+  * ❌ *Alerta de Extensão:* "A alternativa correta é significativamente mais longa e detalhada que os distratores."
+  * ❌ *Alerta de Comando Negativo:* "Uso de 'EXCETO' ou 'INCORRETO' sem destaque ou fora da recomendação metodológica."
+  * ❌ *Alerta de Nível Taxonômico:* "A capacidade exige 'Aplicar/Dimensionar', mas a questão cobra apenas 'Lembrar/Definir'."
+  * ✅ *Score de Qualidade SAEP:* Nota de 0 a 100 com sugestões de reescrita automática em 1 clique.
 
 ### 6.3 Módulo 3: Diagnóstico Semântico de Distratores (`sprint_ai_analytics.php`)
 * **Uso:** Integrado ao relatório da Sprint (`sprint_report.php`).
-* **Lógica:** A IA analisa as respostas da turma (`student_answers`), agrupa as alternativas erradas mais assinaladas e consulta a ementa da disciplina.
-* **Exemplo de Parecer da IA:**
-  > *"71% dos estudantes erraram a Questão 5 assinalando a alternativa C. Pela análise do Plano de Curso, essa opção reflete uma confusão comum entre o disparo por nível de tensão e o disparo por borda de subida em flip-flops. Recomenda-se realizar uma demonstração prática em bancada com osciloscópio antes da próxima avaliação."*
+* **Lógica:** A IA recebe a matriz de distribuição de respostas por alternativa (`A: 12%, B: 68% [errada], C: 15% [correta], D: 5%`) e cruza com o Plano de Curso.
+* **Resultado:** Parecer executivo explicando a **causa-raiz cognitiva** do erro coletivo da turma e propondo uma atividade prática de oficina específica para corrigir aquele vício conceitual.
 
 ### 6.4 Módulo 4: Tutor Socrático do Aluno (`student_ai_tutor.php`)
-* **Uso:** No histórico de sprints do aluno (`student_dashboard.php` ou `sprint_review.php`), ao lado de cada questão errada, o botão *"Compreender meu erro"*.
-* **Regra Fundamental:** O tutor **não entrega a resposta**. Ele atua socráticamente:
-  > *"Aluno, você marcou a alternativa que calcula a resistência considerando condutores em série. Observe atentamente a ramificação do nó A no diagrama da questão. O que ocorre com a corrente elétrica naquele ponto?"*
+* **Uso:** Na revisão de prova do estudante, botão *"Compreender meu erro com IA"*.
+* **Metodologia Socrática:** Nunca entrega o gabarito direto. Faz uma pergunta orientadora baseada no erro específico da alternativa que o aluno marcou e na teoria da apostila do SENAI (incluindo leitura multimodal caso a questão possua imagem de circuito/diagrama).
 
 ---
 
 ## 💬 7. Copilot Institucional ("Pergunte às Normas do SENAI")
 
-Uma interface de chat moderna no painel administrativo (`ai_copilot.php`):
-* Destinada a Diretores, Coordenadores e Docentes;
-* Permite consultas livres sobre qualquer manual ou plano indexado;
-* **Citação Obrigatória de Páginas:** Cada resposta encerra com:
-  > 📖 **Fonte Oficial:** *Manual de Metodologia SENAI (Seção 3.2, pág. 44)*.
+Interface de chat no painel administrativo/docente (`ai_copilot.php`):
+* Consultas livres sobre metodologias, planos de curso e diretrizes;
+* **Citação Obrigatória com Fonte e Página:**
+  > 📖 **Referência:** *Manual de Metodologia SENAI (Página 44)*.
 
 ---
 
-## ⚡ 8. Modernização do Modelo de Linguagem e Otimização de Custos
+## ⚡ 8. Modernização do Modelo de Linguagem e Custos
 
-A arquitetura atual utiliza `gpt-3.5-turbo`. A implementação deste plano inclui a atualização imediata para:
-
-| Recurso | Modelo Legado (`gpt-3.5-turbo`) | Modelo Recomendado (`gpt-4o-mini` ou `gemini-1.5-flash`) |
-| :--- | :--- | :--- |
-| **Custo de Entrada** | ~$0.50 / milhão de tokens | **~$0.15 / milhão de tokens (70% mais econômico)** |
-| **Janela de Contexto** | 4.096 ou 16.384 tokens | **128.000 tokens (permite injetar apostilas inteiras se necessário)** |
-| **Raciocínio Lógico** | Básico, propenso a deslizes | **Avançado, alinhado a benchmarks profissionais** |
-| **Suporte Multimodal** | Não lê imagens | **Lê esquemas elétricos, diagramas e gráficos nativamente** |
+Substituição do legado `gpt-3.5-turbo` por **`gpt-4o-mini`** (ou **`gemini-1.5-flash`**):
+* **Economia de ~70%** por token processado;
+* **Suporte Multimodal Nativo:** Capacidade de enxergar e interpretar as imagens de apoio (diagramas, circuitos, gráficos) recém-implementadas nas questões do iaS;
+* **Suporte a `response_format: json_schema`:** Garantia de que integrações de sistema nunca quebrem por falha de formatação.
 
 ---
 
 ## 📋 9. Plano de Implementação Passo a Passo (Fases)
 
-Quando você der a ordem para iniciar o desenvolvimento, executaremos nesta exata sequência estruturada:
+Quando você autorizar o início do desenvolvimento, seguiremos esta ordem:
 
-### Fase 1: Fundação do Banco de Dados & Central de Upload
-* [ ] Executar script de migração `migrate_ai_knowledge.php` criando as tabelas `ai_knowledge_documents`, `ai_knowledge_chunks` e `ai_generation_logs`.
-* [ ] Criar a interface administrativa `admin_ai_knowledge.php` com visual TailwindCSS, área de drag & drop e listagem com status dos documentos.
+### Fase 1: Fundação do Banco de Dados & Alimentador de IA
+* [ ] Criar script `migrate_ai_knowledge.php` (`ai_knowledge_documents`, `ai_knowledge_chunks`, `ai_response_cache`, `ai_generation_logs`).
+* [ ] Criar a tela `admin_ai_knowledge.php` com upload Drag & Drop, categorização por curso/tipo e barra de progresso em lotes.
 
-### Fase 2: Parser e Motor de Embeddings
-* [ ] Criar classe / helper `includes/ai_parser.php` para extrair texto de arquivos PDF, DOCX e TXT.
-* [ ] Criar helper `includes/ai_embeddings.php` para segmentação de chunks e chamadas de vetorização com a API.
-* [ ] Implementar processamento com barra de progresso visual.
+### Fase 2: Extrator Híbrido e Motor de Embeddings
+* [ ] Integrar extração página a página (PDF.js / Mammoth.js + fallback PHP) e chunking com overlap.
+* [ ] Criar `includes/ai_rag_engine.php` para geração de embeddings (`text-embedding-3-small`), busca híbrida por similaridade de cosseno e cache semântico.
 
-### Fase 3: Camada de Busca Semântica (RAG Engine)
-* [ ] Desenvolver a função `retrieve_relevant_chunks($query, $document_type, $course_id, $limit = 4)`.
-* [ ] Implementar filtro de similaridade de cosseno com ranking ponderado.
+### Fase 3: Ferramentas Práticas para Docentes e Coordenadores
+* [ ] **Gerador de Questões SAEP** integrado ao Banco de Questões (`questions.php`) + Auto-extrator de Capacidades de Planos de Curso.
+* [ ] **Auditor de Provas SAEP** e **Diagnóstico Semântico de Distratores** integrados aos relatórios de Sprints (`sprint_report.php`).
 
-### Fase 4: Ferramentas Práticas de Consumo
-* [ ] **Gerador de Itens SAEP:** Integrar à interface de cadastro de questões (`questions_view.php`).
-* [ ] **Auditor de Provas:** Integrar à gestão de Sprints (`sprints.php` / `sprint_manage.php`).
-* [ ] **Análise de Distratores:** Integrar ao relatório analítico (`sprint_report.php`).
-* [ ] **Tutor Socrático:** Integrar à tela do estudante pós-entrega.
-
-### Fase 5: Copilot Institucional & Telemetria
-* [ ] Desenvolver o chat de consulta de normas `ai_copilot.php` com citação de fontes.
-* [ ] Dashboard executivo de consumo de tokens e custos estimados por unidade escolar.
+### Fase 4: Experiência do Aluno & Copilot Institucional
+* [ ] **Tutor Socrático Multimodal** integrado ao painel do aluno.
+* [ ] **Chat Copilot Institucional** (`ai_copilot.php`) com citações de página e painel de telemetria de uso.
 
 ---
 
 > **Instrução para a IA ao retomar este projeto:**  
-> *"Leia este arquivo PróximosPassos.md na íntegra. Siga estritamente as modelagens de dados, taxonomias e regras de negócio aqui estabelecidas sem alterar o escopo ou simplificar indevidamente a arquitetura."*
+> *"Leia este arquivo PróximosPassos.md na íntegra. Siga estritamente as modelagens de dados, pipeline híbrido para cPanel, cache semântico e regras de negócio aqui estabelecidas."*

@@ -341,6 +341,10 @@ include 'includes/header.php';
                 </div>
             <?php endif; ?>
 
+            <footer class="mt-16 pt-6 border-t border-slate-200/60 text-center text-xs text-slate-400">
+                Desenvolvido por <strong class="text-slate-600 font-semibold">Alceu Matteucci Junior</strong> e <strong class="text-slate-600 font-semibold">Equipe Pedagógica do SENAI Luzerna</strong>
+            </footer>
+
         </div>
     </main>
 </div>

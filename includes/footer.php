@@ -115,6 +115,13 @@
                 });
             }
         });
+
+        // ==== ASSINATURA DE AUTORIA NO CONSOLE ====
+        console.log(
+            "%c iaS - Inteligência Pedagógica SENAI %c Desenvolvido por Alceu Matteucci Junior & Equipe Pedagógica do SENAI Luzerna ",
+            "background:#1A428A; color:#ffffff; font-weight:bold; padding:4px 8px; border-radius:4px 0 0 4px;",
+            "background:#F25C27; color:#ffffff; font-weight:bold; padding:4px 8px; border-radius:0 4px 4px 0;"
+        );
     </script>
 </body>
 </html>
