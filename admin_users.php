@@ -584,7 +584,7 @@ include 'includes/header.php';
             <div class="space-y-4">
                 <div class="bg-blue-50 border border-blue-100 p-4 rounded-xl text-sm text-blue-800 flex flex-col gap-2">
                     <p>Baixe a planilha modelo, preencha os dados e faça o upload abaixo. O arquivo pode conter 2 colunas (<code>Nome,Email</code>) ou 3 colunas (<code>Nome,Email,Turma</code>). A senha provisória será gerada e enviada por e-mail automaticamente.</p>
-                    <a href="template_alunos.csv" download class="inline-flex items-center justify-center gap-2 bg-white border border-blue-200 text-blue-700 px-3 py-2 rounded-lg font-bold hover:bg-blue-100 transition-colors text-center shadow-sm">
+                    <a href="template_alunos.csv?v=<?= file_exists('template_alunos.csv') ? filemtime('template_alunos.csv') : time() ?>" download class="inline-flex items-center justify-center gap-2 bg-white border border-blue-200 text-blue-700 px-3 py-2 rounded-lg font-bold hover:bg-blue-100 transition-colors text-center shadow-sm">
                         <i class="ph-bold ph-download-simple"></i> Baixar Modelo CSV
                     </a>
                 </div>
