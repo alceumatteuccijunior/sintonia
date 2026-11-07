@@ -11,6 +11,25 @@ $pdo = getPDOConnection(true);
 $msg = '';
 $msgType = '';
 
+// Buscar todas as turmas cadastradas para vínculos e importação
+$stmtAllClasses = $pdo->query("
+    SELECT c.id, c.name, c.year, c.semester, c.unit_id, co.name as course_name 
+    FROM classes c 
+    LEFT JOIN courses co ON c.course_id = co.id 
+    ORDER BY c.year DESC, c.semester DESC, c.name ASC
+");
+$allClasses = $stmtAllClasses->fetchAll();
+
+$classLookupById = [];
+$classLookupByName = [];
+$classLookupByNameNormalized = [];
+foreach ($allClasses as $c) {
+    $classLookupById[(int)$c['id']] = $c;
+    $classLookupByName[trim($c['name'])] = (int)$c['id'];
+    $normName = mb_strtolower(trim($c['name']), 'UTF-8');
+    $classLookupByNameNormalized[$normName] = (int)$c['id'];
+}
+
 // Processamento de Formulários (CRUD)
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
@@ -21,6 +40,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $name = trim($_POST['name'] ?? '');
         $email = trim($_POST['email'] ?? '');
         $role = $_POST['role'] ?? 'student';
+        $class_id = !empty($_POST['class_id']) ? (int)$_POST['class_id'] : null;
+        
+        // Se for aluno e turma selecionada e sem unidade, herda unidade da turma se houver
+        if ($role === 'student' && $class_id && empty($unit_id) && !empty($classLookupById[$class_id]['unit_id'])) {
+            $unit_id = $classLookupById[$class_id]['unit_id'];
+        }
         
         // Gerar senha temporária automática de 8 caracteres
         $temp_password = substr(str_shuffle('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#*'), 0, 8);
@@ -30,6 +55,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $hash = password_hash($temp_password, PASSWORD_DEFAULT);
                 $stmt = $pdo->prepare("INSERT INTO users (unit_id, name, email, password, role, must_change_password) VALUES (?, ?, ?, ?, ?, 1)");
                 $stmt->execute([$unit_id, $name, $email, $hash, $role]);
+                $newUserId = (int)$pdo->lastInsertId();
+                
+                // Se for aluno e turma foi especificada, vincula na turma
+                if ($role === 'student' && $class_id) {
+                    $pdo->prepare("INSERT IGNORE INTO class_students (class_id, student_id) VALUES (?, ?)")->execute([$class_id, $newUserId]);
+                }
                 
                 // Montar link de login dinâmico
                 $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http";
@@ -38,9 +69,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $loginLink = "$protocol://$host$uri/";
                 
                 // Enviar E-mail
-                $emailBody = "Olá <strong>{$name}</strong>,<br><br>Sua conta na plataforma iaS acaba de ser criada!<br><br>Suas credenciiaS de acesso temporárias são:<br><strong>E-mail:</strong> {$email}<br><strong>Senha:</strong> {$temp_password}<br><br><a href='{$loginLink}' style='display:inline-block; padding:10px 20px; background-color:#4f46e5; color:white; text-decoration:none; border-radius:5px;'>Acessar o iaS</a><br><br><em>Aviso: Por questões de segurança, no seu primeiro login o sistema exigirá que você crie uma nova senha definitiva.</em>";
+                $emailBody = "Olá <strong>{$name}</strong>,<br><br>Sua conta na plataforma iaS acaba de ser criada!<br><br>Suas credenciais de acesso temporárias são:<br><strong>E-mail:</strong> {$email}<br><strong>Senha:</strong> {$temp_password}<br><br><a href='{$loginLink}' style='display:inline-block; padding:10px 20px; background-color:#4f46e5; color:white; text-decoration:none; border-radius:5px;'>Acessar o iaS</a><br><br><em>Aviso: Por questões de segurança, no seu primeiro login o sistema exigirá que você crie uma nova senha definitiva.</em>";
                 
-                send_system_email($email, "Bem-vindo ao iaS - Suas CredenciiaS", $emailBody);
+                send_system_email($email, "Bem-vindo ao iaS - Suas Credenciais", $emailBody);
                 
                 $msg = "Usuário '$name' cadastrado com sucesso! Um e-mail com a senha foi enviado para o usuário.";
                 $msgType = 'success';
@@ -60,30 +91,84 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif ($action === 'import_csv') {
         require_once 'includes/mailer.php';
         $unit_id = !empty($_POST['unit_id']) ? $_POST['unit_id'] : null;
+        $default_class_id = !empty($_POST['class_id']) ? (int)$_POST['class_id'] : null;
         
         if (isset($_FILES['csv_file']) && $_FILES['csv_file']['error'] == UPLOAD_ERR_OK) {
             $fileTmpPath = $_FILES['csv_file']['tmp_name'];
             if (($handle = fopen($fileTmpPath, "r")) !== FALSE) {
-                // Pular cabeçalho
-                fgetcsv($handle, 1000, ",");
+                // Detectar delimitador (, ou ;)
+                $firstLine = fgets($handle);
+                $delimiter = (substr_count($firstLine, ';') > substr_count($firstLine, ',')) ? ';' : ',';
+                // Remove UTF-8 BOM se presente
+                $firstLine = preg_replace('/^\xEF\xBB\xBF/', '', $firstLine);
+                
                 $successCount = 0;
+                $updatedCount = 0;
                 $errorCount = 0;
                 
-                while (($data = fgetcsv($handle, 1000, ",")) !== FALSE) {
+                while (($data = fgetcsv($handle, 1000, $delimiter)) !== FALSE) {
+                    if (empty($data) || (count($data) === 1 && trim($data[0]) === '')) {
+                        continue;
+                    }
                     $name = trim($data[0] ?? '');
                     $email = trim($data[1] ?? '');
+                    $csvClass = trim($data[2] ?? '');
+                    
+                    // Se for linha de cabeçalho acidental (ex: "nome", "email"), pula
+                    if (mb_strtolower($name, 'UTF-8') === 'nome' && mb_strtolower($email, 'UTF-8') === 'email') {
+                        continue;
+                    }
                     
                     if ($name && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                        // Resolução da turma
+                        $targetClassId = null;
+                        if (!empty($csvClass)) {
+                            if (is_numeric($csvClass) && isset($classLookupById[(int)$csvClass])) {
+                                $targetClassId = (int)$csvClass;
+                            } elseif (isset($classLookupByName[$csvClass])) {
+                                $targetClassId = $classLookupByName[$csvClass];
+                            } elseif (isset($classLookupByNameNormalized[mb_strtolower($csvClass, 'UTF-8')])) {
+                                $targetClassId = $classLookupByNameNormalized[mb_strtolower($csvClass, 'UTF-8')];
+                            } else {
+                                $stmtSearch = $pdo->prepare("SELECT id FROM classes WHERE name LIKE ? LIMIT 1");
+                                $stmtSearch->execute(['%' . $csvClass . '%']);
+                                $found = $stmtSearch->fetch();
+                                if ($found) {
+                                    $targetClassId = (int)$found['id'];
+                                }
+                            }
+                        }
+                        
+                        // Fallback para turma selecionada no dropdown do modal
+                        if (!$targetClassId && $default_class_id) {
+                            $targetClassId = $default_class_id;
+                        }
+                        
+                        // Unidade escolar (herdada da turma se não especificada no formulário)
+                        $studentUnitId = $unit_id;
+                        if (empty($studentUnitId) && $targetClassId && !empty($classLookupById[$targetClassId]['unit_id'])) {
+                            $studentUnitId = $classLookupById[$targetClassId]['unit_id'];
+                        }
+                        
                         // Verifica se email já existe
-                        $stmtCheck = $pdo->prepare("SELECT id FROM users WHERE email = ?");
+                        $stmtCheck = $pdo->prepare("SELECT id, role, unit_id FROM users WHERE email = ?");
                         $stmtCheck->execute([$email]);
-                        if (!$stmtCheck->fetch()) {
+                        $existingUser = $stmtCheck->fetch();
+                        
+                        if (!$existingUser) {
                             $temp_password = substr(str_shuffle('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#*'), 0, 8);
                             $hash = password_hash($temp_password, PASSWORD_DEFAULT);
                             
                             $stmtInsert = $pdo->prepare("INSERT INTO users (unit_id, name, email, password, role, must_change_password) VALUES (?, ?, ?, ?, 'student', 1)");
-                            if ($stmtInsert->execute([$unit_id, $name, $email, $hash])) {
+                            if ($stmtInsert->execute([$studentUnitId, $name, $email, $hash])) {
+                                $newUserId = (int)$pdo->lastInsertId();
                                 $successCount++;
+                                
+                                // Vincular à turma
+                                if ($targetClassId) {
+                                    $stmtBind = $pdo->prepare("INSERT IGNORE INTO class_students (class_id, student_id) VALUES (?, ?)");
+                                    $stmtBind->execute([$targetClassId, $newUserId]);
+                                }
                                 
                                 // Enviar e-mail
                                 $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http";
@@ -91,21 +176,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 $uri = rtrim(dirname($_SERVER['REQUEST_URI']), '/\\');
                                 $loginLink = "$protocol://$host$uri/";
                                 
-                                $emailBody = "Olá <strong>{$name}</strong>,<br><br>Você acaba de ser cadastrado na plataforma iaS!<br><br>Suas credenciiaS de acesso provisórias são:<br><strong>E-mail:</strong> {$email}<br><strong>Senha:</strong> {$temp_password}<br><br><a href='{$loginLink}' style='display:inline-block; padding:10px 20px; background-color:#4f46e5; color:white; text-decoration:none; border-radius:5px;'>Acessar o iaS</a><br><br><em>Aviso: No seu primeiro acesso, o sistema pedirá que crie uma senha definitiva.</em>";
-                                send_system_email($email, "Bem-vindo ao iaS - Suas CredenciiaS", $emailBody);
+                                $emailBody = "Olá <strong>{$name}</strong>,<br><br>Você acaba de ser cadastrado na plataforma iaS!<br><br>Suas credenciais de acesso provisórias são:<br><strong>E-mail:</strong> {$email}<br><strong>Senha:</strong> {$temp_password}<br><br><a href='{$loginLink}' style='display:inline-block; padding:10px 20px; background-color:#4f46e5; color:white; text-decoration:none; border-radius:5px;'>Acessar o iaS</a><br><br><em>Aviso: No seu primeiro acesso, o sistema pedirá que crie uma senha definitiva.</em>";
+                                send_system_email($email, "Bem-vindo ao iaS - Suas Credenciais", $emailBody);
                             } else {
                                 $errorCount++;
                             }
                         } else {
-                            $errorCount++; // Email já existe
+                            // Aluno já existente: se uma turma foi informada, atualiza vínculo da turma
+                            if ($existingUser['role'] === 'student' && $targetClassId) {
+                                $pdo->prepare("DELETE FROM class_students WHERE student_id = ?")->execute([$existingUser['id']]);
+                                $pdo->prepare("INSERT INTO class_students (class_id, student_id) VALUES (?, ?)")->execute([$targetClassId, $existingUser['id']]);
+                                
+                                if (empty($existingUser['unit_id']) && !empty($studentUnitId)) {
+                                    $pdo->prepare("UPDATE users SET unit_id = ? WHERE id = ?")->execute([$studentUnitId, $existingUser['id']]);
+                                }
+                                $updatedCount++;
+                            } else {
+                                $errorCount++; // Email já existe ou perfil diferente
+                            }
                         }
                     } else {
                         $errorCount++; // Dados inválidos
                     }
                 }
                 fclose($handle);
-                $msg = "Importação concluída! $successCount aluno(s) cadastrados. $errorCount ignorados (já existentes ou dados inválidos).";
-                $msgType = 'success';
+                
+                $msgParts = [];
+                if ($successCount > 0) $msgParts[] = "$successCount aluno(s) cadastrado(s)";
+                if ($updatedCount > 0) $msgParts[] = "$updatedCount aluno(s) já existente(s) vinculado(s) à turma";
+                if ($errorCount > 0) $msgParts[] = "$errorCount ignorado(s) (já existentes ou dados inválidos)";
+                
+                $msg = "Importação concluída! " . (!empty($msgParts) ? implode(', ', $msgParts) : "Nenhum registro processado") . ".";
+                $msgType = ($successCount > 0 || $updatedCount > 0) ? 'success' : 'error';
             } else {
                 $msg = "Erro ao ler o arquivo CSV.";
                 $msgType = 'error';
@@ -121,6 +223,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $email = trim($_POST['email'] ?? '');
         $password = $_POST['password'] ?? '';
         $role = $_POST['role'] ?? 'student';
+        $class_id = !empty($_POST['class_id']) ? (int)$_POST['class_id'] : null;
+        
+        // Se for aluno e turma selecionada e sem unidade, herda unidade da turma se houver
+        if ($role === 'student' && $class_id && empty($unit_id) && !empty($classLookupById[$class_id]['unit_id'])) {
+            $unit_id = $classLookupById[$class_id]['unit_id'];
+        }
         
         if ($id && $name && $email && in_array($role, ['admin', 'teacher', 'student'])) {
             try {
@@ -131,6 +239,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 } else {
                     $stmt = $pdo->prepare("UPDATE users SET unit_id = ?, name = ?, email = ?, role = ? WHERE id = ?");
                     $stmt->execute([$unit_id, $name, $email, $role, $id]);
+                }
+                
+                // Gerenciamento da turma do aluno
+                if ($role === 'student') {
+                    $pdo->prepare("DELETE FROM class_students WHERE student_id = ?")->execute([$id]);
+                    if ($class_id) {
+                        $pdo->prepare("INSERT INTO class_students (class_id, student_id) VALUES (?, ?)")->execute([$class_id, $id]);
+                    }
+                } else {
+                    // Se mudou perfil para não-aluno, desvincula de qualquer turma de aluno
+                    $pdo->prepare("DELETE FROM class_students WHERE student_id = ?")->execute([$id]);
                 }
                 
                 // Se o próprio admin mudar seus dados, atualiza a sessão
@@ -173,10 +292,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $search = $_GET['search'] ?? '';
 $roleFilter = $_GET['role'] ?? '';
 
-$sql = "SELECT u.id, u.name, u.email, u.role, u.created_at, un.name as unit_name, r.name as regional_name 
+$sql = "SELECT u.id, u.unit_id, u.name, u.email, u.role, u.created_at, 
+               un.name as unit_name, r.name as regional_name,
+               cs.class_id, c.name as class_name, co.name as course_name
         FROM users u 
         LEFT JOIN units un ON u.unit_id = un.id 
         LEFT JOIN regionals r ON un.regional_id = r.id 
+        LEFT JOIN (
+            SELECT student_id, MAX(class_id) as class_id 
+            FROM class_students 
+            GROUP BY student_id
+        ) cs ON u.id = cs.student_id
+        LEFT JOIN classes c ON cs.class_id = c.id
+        LEFT JOIN courses co ON c.course_id = co.id
         WHERE 1=1";
 $params = [];
 
@@ -225,7 +353,7 @@ include 'includes/header.php';
                         </div>
                         <h1 class="text-3xl font-bold tracking-tight mb-2 text-slate-800 flex items-center gap-3">
                             Gestão de Usuários
-                            <button onclick="openHelpModal('Gestão de Usuários', 'Controle total sobre o acesso ao sistema.<br><br><b>Como utilizar:</b><br>- Adicione novos professores ou administradores.<br>- Atribua os usuários às suas respectivas Unidades SENAI.<br>- Resete senhas se necessário.<br>- Use a barra de pesquisa para encontrar alguém rapidamente.')" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 hover:text-senai-blue hover:bg-blue-50 transition-colors shadow-inner" title="Como Usar">
+                            <button onclick="openHelpModal('Gestão de Usuários', 'Controle total sobre o acesso ao sistema.<br><br><b>Como utilizar:</b><br>- Adicione e gerencie professores, alunos ou administradores.<br>- Atribua os usuários às suas Unidades SENAI.<br>- Vincule turmas diretamente aos alunos ao cadastrar ou editar com o campo suspenso de Turma.<br>- Importe alunos em massa via CSV com 2 colunas (Nome,Email) ou 3 colunas (Nome,Email,Turma).<br>- Use a barra de pesquisa para localizar usuários rapidamente.')" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 hover:text-senai-blue hover:bg-blue-50 transition-colors shadow-inner" title="Como Usar">
                                 <i class="ph-bold ph-question text-lg"></i>
                             </button>
                         </h1>
@@ -300,10 +428,23 @@ include 'includes/header.php';
                                 ?>
                                 <tr class="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
                                     <td class="p-4 font-bold text-slate-700 flex items-center gap-3">
-                                        <div class="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-500 font-bold shadow-inner">
+                                        <div class="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-500 font-bold shadow-inner flex-shrink-0">
                                             <?= substr($u['name'], 0, 1) ?>
                                         </div>
-                                        <?= htmlspecialchars($u['name']) ?>
+                                        <div class="flex flex-col">
+                                            <span class="text-slate-800"><?= htmlspecialchars($u['name']) ?></span>
+                                            <?php if ($u['role'] === 'student'): ?>
+                                                <?php if (!empty($u['class_name'])): ?>
+                                                    <span class="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200/70 px-2 py-0.5 rounded-md w-max mt-1" title="Turma: <?= htmlspecialchars($u['class_name']) ?><?= !empty($u['course_name']) ? ' (' . htmlspecialchars($u['course_name']) . ')' : '' ?>">
+                                                        <i class="ph-bold ph-chalkboard text-indigo-500"></i> <?= htmlspecialchars($u['class_name']) ?>
+                                                    </span>
+                                                <?php else: ?>
+                                                    <span class="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-200/70 px-2 py-0.5 rounded-md w-max mt-1" title="Aluno ainda sem turma vinculada">
+                                                        <i class="ph-bold ph-warning text-amber-500"></i> Sem Turma
+                                                    </span>
+                                                <?php endif; ?>
+                                            <?php endif; ?>
+                                        </div>
                                     </td>
                                     <td class="p-4 text-slate-500 font-medium"><?= htmlspecialchars($u['email']) ?></td>
                                     <td class="p-4 text-slate-500 text-xs">
@@ -405,6 +546,21 @@ include 'includes/header.php';
                         </label>
                     </div>
                 </div>
+
+                <div id="create_class_container">
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                        <span>Vincular à Turma</span>
+                        <span class="text-[10px] text-slate-400 font-normal lowercase">(opcional para alunos)</span>
+                    </label>
+                    <select name="class_id" id="create_class_id" class="search-select w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-senai-blue focus:ring-1 focus:ring-senai-blue transition-all">
+                        <option value="">Nenhuma turma vinculada</option>
+                        <?php foreach ($allClasses as $c): ?>
+                            <option value="<?= $c['id'] ?>">
+                                <?= htmlspecialchars($c['name']) ?> — <?= htmlspecialchars($c['course_name'] ?? 'Geral') ?> (<?= $c['year'] ?>/<?= $c['semester'] ?>)
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
             </div>
             
             <div class="mt-8 flex justify-end gap-3">
@@ -427,16 +583,34 @@ include 'includes/header.php';
             
             <div class="space-y-4">
                 <div class="bg-blue-50 border border-blue-100 p-4 rounded-xl text-sm text-blue-800 flex flex-col gap-2">
-                    <p>Baixe a planilha modelo, preencha os dados e faça o upload abaixo. A senha será gerada e enviada por e-mail para cada aluno automaticamente.</p>
+                    <p>Baixe a planilha modelo, preencha os dados e faça o upload abaixo. O arquivo pode conter 2 colunas (<code>Nome,Email</code>) ou 3 colunas (<code>Nome,Email,Turma</code>). A senha provisória será gerada e enviada por e-mail automaticamente.</p>
                     <a href="template_alunos.csv" download class="inline-flex items-center justify-center gap-2 bg-white border border-blue-200 text-blue-700 px-3 py-2 rounded-lg font-bold hover:bg-blue-100 transition-colors text-center shadow-sm">
                         <i class="ph-bold ph-download-simple"></i> Baixar Modelo CSV
                     </a>
                 </div>
 
                 <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                        <span>Vincular à Turma Padrão</span>
+                        <span class="text-[10px] text-indigo-500 font-normal lowercase">(opcional se vier no CSV)</span>
+                    </label>
+                    <select name="class_id" class="search-select w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all">
+                        <option value="">Nenhuma turma pré-definida (ler do CSV ou definir depois)</option>
+                        <?php foreach ($allClasses as $c): ?>
+                            <option value="<?= $c['id'] ?>">
+                                <?= htmlspecialchars($c['name']) ?> — <?= htmlspecialchars($c['course_name'] ?? 'Geral') ?> (<?= $c['year'] ?>/<?= $c['semester'] ?>)
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                    <p class="text-[11px] text-slate-400 mt-1">
+                        Se a linha do CSV trouxer a coluna "Turma", ela terá prioridade sobre esta seleção.
+                    </p>
+                </div>
+
+                <div>
                     <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Vincular à Unidade Escolar</label>
                     <select name="unit_id" class="search-select w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all">
-                        <option value="">Sem Unidade (Global)</option>
+                        <option value="">Sem Unidade (Global / Herdado da Turma)</option>
                         <?php
                         $stmtUnits->execute(); // reseta o cursor
                         $current_reg = '';
@@ -532,6 +706,22 @@ include 'includes/header.php';
                         </label>
                     </div>
                 </div>
+
+                <div id="edit_class_container">
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                        <span>Turma do Aluno</span>
+                        <span class="text-[10px] text-indigo-600 font-normal lowercase">campo suspenso</span>
+                    </label>
+                    <select name="class_id" id="edit_class_id" class="search-select w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all">
+                        <option value="">Nenhuma turma vinculada</option>
+                        <?php foreach ($allClasses as $c): ?>
+                            <option value="<?= $c['id'] ?>">
+                                <?= htmlspecialchars($c['name']) ?> — <?= htmlspecialchars($c['course_name'] ?? 'Geral') ?> (<?= $c['year'] ?>/<?= $c['semester'] ?>)
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                    <p class="text-[11px] text-slate-400 mt-1">Selecione uma turma para vincular ou transferir este aluno.</p>
+                </div>
             </div>
             
             <div class="mt-8 flex justify-end gap-3">
@@ -572,14 +762,47 @@ include 'includes/header.php';
         } else {
             document.getElementById('edit_unit_id').value = '';
         }
+
+        // Configurar turma do aluno
+        const classContainer = document.getElementById('edit_class_container');
+        const classSelect = document.getElementById('edit_class_id');
+        if (classSelect) {
+            classSelect.value = (user.class_id && user.class_id !== null) ? user.class_id : '';
+        }
         
         // Selecionar o role correto
-        if(user.role === 'admin') document.getElementById('edit_role_admin').checked = true;
-        else if(user.role === 'teacher') document.getElementById('edit_role_teacher').checked = true;
-        else document.getElementById('edit_role_student').checked = true;
+        if(user.role === 'admin') {
+            document.getElementById('edit_role_admin').checked = true;
+            if (classContainer) classContainer.classList.add('hidden');
+        } else if(user.role === 'teacher') {
+            document.getElementById('edit_role_teacher').checked = true;
+            if (classContainer) classContainer.classList.add('hidden');
+        } else {
+            document.getElementById('edit_role_student').checked = true;
+            if (classContainer) classContainer.classList.remove('hidden');
+        }
         
         openModal('editModal');
     }
+
+    // Alternar exibição do seletor de turma dinamicamente de acordo com o perfil selecionado
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('input[name="role"]').forEach(radio => {
+            radio.addEventListener('change', function() {
+                const form = this.closest('form');
+                if (form) {
+                    const classContainer = form.querySelector('[id$="_class_container"]');
+                    if (classContainer) {
+                        if (this.value === 'student') {
+                            classContainer.classList.remove('hidden');
+                        } else {
+                            classContainer.classList.add('hidden');
+                        }
+                    }
+                }
+            });
+        });
+    });
 </script>
 
 <?php include 'includes/footer.php'; ?>

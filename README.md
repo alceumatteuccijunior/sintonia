@@ -38,8 +38,13 @@ Sua interface foca intensamente na usabilidade e estética, utilizando **Tailwin
 4. **Governança Macro para Gestores (Multi-Tenant)**
    Visão analítica completa através de um Dashboard Administrativo, monitorando evolução de Regionais, Unidades Escolares e Cursos. Permite criação de planos de aula baseados em IA.
 
-5. **Cadastro e Automação Institucional**
-   - **Importação Massiva de Usuários (CSV):** Secretarias podem subir planilhas inteiras de alunos. O sistema cria as contas e dispara automaticamente um **e-mail de boas-vindas com as credenciais iniciais**. No primeiro login, o sistema exige obrigatoriamente a troca de senha por segurança.
+5. **Cadastro e Automação Institucional (Vínculo Flexível de Turmas)**
+   - **Vínculo Duplo de Turmas (CSV ou Edição Direta):** Atribuição de turma simplificada e sem gargalos:
+     - **Importação Massiva via CSV (2 ou 3 colunas):** O modelo aceita tanto `Nome,Email` quanto `Nome,Email,Turma`. Ao subir a planilha, o sistema resolve a turma automaticamente pelo nome ou ID.
+     - **Dropdown de Turma no Modal de Importação:** Possibilidade de selecionar uma turma padrão no modal que será aplicada a todos os alunos da planilha que não possuírem turma preenchida.
+     - **Campo Suspenso Direto na Edição do Aluno:** No painel de Gestão de Usuários (`admin_users.php`), o administrador pode abrir o modal de edição e vincular ou transferir o aluno de turma através de um campo suspenso (`select`).
+     - **Badges Visuais e Alertas de Status:** A listagem exibe chips indicando a turma de cada aluno ou o alerta visual de *"Sem Turma"*, facilitando a governança.
+   - **Onboarding e E-mail Automático:** O sistema gera senhas provisórias seguras e dispara automaticamente um **e-mail de boas-vindas com as credenciais iniciais**. No primeiro login, o sistema exige obrigatoriamente a troca de senha por segurança.
 
 6. **Arena iaS e Gamificação**
    O coração do engajamento do aluno. Possui:
@@ -57,7 +62,7 @@ Sua interface foca intensamente na usabilidade e estética, utilizando **Tailwin
 - **Painel Macro de Desempenho:** Filtre os dados e o histórico de provas por Estado, Regional, Escola e Curso.
 - **Importação Automatizada SAEP:** Com 1 único arquivo CSV do Governo, o sistema constrói toda a hierarquia, cadastra todos os alunos, professores, turmas e históricos de Sprints automaticamente.
 - **Onboarding Automático:** Disparo de credenciais temporárias por E-mail para alunos importados.
-- **Gestão de Usuários:** Adição, edição e exclusão (Soft Delete para proteção de relatórios históricos) de alunos, professores e diretores.
+- **Gestão de Usuários & Vínculo de Turmas:** Adição, edição e exclusão de usuários; atribuição rápida de turmas via campo suspenso (dropdown) no modal de edição, importação em massa flexível via CSV (com ou sem coluna de turma) e badges visuais na tabela indicando o status da turma do aluno.
 
 ### 👨‍🏫 Visão Docente (A Sala de Aula)
 - **Agenda de Sprints (Google Calendar):** Calendário mensal interativo com chips coloridos por status (*Agendada*, *Ativa*, *Concluída*), cards de apoio e modal de reagendamento em 1 clique via AJAX.
