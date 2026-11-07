@@ -112,6 +112,14 @@ $currentPage = $currentPage ?? 'dashboard';
                         <span class="truncate block w-full">Importar SAEP</span>
                     </a>
                 </li>
+                <li>
+                    <a href="admin_system_map.php"
+                        class="w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-2.5 group <?= $currentPage === 'admin_system_map' ? 'text-senai-blue bg-white shadow-sm border border-blue-100' : 'text-slate-600 hover:bg-white hover:shadow-sm hover:text-senai-blue' ?>">
+                        <i
+                            class="ph-fill ph-tree-structure <?= $currentPage === 'admin_system_map' ? 'text-senai-blue' : 'text-slate-400 group-hover:text-senai-blue transition-colors' ?>"></i>
+                        <span class="truncate block w-full">Mapa do Sistema</span>
+                    </a>
+                </li>
             </ul>
         <?php endif; ?>
     </div>

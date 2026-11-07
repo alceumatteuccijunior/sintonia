@@ -267,16 +267,21 @@ include 'includes/header.php';
         <div id="content-scroll-area" class="flex-1 overflow-y-auto no-scrollbar w-full flex flex-col items-center pt-24 pb-20 relative z-10 px-4 md:px-8">
             
             <div class="w-full max-w-6xl">
-                <div class="mb-10 animate-slide-up text-center md:text-left">
-                    <h1 class="text-3xl md:text-4xl font-bold tracking-tight mb-2 drop-shadow-sm text-slate-800 flex items-center gap-3">
-                        Visão Global
-                        <button onclick="openHelpModal('Visão Global (Admin)', 'Esta tela oferece uma visão panorâmica e estratégica de toda a instituição.<br><br><b>O que você pode fazer aqui:</b><br>- Acompanhar a taxa de acertos (Accuracy) global<br>- Visualizar gráficos de evolução das avaliações ao longo do tempo<br>- Analisar o desempenho de forma granular usando os filtros por Unidades, RegioniaS e Cursos.')" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 hover:text-senai-blue hover:bg-blue-50 transition-colors shadow-inner" title="Como Usar">
-                            <i class="ph-bold ph-question text-lg"></i>
-                        </button>
-                    </h1>
-                    <p class="text-base text-slate-500 font-medium opacity-0 animate-fade-in delay-200">
-                        Monitoramento pedagógico de todas as turmas, provas e professores.
-                    </p>
+                <div class="mb-10 animate-slide-up flex flex-col md:flex-row justify-between items-center md:items-end gap-4 text-center md:text-left">
+                    <div>
+                        <h1 class="text-3xl md:text-4xl font-bold tracking-tight mb-2 drop-shadow-sm text-slate-800 flex items-center justify-center md:justify-start gap-3">
+                            Visão Global
+                            <button onclick="openHelpModal('Visão Global (Admin)', 'Esta tela oferece uma visão panorâmica e estratégica de toda a instituição.<br><br><b>O que você pode fazer aqui:</b><br>- Acompanhar a taxa de acertos (Accuracy) global<br>- Visualizar gráficos de evolução das avaliações ao longo do tempo<br>- Analisar o desempenho de forma granular usando os filtros por Unidades, Regionais e Cursos.')" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 hover:text-senai-blue hover:bg-blue-50 transition-colors shadow-inner" title="Como Usar">
+                                <i class="ph-bold ph-question text-lg"></i>
+                            </button>
+                        </h1>
+                        <p class="text-base text-slate-500 font-medium opacity-0 animate-fade-in delay-200">
+                            Monitoramento pedagógico de todas as turmas, provas e professores.
+                        </p>
+                    </div>
+                    <a href="admin_system_map.php" class="bg-white/90 hover:bg-senai-blue hover:text-white border border-slate-200/80 text-senai-blue px-4 py-2.5 rounded-xl font-bold text-xs shadow-sm hover:shadow-md transition-all flex items-center gap-2 shrink-0">
+                        <i class="ph-bold ph-tree-structure text-base"></i> Mapa do Sistema &amp; Guia Master
+                    </a>
                 </div>
 
                 <!-- Painel de KPIs GlobiaS -->
