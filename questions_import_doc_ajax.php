@@ -50,12 +50,79 @@ function detectNeedsImage($text) {
     return (bool) preg_match($pattern, $text);
 }
 
+/**
+ * Salva a chave da OpenAI permanentemente no banco de dados (system_settings) e em config.local.php
+ * para que futuros deploys via Git/cPanel nunca sobrescrevam a chave em produção.
+ */
+function saveOpenAiKeyPermanently($pdo, $newKey) {
+    $newKey = trim($newKey);
+    if ($newKey === '' || $newKey === 'sua_chave_aqui') {
+        return false;
+    }
+
+    // 1. Salva na tabela system_settings do MySQL (persiste entre deploys do Git)
+    try {
+        $pdo->exec("
+            CREATE TABLE IF NOT EXISTS system_settings (
+                setting_key VARCHAR(100) PRIMARY KEY,
+                setting_value TEXT NOT NULL,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        ");
+        $stmt = $pdo->prepare("
+            INSERT INTO system_settings (setting_key, setting_value)
+            VALUES ('openai_api_key', ?)
+            ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)
+        ");
+        $stmt->execute([$newKey]);
+    } catch (Exception $e) {
+        // Ignora erro de tabela caso usuário do banco tenha restrição de DDL
+    }
+
+    // 2. Salva também em config.local.php (ignorado pelo Git) no servidor
+    $localConfigPath = __DIR__ . '/config.local.php';
+    $phpContent = "<?php\n// Arquivo gerado automaticamente - ignorado pelo Git para preservar a chave em produção\nif (!defined('OPENAI_API_KEY')) {\n    define('OPENAI_API_KEY', " . var_export($newKey, true) . ");\n}\n";
+    @file_put_contents($localConfigPath, $phpContent);
+
+    return true;
+}
+
+// ============================================================================
+// AÇÃO AUXILIAR: SALVAR CHAVE DA OPENAI PERMANENTEMENTE NO SERVIDOR
+// ============================================================================
+if ($action === 'save_api_key') {
+    $newKey = trim($_POST['api_key'] ?? ($jsonInput['api_key'] ?? ''));
+    if (strpos($newKey, 'sk-') !== 0) {
+        echo json_encode(['success' => false, 'message' => 'A chave informada parece inválida. Ela deve começar com "sk-".']);
+        exit;
+    }
+
+    saveOpenAiKeyPermanently($pdo, $newKey);
+    echo json_encode([
+        'success' => true,
+        'message' => 'Chave da OpenAI salva permanentemente no banco de dados do servidor! Ela não será mais perdida ao fazer git push.'
+    ]);
+    exit;
+}
+
 // ============================================================================
 // ETAPA 1: EXTRAÇÃO E ESTRUTURAÇÃO DE QUESTÕES VIA IA (parse_text)
 // ============================================================================
 if ($action === 'parse_text') {
-    if (!defined('OPENAI_API_KEY') || trim(OPENAI_API_KEY) === '') {
-        echo json_encode(['success' => false, 'message' => 'A chave da API da OpenAI (OPENAI_API_KEY) não está configurada no arquivo config.php.']);
+    $apiKeyOverride = trim($_POST['api_key_override'] ?? ($jsonInput['api_key_override'] ?? ''));
+    if ($apiKeyOverride !== '' && strpos($apiKeyOverride, 'sk-') === 0) {
+        saveOpenAiKeyPermanently($pdo, $apiKeyOverride);
+        $activeApiKey = $apiKeyOverride;
+    } else {
+        $activeApiKey = defined('OPENAI_API_KEY') ? trim(OPENAI_API_KEY) : '';
+    }
+
+    if ($activeApiKey === '' || $activeApiKey === 'sua_chave_aqui') {
+        echo json_encode([
+            'success' => false,
+            'needs_api_key' => true,
+            'message' => 'A chave da OpenAI ainda não foi salva no servidor de produção (o deploy via Git sobrescreveu o config.php com "sua_chave_aqui"). Cole sua chave abaixo uma única vez para salvá-la permanentemente no Banco de Dados!'
+        ]);
         exit;
     }
 
@@ -166,7 +233,7 @@ PROMPT;
     curl_setopt($ch, CURLOPT_TIMEOUT, 120);
     curl_setopt($ch, CURLOPT_HTTPHEADER, [
         'Content-Type: application/json',
-        'Authorization: Bearer ' . OPENAI_API_KEY
+        'Authorization: Bearer ' . $activeApiKey
     ]);
 
     $response = curl_exec($ch);
@@ -182,6 +249,17 @@ PROMPT;
 
     // Fallback automático para gpt-3.5-turbo caso a chave não tenha acesso ao gpt-4o-mini
     if (isset($decoded['error'])) {
+        $errCode = $decoded['error']['code'] ?? '';
+        $errMsg  = $decoded['error']['message'] ?? '';
+        if ($errCode === 'invalid_api_key' || stripos($errMsg, 'Incorrect API key') !== false) {
+            echo json_encode([
+                'success' => false,
+                'needs_api_key' => true,
+                'message' => 'A chave da OpenAI configurada no servidor é inválida ou foi sobrescrita pelo deploy ("sua_chave_aqui"). Cole sua chave sk-proj-... abaixo para salvá-la permanentemente no Banco de Dados!'
+            ]);
+            exit;
+        }
+
         $payload['model'] = 'gpt-3.5-turbo';
         $payload['max_tokens'] = 4000;
         unset($payload['response_format']);
@@ -193,7 +271,7 @@ PROMPT;
         curl_setopt($ch, CURLOPT_TIMEOUT, 120);
         curl_setopt($ch, CURLOPT_HTTPHEADER, [
             'Content-Type: application/json',
-            'Authorization: Bearer ' . OPENAI_API_KEY
+            'Authorization: Bearer ' . $activeApiKey
         ]);
         $response = curl_exec($ch);
         $curlErr = curl_error($ch);
@@ -205,7 +283,11 @@ PROMPT;
         }
         $decoded = json_decode($response, true);
         if (isset($decoded['error'])) {
-            echo json_encode(['success' => false, 'message' => 'Erro retornado pela OpenAI: ' . ($decoded['error']['message'] ?? 'Erro desconhecido')]);
+            echo json_encode([
+                'success' => false,
+                'needs_api_key' => (stripos($decoded['error']['message'] ?? '', 'API key') !== false),
+                'message' => 'Erro retornado pela OpenAI: ' . ($decoded['error']['message'] ?? 'Erro desconhecido')
+            ]);
             exit;
         }
     }
@@ -450,3 +532,4 @@ if ($action === 'save_questions') {
 }
 
 echo json_encode(['success' => false, 'message' => 'Ação inválida.']);
+

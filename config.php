@@ -5,19 +5,18 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
+// Fuso horário padrão do Brasil (Horário de Brasília)
+date_default_timezone_set('America/Sao_Paulo');
+
 define('DB_HOST', 'localhost');      // Host do MySQL
-define('DB_NAME', 'ia191379_ais');    // Nome do banco de dados que será criado
-define('DB_USER', 'ia191379_ais');           // Usuário do MySQL (altere se necessário)
-define('DB_PASS', 'bCUQV2S5dGcT96K4cg5C');               // Senha do MySQL (altere se necessário)
-define('OPENAI_API_KEY', 'sua_chave_aqui');
+define('DB_NAME', 'ia191379_ais');   // Nome do banco de dados
+define('DB_USER', 'ia191379_ais');   // Usuário do MySQL
+define('DB_PASS', 'bCUQV2S5dGcT96K4cg5C'); // Senha do MySQL
 
-// define('DB_HOST', 'localhost');      // Host do MySQL
-// define('DB_NAME', 'castelob_sintonia2');    // Nome do banco de dados que será criado
-// define('DB_USER', 'castelob_sintonia2');           // Usuário do MySQL (altere se necessário)
-// define('DB_PASS', 'huAhbFrMDgNa56yhDvA8');               // Senha do MySQL (altere se necessário)
-// define('OPENAI_API_KEY', 'sua_chave_aqui');
-
-
+// 1. Carrega chave local se existir (config.local.php não é sobrescrito pelo Git/cPanel)
+if (file_exists(__DIR__ . '/config.local.php')) {
+    require_once __DIR__ . '/config.local.php';
+}
 
 /**
  * Função para retornar a conexão PDO
@@ -35,6 +34,9 @@ function getPDOConnection($connectToDb = true)
         $pdo = new PDO($dsn, DB_USER, DB_PASS);
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+        try {
+            $pdo->exec("SET time_zone = '-03:00'");
+        } catch (Exception $tzEx) {}
         return $pdo;
     } catch (PDOException $e) {
         // Em produção, não exiba detalhes do erro na tela.
@@ -49,5 +51,24 @@ try {
 } catch (Exception $e) {
     // Banco possivelmente não existe, o setup cuidará disso
     $pdo = null;
+}
+
+// 2. Se OPENAI_API_KEY ainda não foi definida via config.local.php, busca na tabela system_settings do banco
+if (!defined('OPENAI_API_KEY')) {
+    $dbOpenAiKey = '';
+    if ($pdo) {
+        try {
+            $stmtKey = $pdo->query("SELECT setting_value FROM system_settings WHERE setting_key = 'openai_api_key' LIMIT 1");
+            if ($stmtKey) {
+                $val = trim((string)$stmtKey->fetchColumn());
+                if ($val !== '' && $val !== 'sua_chave_aqui') {
+                    $dbOpenAiKey = $val;
+                }
+            }
+        } catch (Exception $e) {
+            // Tabela system_settings ainda não criada; será criada automaticamente quando configurada
+        }
+    }
+    define('OPENAI_API_KEY', $dbOpenAiKey);
 }
 ?>

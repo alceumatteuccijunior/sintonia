@@ -256,6 +256,26 @@ include 'includes/header.php';
                     </div>
                 </details>
 
+                <!-- Configuração Permanente da Chave OpenAI no Banco de Dados (Exibida se o servidor estiver sem chave após deploy) -->
+                <?php $hasConfiguredOpenAiKey = (defined('OPENAI_API_KEY') && trim(OPENAI_API_KEY) !== '' && trim(OPENAI_API_KEY) !== 'sua_chave_aqui'); ?>
+                <div id="api-key-setup-box" class="<?= $hasConfiguredOpenAiKey ? 'hidden' : '' ?> bg-amber-50 border border-amber-300 rounded-2xl p-4 text-xs">
+                    <div class="flex items-start gap-2.5 mb-2.5">
+                        <i class="ph-fill ph-key text-lg text-amber-600 mt-0.5"></i>
+                        <div class="flex-1">
+                            <h5 class="font-bold text-amber-950 text-sm">Configurar Chave da OpenAI no Servidor (Única Vez)</h5>
+                            <p class="text-amber-800 mt-0.5 leading-relaxed">
+                                O GitHub bloqueia o envio de chaves <code>sk-proj-...</code> pelo Git, por isso o servidor de produção estava com <code>sua_chave_aqui</code>. Cole sua chave abaixo para <b>salvá-la diretamente no Banco de Dados MySQL do servidor</b> — assim ela nunca mais será perdida ao fazer <code>git push</code>!
+                            </p>
+                        </div>
+                    </div>
+                    <div class="flex flex-col sm:flex-row gap-2">
+                        <input type="password" id="doc_api_key_override" placeholder="Cole aqui sua chave sk-proj-..." class="flex-1 px-3.5 py-2 bg-white border border-amber-300 rounded-xl text-xs text-slate-800 font-mono outline-none focus:ring-2 focus:ring-amber-500">
+                        <button type="button" onclick="saveServerOpenAiKey()" id="btn-save-api-key" class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5 shrink-0 shadow-sm">
+                            <i class="ph-bold ph-floppy-disk"></i> Salvar Chave Permanente
+                        </button>
+                    </div>
+                </div>
+
                 <!-- Alerta e Progresso -->
                 <div id="doc-import-alert" class="p-4 rounded-xl text-sm font-medium hidden"></div>
 
@@ -564,6 +584,43 @@ include 'includes/header.php';
         return (result.value || '').trim();
     }
 
+    async function saveServerOpenAiKey() {
+        const keyInput = document.getElementById('doc_api_key_override');
+        const btn = document.getElementById('btn-save-api-key');
+        const alertBox = document.getElementById('doc-import-alert');
+        const val = (keyInput ? keyInput.value : '').trim();
+
+        if (!val || !val.startsWith('sk-')) {
+            alert('Por favor, cole uma chave válida da OpenAI (deve começar com "sk-").');
+            return;
+        }
+
+        btn.disabled = true;
+        btn.innerHTML = '<i class="ph-bold ph-spinner animate-spin"></i> Salvando...';
+
+        try {
+            const res = await fetch('questions_import_doc_ajax.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'save_api_key', api_key: val })
+            });
+            const data = await res.json();
+            if (data.success) {
+                document.getElementById('api-key-setup-box').classList.add('hidden');
+                alertBox.className = 'p-4 rounded-xl text-sm font-medium bg-emerald-50 text-emerald-800 border border-emerald-200';
+                alertBox.innerHTML = '<div class="flex items-center gap-2"><i class="ph-fill ph-check-circle text-lg text-emerald-600"></i> <span>' + data.message + ' Agora clique em <b>Analisar e Extrair Questões com IA</b>!</span></div>';
+                alertBox.classList.remove('hidden');
+            } else {
+                alert(data.message || 'Erro ao salvar chave.');
+            }
+        } catch (err) {
+            alert('Erro de comunicação ao salvar chave.');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="ph-bold ph-floppy-disk"></i> Salvar Chave Permanente';
+        }
+    }
+
     async function submitDocExtract(e) {
         e.preventDefault();
 
@@ -572,6 +629,7 @@ include 'includes/header.php';
         const importTag = document.getElementById('doc_import_tag').value.trim();
         const defaultCap = document.getElementById('doc_default_capacity').value.trim();
         const answerKey = document.getElementById('doc_answer_key').value.trim();
+        const apiKeyOverride = (document.getElementById('doc_api_key_override')?.value || '').trim();
         const fileInput = document.getElementById('doc_file');
         const manualText = document.getElementById('doc_manual_text').value.trim();
         const btn = document.getElementById('btn-doc-extract');
@@ -603,6 +661,9 @@ include 'includes/header.php';
             formData.append('default_module', defaultModule);
             formData.append('default_capacity', defaultCap);
             formData.append('answer_key', answerKey);
+            if (apiKeyOverride) {
+                formData.append('api_key_override', apiKeyOverride);
+            }
 
             if (hasFile) {
                 const file = fileInput.files[0];
@@ -637,8 +698,16 @@ include 'includes/header.php';
             const result = await response.json();
 
             if (!result.success) {
+                if (result.needs_api_key) {
+                    const keyBox = document.getElementById('api-key-setup-box');
+                    if (keyBox) keyBox.classList.remove('hidden');
+                }
                 throw new Error(result.message || 'Erro ao analisar o documento.');
             }
+
+            // Se salvou chave via override com sucesso, oculta o box
+            const keyBox = document.getElementById('api-key-setup-box');
+            if (keyBox) keyBox.classList.add('hidden');
 
             extractedDocQuestions = result.questions || [];
             showDocReviewStep();
