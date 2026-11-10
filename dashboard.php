@@ -75,7 +75,7 @@ include 'includes/header.php';
                         </div>
                         <h3 class="text-3xl font-bold text-slate-800 mb-1">
                             <?php
-                            $unit_id = $_SESSION['unit_id'] ?? null;
+                            $unit_id = ($_SESSION['user_role'] === 'admin') ? null : ($_SESSION['unit_id'] ?? null);
                             $where_unit = $unit_id ? "WHERE unit_id = ?" : "";
                             $params = $unit_id ? [$unit_id] : [];
                             
@@ -111,17 +111,30 @@ include 'includes/header.php';
                     
                     <div class="bg-white/70 backdrop-blur-md border border-white/80 rounded-3xl p-6 shadow-sm overflow-hidden">
                         <?php
-                        $stmtSprints = $pdo->prepare("
-                            SELECT s.*, c.name as class_name,
-                            (SELECT count(*) FROM sprint_questions WHERE sprint_id = s.id) as total_questions,
-                            (SELECT count(DISTINCT student_id) FROM sprint_attempts WHERE sprint_id = s.id) as students_started
-                            FROM sprints s
-                            JOIN classes c ON s.class_id = c.id
-                            WHERE s.teacher_id = ?
-                            ORDER BY s.created_at DESC LIMIT 5
-                        ");
-                        $stmtSprints->execute([$_SESSION['user_id']]);
-                        $sprints = $stmtSprints->fetchAll();
+                        if ($_SESSION['user_role'] === 'admin') {
+                            $stmtSprints = $pdo->query("
+                                SELECT s.*, c.name as class_name,
+                                (SELECT count(*) FROM sprint_questions WHERE sprint_id = s.id) as total_questions,
+                                (SELECT count(DISTINCT student_id) FROM sprint_attempts WHERE sprint_id = s.id) as students_started
+                                FROM sprints s
+                                JOIN classes c ON s.class_id = c.id
+                                WHERE s.teacher_id IS NOT NULL
+                                ORDER BY s.created_at DESC LIMIT 5
+                            ");
+                            $sprints = $stmtSprints->fetchAll();
+                        } else {
+                            $stmtSprints = $pdo->prepare("
+                                SELECT s.*, c.name as class_name,
+                                (SELECT count(*) FROM sprint_questions WHERE sprint_id = s.id) as total_questions,
+                                (SELECT count(DISTINCT student_id) FROM sprint_attempts WHERE sprint_id = s.id) as students_started
+                                FROM sprints s
+                                JOIN classes c ON s.class_id = c.id
+                                WHERE s.teacher_id = ?
+                                ORDER BY s.created_at DESC LIMIT 5
+                            ");
+                            $stmtSprints->execute([$_SESSION['user_id']]);
+                            $sprints = $stmtSprints->fetchAll();
+                        }
                         
                         if(empty($sprints)):
                         ?>

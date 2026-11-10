@@ -13,9 +13,14 @@ if (!$sprint_id) {
     exit;
 }
 
-// Verifica permissão
-$stmt = $pdo->prepare("SELECT id, feedback_released FROM sprints WHERE id = ? AND teacher_id = ?");
-$stmt->execute([$sprint_id, $_SESSION['user_id']]);
+// Verifica permissão (Administradores têm acesso irrestrito)
+if ($_SESSION['user_role'] === 'admin') {
+    $stmt = $pdo->prepare("SELECT id, feedback_released FROM sprints WHERE id = ?");
+    $stmt->execute([$sprint_id]);
+} else {
+    $stmt = $pdo->prepare("SELECT id, feedback_released FROM sprints WHERE id = ? AND teacher_id = ?");
+    $stmt->execute([$sprint_id, $_SESSION['user_id']]);
+}
 $sprint = $stmt->fetch();
 
 if ($sprint) {

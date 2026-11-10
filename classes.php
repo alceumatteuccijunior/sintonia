@@ -25,18 +25,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $semester = $_POST['semester'];
     $new_unit_id = !empty($_POST['unit_id']) ? $_POST['unit_id'] : null;
 
-    if ($_SESSION['user_role'] === 'admin' && $new_unit_id) {
-        // Atualiza a turma para a nova unidade
+    if ($_SESSION['user_role'] === 'admin') {
+        // Atualiza a turma para a nova unidade (ou Global se vazio)
         $stmt = $pdo->prepare("UPDATE classes SET name = ?, course_id = ?, year = ?, semester = ?, unit_id = ? WHERE id = ?");
         $stmt->execute([$name, $course_id, $year, $semester, $new_unit_id, $class_id]);
 
-        // Migra todos os ALUNOS dessa turma para a nova unidade também!
-        $stmtUpdateStudents = $pdo->prepare("
-            UPDATE users 
-            SET unit_id = ? 
-            WHERE role = 'student' AND id IN (SELECT student_id FROM class_students WHERE class_id = ?)
-        ");
-        $stmtUpdateStudents->execute([$new_unit_id, $class_id]);
+        if ($new_unit_id) {
+            // Migra todos os ALUNOS dessa turma para a nova unidade também!
+            $stmtUpdateStudents = $pdo->prepare("
+                UPDATE users 
+                SET unit_id = ? 
+                WHERE role = 'student' AND id IN (SELECT student_id FROM class_students WHERE class_id = ?)
+            ");
+            $stmtUpdateStudents->execute([$new_unit_id, $class_id]);
+        }
     } else {
         // Professor editando (não pode mudar de unidade)
         $stmt = $pdo->prepare("UPDATE classes SET name = ?, course_id = ?, year = ?, semester = ? WHERE id = ?");
@@ -53,8 +55,8 @@ if ($_SESSION['user_role'] === 'admin') {
     $units = $pdo->query("SELECT u.id, u.name as unit_name, r.name as regional_name FROM units u JOIN regionals r ON u.regional_id = r.id ORDER BY r.name ASC, u.name ASC")->fetchAll();
 }
 
-// Buscar Turmas
-$unit_id = $_SESSION['unit_id'] ?? null;
+// Buscar Turmas (Administradores têm visão Master de todas as turmas, independente de unit_id)
+$unit_id = ($_SESSION['user_role'] === 'admin') ? null : ($_SESSION['unit_id'] ?? null);
 $whereClause = $unit_id ? "WHERE c.unit_id = ?" : "WHERE 1=1";
 $params = $unit_id ? [$unit_id] : [];
 

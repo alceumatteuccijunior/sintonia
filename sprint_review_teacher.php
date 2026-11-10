@@ -13,9 +13,14 @@ if (!$sprint_id) {
     exit;
 }
 
-// Verifica se sprint pertence ao professor
-$stmt = $pdo->prepare("SELECT s.*, c.name as class_name FROM sprints s JOIN classes c ON s.class_id = c.id WHERE s.id = ? AND s.teacher_id = ?");
-$stmt->execute([$sprint_id, $_SESSION['user_id']]);
+// Verifica se sprint pertence ao professor (Administradores têm acesso irrestrito)
+if ($_SESSION['user_role'] === 'admin') {
+    $stmt = $pdo->prepare("SELECT s.*, c.name as class_name FROM sprints s JOIN classes c ON s.class_id = c.id WHERE s.id = ?");
+    $stmt->execute([$sprint_id]);
+} else {
+    $stmt = $pdo->prepare("SELECT s.*, c.name as class_name FROM sprints s JOIN classes c ON s.class_id = c.id WHERE s.id = ? AND s.teacher_id = ?");
+    $stmt->execute([$sprint_id, $_SESSION['user_id']]);
+}
 $sprint = $stmt->fetch();
 
 if (!$sprint) {

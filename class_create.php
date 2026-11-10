@@ -18,7 +18,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     if ($name && $course_id && $year && $semester) {
         try {
-            $unit_id = $_SESSION['unit_id'] ?? null;
+            if ($_SESSION['user_role'] === 'admin') {
+                $unit_id = !empty($_POST['unit_id']) ? $_POST['unit_id'] : null;
+            } else {
+                $unit_id = $_SESSION['unit_id'] ?? null;
+            }
             $stmt = $pdo->prepare("INSERT INTO classes (unit_id, course_id, name, year, semester) VALUES (?, ?, ?, ?, ?)");
             $stmt->execute([$unit_id, $course_id, $name, $year, $semester]);
             $success = "Turma criada com sucesso!";
@@ -34,6 +38,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // Buscar cursos para o select
 $stmtCourses = $pdo->query("SELECT id, name FROM courses ORDER BY name");
 $courses = $stmtCourses->fetchAll();
+
+$units = [];
+if ($_SESSION['user_role'] === 'admin') {
+    $units = $pdo->query("SELECT u.id, u.name as unit_name, r.name as regional_name FROM units u JOIN regionals r ON u.regional_id = r.id ORDER BY r.name ASC, u.name ASC")->fetchAll();
+}
 
 include 'includes/header.php';
 ?>
@@ -114,31 +123,57 @@ include 'includes/header.php';
                             </div>
                         </div>
 
-                        <!-- Aviso Transparente da Unidade (Lotagem) -->
-                        <?php
-                            $teacher_unit_id = $_SESSION['unit_id'] ?? null;
-                            $unit_name = 'Unidade Global (Administração)';
-                            if ($teacher_unit_id) {
-                                $stmtUnit = $pdo->prepare("SELECT u.name as unit_name, r.name as regional_name FROM units u JOIN regionals r ON u.regional_id = r.id WHERE u.id = ?");
-                                $stmtUnit->execute([$teacher_unit_id]);
-                                $uData = $stmtUnit->fetch();
-                                if ($uData) {
-                                    $unit_name = $uData['unit_name'] . ' (' . $uData['regional_name'] . ')';
+                        <?php if ($_SESSION['user_role'] === 'admin'): ?>
+                            <?php $default_admin_unit = $_SESSION['unit_id'] ?? ''; ?>
+                            <div class="mt-6 pt-5 border-t border-slate-100 bg-indigo-50/40 p-5 rounded-2xl border border-indigo-100/60">
+                                <label class="block text-xs font-bold text-indigo-800 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                                    <i class="ph-fill ph-buildings text-indigo-600"></i> Unidade Escolar (Alocação da Turma)
+                                </label>
+                                <select name="unit_id" class="search-select w-full px-4 py-2.5 bg-white border border-indigo-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500 transition-all text-indigo-900 font-medium">
+                                    <option value="">Sem Unidade (Global)</option>
+                                    <?php
+                                    $curr_reg = '';
+                                    foreach ($units as $u) {
+                                        if ($curr_reg !== $u['regional_name']) {
+                                            if ($curr_reg !== '') echo "</optgroup>";
+                                            $curr_reg = $u['regional_name'];
+                                            echo "<optgroup label='" . htmlspecialchars($curr_reg) . "'>";
+                                        }
+                                        $sel = ($default_admin_unit == $u['id']) ? 'selected' : '';
+                                        echo "<option value='{$u['id']}' {$sel}>" . htmlspecialchars($u['unit_name']) . "</option>";
+                                    }
+                                    if ($curr_reg !== '') echo "</optgroup>";
+                                    ?>
+                                </select>
+                                <p class="text-[11px] text-indigo-500 mt-1.5 font-medium">Como Administrador, você pode alocar a turma em qualquer Unidade Escolar ou deixá-la como Global.</p>
+                            </div>
+                        <?php else: ?>
+                            <!-- Aviso Transparente da Unidade (Lotagem) para Professores -->
+                            <?php
+                                $teacher_unit_id = $_SESSION['unit_id'] ?? null;
+                                $unit_name = 'Unidade Global (Administração)';
+                                if ($teacher_unit_id) {
+                                    $stmtUnit = $pdo->prepare("SELECT u.name as unit_name, r.name as regional_name FROM units u JOIN regionals r ON u.regional_id = r.id WHERE u.id = ?");
+                                    $stmtUnit->execute([$teacher_unit_id]);
+                                    $uData = $stmtUnit->fetch();
+                                    if ($uData) {
+                                        $unit_name = $uData['unit_name'] . ' (' . $uData['regional_name'] . ')';
+                                    }
                                 }
-                            }
-                        ?>
-                        <div class="mt-8 p-5 bg-indigo-50 border border-indigo-100 rounded-2xl flex gap-4 items-center">
-                            <div class="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-500 shrink-0">
-                                <i class="ph-fill ph-map-pin text-2xl"></i>
+                            ?>
+                            <div class="mt-8 p-5 bg-indigo-50 border border-indigo-100 rounded-2xl flex gap-4 items-center">
+                                <div class="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-500 shrink-0">
+                                    <i class="ph-fill ph-map-pin text-2xl"></i>
+                                </div>
+                                <div>
+                                    <h4 class="text-xs font-bold text-indigo-800 uppercase tracking-wider mb-1">Local de Vinculação</h4>
+                                    <p class="text-sm text-indigo-600/80 font-medium leading-relaxed">
+                                        Esta turma será alocada automaticamente em: <br>
+                                        <strong class="text-indigo-900"><?= htmlspecialchars($unit_name) ?></strong>
+                                    </p>
+                                </div>
                             </div>
-                            <div>
-                                <h4 class="text-xs font-bold text-indigo-800 uppercase tracking-wider mb-1">Local de Vinculação</h4>
-                                <p class="text-sm text-indigo-600/80 font-medium leading-relaxed">
-                                    Esta turma será alocada automaticamente em: <br>
-                                    <strong class="text-indigo-900"><?= htmlspecialchars($unit_name) ?></strong>
-                                </p>
-                            </div>
-                        </div>
+                        <?php endif; ?>
 
                         <div class="pt-8 flex justify-end">
                             <button type="submit" class="bg-senai-blue text-white px-8 py-3.5 rounded-xl font-bold shadow-[0_4px_15px_-3px_rgba(26,66,138,0.4)] hover:shadow-[0_8px_20px_-3px_rgba(26,66,138,0.5)] hover:-translate-y-0.5 transition-all w-full md:w-auto flex items-center gap-2 group">

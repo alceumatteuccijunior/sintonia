@@ -21,8 +21,9 @@ if (!$class) {
     die("Turma não encontrada.");
 }
 
-$unit_id = $_SESSION['unit_id'] ?? null;
-if ($unit_id && $class['unit_id'] !== $unit_id) {
+// Administradores têm acesso irrestrito (Master) a todas as turmas
+$unit_id = ($_SESSION['user_role'] === 'admin') ? null : ($_SESSION['unit_id'] ?? null);
+if ($unit_id && $class['unit_id'] != $unit_id) {
     die("Acesso negado: Esta turma pertence a outra Unidade Escolar.");
 }
 
