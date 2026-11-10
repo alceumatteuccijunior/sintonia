@@ -34,13 +34,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file'])) {
         $importedQuestions = [];
         $fileHandle = fopen($file['tmp_name'], 'r');
         
-        // Pular cabeçalho
-        fgetcsv($fileHandle, 0, ",");
+        // Auto-detectar delimitador (, ou ;) e pular cabeçalho
+        $firstLine = fgets($fileHandle);
+        $delimiter = (substr_count($firstLine, ';') > substr_count($firstLine, ',')) ? ';' : ',';
+        rewind($fileHandle);
+        fgetcsv($fileHandle, 0, $delimiter);
         
-        while (($row = fgetcsv($fileHandle, 0, ",")) !== FALSE) {
+        $needsImgPattern = '/\b(figura|imagem|diagrama|circuito|gr[aá]fico|esquema|ilustra[cç][aã]o|desenho|fluxograma|quadro\s+a\s+seguir|tabela\s+a\s+seguir)\b/iu';
+
+        while (($row = fgetcsv($fileHandle, 0, $delimiter)) !== FALSE) {
             // Colunas: Curso (0), Módulo (1), Capacidade (2), Enunciado (3), Dificuldade (4), Tag (5), A(Correta)(6), B(7), C(8), D(9), E(10)
             if (count($row) < 10) continue; // Pular linhas incompletas (mínimo até a D)
             
+            // Garante UTF-8 caso o Excel salve em ANSI/Windows-1252
+            foreach ($row as $k => $v) {
+                if ($v !== null && !mb_check_encoding($v, 'UTF-8')) {
+                    $row[$k] = mb_convert_encoding($v, 'UTF-8', 'Windows-1252,ISO-8859-1');
+                }
+            }
+
             $courseName = trim($row[0]);
             $moduleName = trim($row[1]);
             $capacity = trim($row[2]);
@@ -82,11 +94,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file'])) {
             
             $importedQuestions[] = [
                 'id' => (int)$questionId,
-                'command' => (mb_strlen($command) > 85 ? mb_substr($command, 0, 85) . '...' : $command),
+                'command' => $command,
                 'course' => $courseName,
                 'module' => $moduleName,
                 'capacity' => $capacity,
-                'difficulty' => $difficulty
+                'difficulty' => $difficulty,
+                'needs_image' => (bool) preg_match($needsImgPattern, $command)
             ];
             
             // 3. Insert Options

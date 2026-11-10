@@ -12,10 +12,11 @@ Sua interface foca intensamente na usabilidade e estética, utilizando **Tailwin
 
 ## 🚀 Para que serve o iaS? Principais Atribuições:
 
-1. **Gestão Estruturada do Conhecimento (Banco de Questões & Mídia de Apoio)**
-   Armazena questões e separa o acervo por Curso, Módulo, Capacidade e Dificuldade. A recente integração de **Tags/Lotes (ex: SAEP2026)** permite catalogar milhares de questões de provas específicas para seleção com 1 clique.
+1. **Gestão Estruturada do Conhecimento (Banco de Questões, Importação com IA & Mídia de Apoio)**
+   Armazena questões e separa o acervo por Curso, Módulo, Capacidade e Dificuldade. A integração de **Tags/Lotes (ex: SAEP2026)** permite catalogar milhares de questões de provas específicas para seleção com 1 clique.
+   - **Importação Inteligente de Provas em Word (`.docx`) e PDF (`.pdf`) com IA:** Basta anexar uma prova ou lista de exercícios em `.docx` ou `.pdf`, escolher o Curso, Módulo Padrão, Tag e Gabarito Rápido opcional. A IA estrutura automaticamente todos os enunciados e alternativas, resolve o gabarito caso não esteja explícito, detecta quais questões citam figuras/circuitos (`📷 Pede imagem`) e abre uma tela de conferência interativa antes de salvar.
    - **Imagens de Apoio Técnicas:** Suporte completo a diagramas, circuitos elétricos, esquemas técnicos, tabelas e gráficos (`image_url`). Totalmente seguro para produção: questões puramente textuais permanecem 100% limpas sem caixas vazias ou tags quebradas.
-   - **Fluxo Ágil Pós-Importação em Massa:** Ao subir uma planilha CSV, o sistema pergunta instantaneamente: *"Deseja vincular imagens a alguma dessas questões agora?"*. O docente pode selecionar as questões que exigem imagens e fazer o upload direto de sua máquina em segundos.
+   - **Fluxo Ágil Pós-Importação em Massa (Word, PDF ou CSV):** Ao finalizar a importação, o sistema posiciona no topo todas as questões que citam figuras no enunciado e permite carregar as imagens diretamente do computador em segundos.
    - **Gestão Individual e Contínua:** No Banco de Questões (`questions_view.php`), cada questão exibe badge indicativo e permite adicionar, editar ou remover a imagem a qualquer momento.
    - **Preservação de Dados:** A exclusão de questões é lógica (*Soft Delete*), garantindo que históricos e notas de alunos do passado não sejam perdidos.
 
