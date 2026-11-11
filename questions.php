@@ -201,13 +201,13 @@ include 'includes/header.php';
 
                     <div>
                         <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                            Módulo / Unidade Curricular Padrão <span class="text-red-500">*</span>
+                            Módulo / Unidade Curricular Padrão (Opcional)
                         </label>
                         <div class="relative">
                             <i class="ph-bold ph-folders absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                            <input type="text" id="doc_default_module" list="modules-datalist" required placeholder="Ex: Eletrotécnica Básica, Lógica de Programação..." class="w-full pl-10 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 font-medium focus:bg-white focus:ring-2 focus:ring-violet-500 outline-none transition-all">
+                            <input type="text" id="doc_default_module" list="modules-datalist" placeholder="Deixe vazio para 'Sem UC vinculada' ou digite..." class="w-full pl-10 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 font-medium focus:bg-white focus:ring-2 focus:ring-violet-500 outline-none transition-all">
                         </div>
-                        <p class="text-[11px] text-slate-400 mt-1">Usado quando a questão não trouxer o módulo explícito.</p>
+                        <p class="text-[11px] text-slate-400 mt-1">Se não preencher, ficará como <b>Sem UC vinculada</b>.</p>
                     </div>
                 </div>
 
@@ -635,8 +635,8 @@ include 'includes/header.php';
         const btn = document.getElementById('btn-doc-extract');
         const alertBox = document.getElementById('doc-import-alert');
 
-        if (!courseName || !defaultModule) {
-            alert('Por favor, informe o Curso de Destino e o Módulo Padrão.');
+        if (!courseName) {
+            alert('Por favor, informe o Curso de Destino.');
             return;
         }
 

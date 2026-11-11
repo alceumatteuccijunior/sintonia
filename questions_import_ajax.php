@@ -55,6 +55,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file'])) {
 
             $courseName = trim($row[0]);
             $moduleName = trim($row[1]);
+            if ($moduleName === '') {
+                $moduleName = 'Sem UC vinculada';
+            }
             $capacity = trim($row[2]);
             $command = trim($row[3]);
             $difficulty = trim($row[4]);

@@ -128,7 +128,10 @@ if ($action === 'parse_text') {
 
     $rawText       = trim($_POST['raw_text'] ?? ($jsonInput['raw_text'] ?? ''));
     $courseName    = trim($_POST['course_name'] ?? ($jsonInput['course_name'] ?? ''));
-    $defaultModule = trim($_POST['default_module'] ?? ($jsonInput['default_module'] ?? 'Módulo Geral'));
+    $defaultModule = trim($_POST['default_module'] ?? ($jsonInput['default_module'] ?? ''));
+    if ($defaultModule === '') {
+        $defaultModule = 'Sem UC vinculada';
+    }
     $defaultCap    = trim($_POST['default_capacity'] ?? ($jsonInput['default_capacity'] ?? ''));
     $answerKey     = trim($_POST['answer_key'] ?? ($jsonInput['answer_key'] ?? ''));
 
@@ -203,7 +206,7 @@ PROMPT;
 
     $userPrompt = "CONTEXTO PADRÃO INFORMADO PELO PROFESSOR:\n";
     $userPrompt .= "- Curso: " . ($courseName !== '' ? $courseName : 'Não especificado') . "\n";
-    $userPrompt .= "- Módulo Padrão (usar se a questão não especificar outro): " . ($defaultModule !== '' ? $defaultModule : 'Módulo Geral') . "\n";
+    $userPrompt .= "- Módulo Padrão (usar se a questão não especificar outro): " . ($defaultModule !== '' ? $defaultModule : 'Sem UC vinculada') . "\n";
     if ($defaultCap !== '') {
         $userPrompt .= "- Capacidade Padrão (usar se a questão não especificar outra): " . $defaultCap . "\n";
     }
@@ -313,8 +316,8 @@ PROMPT;
         }
 
         $mod = trim($q['module'] ?? '');
-        if ($mod === '') {
-            $mod = $defaultModule !== '' ? $defaultModule : 'Módulo Geral';
+        if ($mod === '' || mb_strtolower($mod, 'UTF-8') === 'não especificado' || mb_strtolower($mod, 'UTF-8') === 'módulo geral') {
+            $mod = $defaultModule !== '' ? $defaultModule : 'Sem UC vinculada';
         }
 
         $cap = trim($q['capacity'] ?? '');
@@ -395,7 +398,10 @@ PROMPT;
 // ============================================================================
 if ($action === 'save_questions') {
     $courseName    = trim($jsonInput['course_name'] ?? '');
-    $defaultModule = trim($jsonInput['default_module'] ?? 'Módulo Geral');
+    $defaultModule = trim($jsonInput['default_module'] ?? '');
+    if ($defaultModule === '') {
+        $defaultModule = 'Sem UC vinculada';
+    }
     $importTag     = trim($jsonInput['import_tag'] ?? '');
     $questions     = $jsonInput['questions'] ?? [];
 
@@ -446,7 +452,7 @@ if ($action === 'save_questions') {
 
             $modName = trim($q['module'] ?? '');
             if ($modName === '') {
-                $modName = $defaultModule !== '' ? $defaultModule : 'Módulo Geral';
+                $modName = $defaultModule !== '' ? $defaultModule : 'Sem UC vinculada';
             }
 
             $capacity = trim($q['capacity'] ?? '');
