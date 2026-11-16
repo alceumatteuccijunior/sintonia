@@ -275,6 +275,22 @@ include 'includes/header.php';
                             </label>
                         </div>
                     </div>
+
+                    <!-- Barra de Seleção em Massa das Questões Filtradas -->
+                    <div class="mt-3 pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                        <div class="text-xs font-bold text-slate-500 flex items-center gap-1.5">
+                            <i class="ph-bold ph-funnel text-senai-blue"></i>
+                            <span id="visible-questions-counter"><?= count($questoes) ?> questão(ões) exibidas no filtro atual</span>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <button type="button" onclick="selectAllVisibleQuestions(true)" class="px-3.5 py-1.5 rounded-xl bg-senai-blue/10 hover:bg-senai-blue text-senai-blue hover:text-white border border-senai-blue/20 text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm active:scale-95">
+                                <i class="ph-bold ph-check-square-offset"></i> Selecionar Todas as Filtradas (<span id="btn-select-visible-count"><?= count($questoes) ?></span>)
+                            </button>
+                            <button type="button" onclick="selectAllVisibleQuestions(false)" class="px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-red-50 text-slate-600 hover:text-red-600 border border-slate-200 hover:border-red-200 text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95">
+                                <i class="ph-bold ph-square"></i> Desmarcar Filtradas
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
                 <form method="POST" action="sprint_select_questions.php" class="animate-fade-in delay-200 pb-20">
@@ -360,9 +376,17 @@ include 'includes/header.php';
                     </div>
 
                     <!-- Floating Action Bar -->
-                    <div class="fixed bottom-0 left-0 w-full bg-white/80 backdrop-blur-xl border-t border-slate-200 p-4 px-6 z-40 flex items-center justify-between md:pl-72 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
-                        <div class="text-sm font-bold text-slate-600">
-                            <span id="selected-count" class="text-senai-blue text-lg">0</span> questões selecionadas
+                    <div class="fixed bottom-0 left-0 w-full bg-white/80 backdrop-blur-xl border-t border-slate-200 p-4 px-6 z-40 flex flex-wrap items-center justify-between gap-3 md:pl-72 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
+                        <div class="flex flex-wrap items-center gap-3">
+                            <div class="text-sm font-bold text-slate-600">
+                                <span id="selected-count" class="text-senai-blue text-lg">0</span> questões selecionadas
+                            </div>
+                            <button type="button" onclick="selectAllVisibleQuestions(true)" class="px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-senai-blue text-senai-blue hover:text-white text-xs font-bold transition-all flex items-center gap-1 border border-blue-200">
+                                <i class="ph-bold ph-checks"></i> Selecionar Filtradas
+                            </button>
+                            <button type="button" onclick="clearAllSelectedQuestions()" class="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-500 text-xs font-bold transition-all">
+                                Limpar Tudo
+                            </button>
                         </div>
                         <button type="submit" class="bg-senai-blue text-white px-8 py-3 rounded-xl font-bold shadow-md hover:bg-[#153673] hover:-translate-y-0.5 transition-all flex items-center gap-2">
                             Finalizar Sprint <i class="ph-bold ph-check"></i>
@@ -464,6 +488,15 @@ include 'includes/header.php';
         } else {
             noResults.classList.add('hidden');
         }
+
+        const visibleCounter = document.getElementById('visible-questions-counter');
+        if (visibleCounter) {
+            visibleCounter.textContent = `${visibleCount} questão(ões) exibidas no filtro atual`;
+        }
+        const btnSelectCount = document.getElementById('btn-select-visible-count');
+        if (btnSelectCount) {
+            btnSelectCount.textContent = visibleCount;
+        }
     }
 
     if(fModule) {
@@ -474,21 +507,44 @@ include 'includes/header.php';
         fUsed.addEventListener('change', applyFilters);
     }
 
-    // Contagem de questões selecionadas
+    // Contagem e seleção em massa de questões
     const checkboxes = document.querySelectorAll('.checkbox-select');
     const countEl = document.getElementById('selected-count');
-    checkboxes.forEach(cb => {
-        cb.addEventListener('change', () => {
-            const count = document.querySelectorAll('.checkbox-select:checked').length;
-            countEl.textContent = count;
-            
+
+    function updateSelectedCountAndStyles() {
+        const count = document.querySelectorAll('.checkbox-select:checked').length;
+        if (countEl) countEl.textContent = count;
+
+        checkboxes.forEach(cb => {
             const card = cb.closest('.question-card');
-            if(cb.checked) {
+            if (!card) return;
+            if (cb.checked) {
                 card.classList.add('ring-2', 'ring-senai-blue', 'border-transparent');
             } else {
                 card.classList.remove('ring-2', 'ring-senai-blue', 'border-transparent');
             }
         });
+    }
+
+    function selectAllVisibleQuestions(shouldSelect) {
+        cards.forEach(card => {
+            if (card.style.display !== 'none') {
+                const cb = card.querySelector('.checkbox-select');
+                if (cb) {
+                    cb.checked = shouldSelect;
+                }
+            }
+        });
+        updateSelectedCountAndStyles();
+    }
+
+    function clearAllSelectedQuestions() {
+        checkboxes.forEach(cb => { cb.checked = false; });
+        updateSelectedCountAndStyles();
+    }
+
+    checkboxes.forEach(cb => {
+        cb.addEventListener('change', updateSelectedCountAndStyles);
     });
 
     // Lógica do Modal de Detalhes
