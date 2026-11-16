@@ -32,7 +32,9 @@ function ensureCourseCapacitiesTable($pdo) {
  * com todos os módulos daquele curso na tabela module_capacities (usada nos relatórios de Sprints).
  */
 function syncCourseCapacitiesToModules($pdo, $courseId) {
-    ensureCourseCapacitiesTable($pdo);
+    if (!$pdo->inTransaction()) {
+        ensureCourseCapacitiesTable($pdo);
+    }
 
     // Se course_capacities estiver vazia mas module_capacities já tiver dados antigos deste curso, hidrata course_capacities
     $stmtCheck = $pdo->prepare("SELECT COUNT(*) FROM course_capacities WHERE course_id = ?");
@@ -561,7 +563,11 @@ if ($action === 'update_question') {
         $stmtModName->execute([$moduleId]);
         $moduleName = (string)$stmtModName->fetchColumn();
 
-        // Sincroniza module_capacities caso um módulo novo tenha sido criado
+        if ($pdo->inTransaction()) {
+            $pdo->commit();
+        }
+
+        // Sincroniza module_capacities após o commit para evitar commit implícito de DDL no MySQL
         if ($courseId > 0) {
             syncCourseCapacitiesToModules($pdo, $courseId);
         }
@@ -570,8 +576,6 @@ if ($action === 'update_question') {
         $stmtReloadOpts = $pdo->prepare("SELECT id, text, is_correct FROM question_options WHERE question_id = ? ORDER BY id ASC");
         $stmtReloadOpts->execute([$questionId]);
         $updatedOptions = $stmtReloadOpts->fetchAll();
-
-        $pdo->commit();
 
         echo json_encode([
             'success'  => true,
@@ -600,3 +604,4 @@ if ($action === 'update_question') {
 }
 
 echo json_encode(['success' => false, 'message' => 'Ação inválida.']);
+
