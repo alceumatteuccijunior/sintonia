@@ -12,6 +12,13 @@ $pdo = getPDOConnection(true);
 $user_id = $_SESSION['user_id'];
 $is_admin = ($_SESSION['user_role'] === 'admin');
 
+// Garante que o ENUM de status suporte 'scheduled' e corrige registros que ficaram vazios antes da migração
+try {
+    $pdo->exec("ALTER TABLE sprints MODIFY COLUMN status ENUM('draft', 'active', 'completed', 'scheduled') DEFAULT 'draft'");
+    $pdo->exec("UPDATE sprints SET status = 'scheduled' WHERE (status = '' OR status IS NULL) AND start_time IS NOT NULL AND start_time > NOW()");
+    $pdo->exec("UPDATE sprints SET status = 'active' WHERE (status IN ('scheduled', '') OR status IS NULL) AND start_time IS NOT NULL AND start_time <= NOW()");
+} catch (Exception $e) {}
+
 // -------------------------------------------------------------
 // 1. Navegação de Mês / Ano (Google Agenda Style)
 // -------------------------------------------------------------

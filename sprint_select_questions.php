@@ -30,9 +30,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = "Você precisa selecionar pelo menos uma questão para a Sprint.";
         } else {
             try {
-                // AUTO-FIX Tabela antiga (adiciona order_num se não existir)
+                // AUTO-FIX: Garante coluna order_num e que o ENUM status de sprints aceite 'scheduled' ANTES de abrir a transação
                 try {
                     $pdo->exec("ALTER TABLE sprint_questions ADD COLUMN order_num INT");
+                } catch (Exception $e) {}
+                try {
+                    $pdo->exec("ALTER TABLE sprints MODIFY COLUMN status ENUM('draft', 'active', 'completed', 'scheduled') DEFAULT 'draft'");
                 } catch (Exception $e) {}
 
                 $pdo->beginTransaction();

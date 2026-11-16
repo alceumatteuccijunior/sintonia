@@ -17,7 +17,7 @@ if (!$sprint_id) {
 }
 
 // Verifica se a sprint existe e está disponível (active ou scheduled)
-$stmtSprint = $pdo->prepare("SELECT * FROM sprints WHERE id = ? AND status IN ('active', 'scheduled')");
+$stmtSprint = $pdo->prepare("SELECT * FROM sprints WHERE id = ? AND (status IN ('active', 'scheduled') OR (start_time IS NOT NULL AND status != 'completed'))");
 $stmtSprint->execute([$sprint_id]);
 $sprint = $stmtSprint->fetch();
 

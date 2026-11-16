@@ -26,12 +26,14 @@ if (!$classe) {
     exit;
 }
 
-// Auto-liberação de sprints agendadas cujo horário de início já chegou
+// Auto-reparo de ENUM e auto-liberação de sprints agendadas cujo horário de início já chegou
 try {
-    $pdo->exec("UPDATE sprints SET status = 'active' WHERE status = 'scheduled' AND start_time IS NOT NULL AND start_time <= NOW()");
+    $pdo->exec("ALTER TABLE sprints MODIFY COLUMN status ENUM('draft', 'active', 'completed', 'scheduled') DEFAULT 'draft'");
+    $pdo->exec("UPDATE sprints SET status = 'scheduled' WHERE (status = '' OR status IS NULL) AND start_time IS NOT NULL AND start_time > NOW()");
+    $pdo->exec("UPDATE sprints SET status = 'active' WHERE (status IN ('scheduled', '') OR status IS NULL) AND start_time IS NOT NULL AND start_time <= NOW()");
 } catch (Exception $e) {}
 
-// Pega sprints ativas ou agendadas da turma dele
+// Pega sprints ativas ou agendadas de todas as turmas vinculadas ao aluno
 $stmtSprints = $pdo->prepare("
     SELECT s.*, 
            (SELECT count(*) FROM sprint_questions WHERE sprint_id = s.id) as total_questions,
@@ -39,10 +41,14 @@ $stmtSprints = $pdo->prepare("
            a.completed_at
     FROM sprints s
     LEFT JOIN sprint_attempts a ON a.sprint_id = s.id AND a.student_id = ?
-    WHERE s.class_id = ? AND s.status IN ('active', 'scheduled') AND s.teacher_id IS NOT NULL
-    ORDER BY s.created_at DESC
+    WHERE s.class_id IN (SELECT class_id FROM class_students WHERE student_id = ?)
+      AND (s.status IN ('active', 'scheduled') OR (s.start_time IS NOT NULL AND s.status != 'completed'))
+      AND s.teacher_id IS NOT NULL
+    ORDER BY
+      CASE WHEN s.status = 'scheduled' OR (s.start_time IS NOT NULL AND s.start_time > NOW()) THEN 0 ELSE 1 END ASC,
+      COALESCE(s.start_time, s.created_at) DESC
 ");
-$stmtSprints->execute([$student_id, $classe['id']]);
+$stmtSprints->execute([$student_id, $student_id]);
 $sprints = $stmtSprints->fetchAll();
 
 // Ranking Global do Aluno na Turma

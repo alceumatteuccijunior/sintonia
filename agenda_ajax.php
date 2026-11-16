@@ -66,6 +66,9 @@ if ($action === 'reschedule') {
     }
 
     try {
+        try {
+            $pdo->exec("ALTER TABLE sprints MODIFY COLUMN status ENUM('draft', 'active', 'completed', 'scheduled') DEFAULT 'draft'");
+        } catch (Exception $ex) {}
         $stmtUpdate = $pdo->prepare("UPDATE sprints SET start_time = ?, end_time = ?, status = ? WHERE id = ?");
         $stmtUpdate->execute([$start_time, $end_time, $status, $sprint_id]);
 
