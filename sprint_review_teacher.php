@@ -173,12 +173,13 @@ include 'includes/header.php';
                 : 'bg-slate-600 text-slate-400';
             
             const html = `
-                <div class="p-4 rounded-2xl border ${baseClass} flex items-center gap-4 transition-all">
+                <div class="p-4 rounded-2xl border ${baseClass} flex items-start gap-4 transition-all">
                     <div class="w-10 h-10 rounded-xl flex items-center justify-center font-bold flex-shrink-0 ${letterClass}">
                         ${letter}
                     </div>
                     <div class="font-medium text-lg flex-1">
-                        ${opt.text}
+                        ${opt.text ? `<div>${opt.text}</div>` : ''}
+                        ${opt.image_url ? `<div class="mt-2"><img src="${opt.image_url}" alt="Alternativa ${letter}" class="max-h-52 rounded-xl border border-slate-600 bg-white p-1.5 object-contain"></div>` : ''}
                     </div>
                     ${isCorrect ? '<i class="ph-bold ph-check-circle text-green-400 text-2xl flex-shrink-0"></i>' : ''}
                 </div>

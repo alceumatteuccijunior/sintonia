@@ -90,20 +90,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file'])) {
             }
             
             // 2. Insert Question
-            // Usando IGNORE ou normal? Vamos normal
             $stmtInsert = $pdo->prepare("INSERT INTO questions (module_id, capacity, command, difficulty, import_tag, teacher_id) VALUES (?, ?, ?, ?, ?, ?)");
             $stmtInsert->execute([$moduleId, $capacity, $command, $difficulty, $tag, $teacherId]);
             $questionId = $pdo->lastInsertId();
-            
-            $importedQuestions[] = [
-                'id' => (int)$questionId,
-                'command' => $command,
-                'course' => $courseName,
-                'module' => $moduleName,
-                'capacity' => $capacity,
-                'difficulty' => $difficulty,
-                'needs_image' => (bool) preg_match($needsImgPattern, $command)
-            ];
             
             // 3. Insert Options
             $optsToInsert = [
@@ -119,12 +108,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file'])) {
             // Embaralhar as alternativas para não ficar sempre a correta na primeira posição no DB
             shuffle($optsToInsert);
             
+            $savedOptsForStep2 = [];
             $stmtOpt = $pdo->prepare("INSERT INTO question_options (question_id, text, is_correct) VALUES (?, ?, ?)");
             foreach ($optsToInsert as $opt) {
                 if (!empty($opt['text'])) {
                     $stmtOpt->execute([$questionId, $opt['text'], $opt['correct']]);
+                    $savedOptsForStep2[] = [
+                        'id'         => (int)$pdo->lastInsertId(),
+                        'text'       => $opt['text'],
+                        'image_url'  => null,
+                        'is_correct' => $opt['correct']
+                    ];
                 }
             }
+
+            $importedQuestions[] = [
+                'id'          => (int)$questionId,
+                'command'     => $command,
+                'course'      => $courseName,
+                'module'      => $moduleName,
+                'capacity'    => $capacity,
+                'difficulty'  => $difficulty,
+                'needs_image' => (bool) preg_match($needsImgPattern, $command),
+                'options'     => $savedOptsForStep2
+            ];
             
             $totalQuestoes++;
         }

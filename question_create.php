@@ -22,18 +22,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $options = $_POST['options'] ?? [];
     $correct_index = $_POST['correct_index'] ?? '';
     
-    if ($module_id && $capacity && $command && count($options) >= 2 && $correct_index !== '') {
+    if ($module_id && $capacity && $command && $correct_index !== '') {
+        // Garante coluna image_url em question_options ANTES da transação
+        try {
+            $stmtCol = $pdo->query("SHOW COLUMNS FROM question_options LIKE 'image_url'");
+            if ($stmtCol && !$stmtCol->fetch()) {
+                $pdo->exec("ALTER TABLE question_options ADD COLUMN image_url VARCHAR(500) NULL DEFAULT NULL AFTER text");
+            }
+        } catch (Exception $e) {}
+
         try {
             $pdo->beginTransaction();
             
+            $uploadDir = __DIR__ . '/uploads/questions/';
+            if (!is_dir($uploadDir)) @mkdir($uploadDir, 0755, true);
+            $allowed = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg'];
+
             // Processa imagem de apoio se enviada
             $image_url = null;
             if (isset($_FILES['image_file']) && $_FILES['image_file']['error'] === UPLOAD_ERR_OK) {
                 $ext = strtolower(pathinfo($_FILES['image_file']['name'], PATHINFO_EXTENSION));
-                $allowed = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg'];
                 if (in_array($ext, $allowed) && $_FILES['image_file']['size'] <= 10 * 1024 * 1024) {
-                    $uploadDir = __DIR__ . '/uploads/questions/';
-                    if (!is_dir($uploadDir)) @mkdir($uploadDir, 0755, true);
                     $newFileName = 'q_' . time() . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
                     if (move_uploaded_file($_FILES['image_file']['tmp_name'], $uploadDir . $newFileName)) {
                         $image_url = 'uploads/questions/' . $newFileName;
@@ -46,12 +55,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmtQ->execute([$module_id, $capacity, $context, $command, $difficulty, $image_url, $_SESSION['user_id']]);
             $question_id = $pdo->lastInsertId();
             
-            // Insert Options
-            $stmtO = $pdo->prepare("INSERT INTO question_options (question_id, text, is_correct) VALUES (?, ?, ?)");
-            foreach ($options as $index => $text) {
-                if (trim($text) !== '') {
+            // Insert Options (com texto e/ou imagem por alternativa)
+            $stmtO = $pdo->prepare("INSERT INTO question_options (question_id, text, image_url, is_correct) VALUES (?, ?, ?, ?)");
+            for ($index = 0; $index < 5; $index++) {
+                $text = isset($options[$index]) ? trim($options[$index]) : '';
+                $opt_img_url = null;
+                if (isset($_FILES['option_images']['error'][$index]) && $_FILES['option_images']['error'][$index] === UPLOAD_ERR_OK) {
+                    $oExt = strtolower(pathinfo($_FILES['option_images']['name'][$index], PATHINFO_EXTENSION));
+                    if (in_array($oExt, $allowed) && $_FILES['option_images']['size'][$index] <= 10 * 1024 * 1024) {
+                        $oFileName = 'opt_' . $question_id . '_' . $index . '_' . time() . '_' . bin2hex(random_bytes(3)) . '.' . $oExt;
+                        if (move_uploaded_file($_FILES['option_images']['tmp_name'][$index], $uploadDir . $oFileName)) {
+                            $opt_img_url = 'uploads/questions/' . $oFileName;
+                        }
+                    }
+                }
+                if ($text !== '' || $opt_img_url !== null) {
                     $is_correct = ($index == $correct_index) ? 1 : 0;
-                    $stmtO->execute([$question_id, trim($text), $is_correct]);
+                    $stmtO->execute([$question_id, $text, $opt_img_url, $is_correct]);
                 }
             }
             
@@ -225,18 +245,30 @@ include 'includes/header.php';
 
                         <!-- Alternativas -->
                         <div class="pt-6 border-t border-slate-100">
-                            <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2">
-                                <i class="ph-fill ph-list-dashes text-senai-orange"></i> Alternativas
+                            <h3 class="font-bold text-slate-800 mb-2 flex items-center gap-2">
+                                <i class="ph-fill ph-list-dashes text-senai-orange"></i> Alternativas (Texto e/ou Imagem)
                             </h3>
-                            <p class="text-xs text-slate-500 mb-4">Escreva as alternativas e selecione a bolinha verde correspondente à resposta correta.</p>
+                            <p class="text-xs text-slate-500 mb-4">Escreva o texto e/ou anexe uma imagem para cada alternativa, e marque a bolinha verde correspondente à resposta correta.</p>
                             
                             <div class="space-y-3" id="options-container">
                                 <?php for ($i = 0; $i < 5; $i++): $letter = chr(65 + $i); ?>
-                                    <div class="flex items-center gap-3 bg-slate-50/50 p-2 pl-4 rounded-xl border border-slate-200 hover:border-slate-300 transition-colors">
-                                        <span class="font-bold text-slate-400 w-4"><?= $letter ?></span>
-                                        <input type="text" name="options[<?= $i ?>]" placeholder="Texto da alternativa..." class="flex-1 bg-transparent border-none focus:ring-0 text-slate-700 font-medium py-2">
-                                        <div class="pr-3 pl-3 border-l border-slate-200 flex items-center justify-center">
-                                            <input type="radio" name="correct_index" value="<?= $i ?>" <?= $i === 0 ? 'required' : '' ?> class="w-5 h-5 text-green-500 border-slate-300 focus:ring-green-500 hover:scale-110 transition-transform cursor-pointer" title="Marcar como Correta">
+                                    <div class="bg-slate-50/50 p-2.5 pl-4 rounded-xl border border-slate-200 hover:border-slate-300 transition-colors">
+                                        <div class="flex items-center gap-3">
+                                            <span class="font-bold text-slate-400 w-4"><?= $letter ?></span>
+                                            <input type="text" name="options[<?= $i ?>]" placeholder="Texto da alternativa <?= $letter ?> (opcional se anexar imagem)..." class="flex-1 bg-transparent border-none focus:ring-0 text-slate-700 font-medium py-1.5 text-sm">
+                                            <input type="file" id="opt_img_<?= $i ?>" name="option_images[<?= $i ?>]" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml" class="hidden" onchange="previewManualOptionImage(<?= $i ?>, this)">
+                                            <button type="button" onclick="document.getElementById('opt_img_<?= $i ?>').click()" class="px-2.5 py-1.5 rounded-lg bg-white hover:bg-indigo-50 text-indigo-600 border border-indigo-200 text-xs font-bold flex items-center gap-1 shrink-0" title="Anexar imagem na alternativa <?= $letter ?>">
+                                                <i class="ph-bold ph-image"></i> <span id="opt_img_btn_lbl_<?= $i ?>">+ Imagem</span>
+                                            </button>
+                                            <div class="pr-3 pl-3 border-l border-slate-200 flex items-center justify-center">
+                                                <input type="radio" name="correct_index" value="<?= $i ?>" <?= $i === 0 ? 'required' : '' ?> class="w-5 h-5 text-green-500 border-slate-300 focus:ring-green-500 hover:scale-110 transition-transform cursor-pointer" title="Marcar como Correta">
+                                            </div>
+                                        </div>
+                                        <div id="opt_img_preview_box_<?= $i ?>" class="hidden pl-7 pt-2 flex items-center gap-3">
+                                            <img id="opt_img_preview_<?= $i ?>" src="#" alt="Preview <?= $letter ?>" class="h-14 w-auto object-contain rounded-lg border border-slate-200 bg-white p-0.5 shadow-sm">
+                                            <button type="button" onclick="removeManualOptionImage(<?= $i ?>)" class="text-xs font-bold text-red-500 hover:underline flex items-center gap-1">
+                                                <i class="ph-bold ph-trash"></i> Remover imagem
+                                            </button>
                                         </div>
                                     </div>
                                 <?php endfor; ?>
@@ -321,6 +353,30 @@ function removeManualImage(e) {
     document.getElementById('image-preview').src = '#';
     document.getElementById('image-preview-container').classList.add('hidden');
     document.getElementById('image-placeholder').classList.remove('hidden');
+}
+function previewManualOptionImage(idx, input) {
+    if (input.files && input.files[0]) {
+        const file = input.files[0];
+        if (file.size > 10 * 1024 * 1024) {
+            alert('A imagem deve ter no máximo 10MB.');
+            input.value = '';
+            return;
+        }
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('opt_img_preview_' + idx).src = e.target.result;
+            document.getElementById('opt_img_preview_box_' + idx).classList.remove('hidden');
+            document.getElementById('opt_img_btn_lbl_' + idx).textContent = 'Trocar Img';
+        };
+        reader.readAsDataURL(file);
+    }
+}
+
+function removeManualOptionImage(idx) {
+    document.getElementById('opt_img_' + idx).value = '';
+    document.getElementById('opt_img_preview_' + idx).src = '#';
+    document.getElementById('opt_img_preview_box_' + idx).classList.add('hidden');
+    document.getElementById('opt_img_btn_lbl_' + idx).textContent = '+ Imagem';
 }
 </script>
 

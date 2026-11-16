@@ -25,7 +25,9 @@ $stmt = $pdo->prepare("
         sa.is_correct,
         sa.selected_option_id,
         qo.text as selected_option_text,
-        (SELECT text FROM question_options WHERE question_id = q.id AND is_correct = 1 LIMIT 1) as correct_option_text
+        qo.image_url as selected_option_image,
+        (SELECT text FROM question_options WHERE question_id = q.id AND is_correct = 1 LIMIT 1) as correct_option_text,
+        (SELECT image_url FROM question_options WHERE question_id = q.id AND is_correct = 1 LIMIT 1) as correct_option_image
     FROM sprint_questions sq
     JOIN questions q ON sq.question_id = q.id
     LEFT JOIN modules m ON q.module_id = m.id
@@ -122,14 +124,24 @@ $rate = round(($correct_count / count($questions)) * 100, 1);
                     <?php if ($is_null): ?>
                         <span class="text-sm font-medium text-slate-400 italic">Não respondeu</span>
                     <?php else: ?>
-                        <span class="text-sm font-bold <?= $is_correct ? 'text-green-700' : 'text-red-600' ?>"><?= htmlspecialchars($q['selected_option_text']) ?></span>
+                        <?php if (!empty($q['selected_option_text'])): ?>
+                            <span class="text-sm font-bold block <?= $is_correct ? 'text-green-700' : 'text-red-600' ?>"><?= htmlspecialchars($q['selected_option_text']) ?></span>
+                        <?php endif; ?>
+                        <?php if (!empty($q['selected_option_image'])): ?>
+                            <img src="<?= htmlspecialchars($q['selected_option_image']) ?>" alt="Resposta do Aluno" class="mt-1.5 max-h-28 rounded-lg border border-slate-200 bg-white p-1 object-contain">
+                        <?php endif; ?>
                     <?php endif; ?>
                 </div>
                 
                 <?php if (!$is_correct): ?>
                 <div>
                     <span class="text-[10px] uppercase font-bold text-slate-400 block mb-1">Resposta Correta</span>
-                    <span class="text-sm font-bold text-green-700"><?= htmlspecialchars($q['correct_option_text']) ?></span>
+                    <?php if (!empty($q['correct_option_text'])): ?>
+                        <span class="text-sm font-bold text-green-700 block"><?= htmlspecialchars($q['correct_option_text']) ?></span>
+                    <?php endif; ?>
+                    <?php if (!empty($q['correct_option_image'])): ?>
+                        <img src="<?= htmlspecialchars($q['correct_option_image']) ?>" alt="Resposta Correta" class="mt-1.5 max-h-28 rounded-lg border border-slate-200 bg-white p-1 object-contain">
+                    <?php endif; ?>
                 </div>
                 <?php endif; ?>
             </div>

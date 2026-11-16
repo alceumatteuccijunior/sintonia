@@ -364,6 +364,16 @@ include 'includes/header.php';
                                         <span class="font-bold text-slate-800 mr-2"><?= $letter ?>)</span> 
                                         <?= htmlspecialchars($opt['text']) ?>
                                     </div>
+                                    <?php if (!empty($opt['image_url'])): ?>
+                                        <div class="mt-3 pl-2 relative z-10 flex flex-col items-start gap-1.5">
+                                            <img src="<?= htmlspecialchars($opt['image_url']) ?>" 
+                                                 alt="Imagem da Alternativa <?= $letter ?>" 
+                                                 class="max-h-56 w-auto rounded-xl border border-slate-200 bg-white p-1.5 shadow-sm object-contain">
+                                            <button type="button" onclick="event.preventDefault(); event.stopPropagation(); openStudentLightbox('<?= htmlspecialchars($opt['image_url']) ?>')" class="text-[11px] font-bold text-senai-blue hover:underline flex items-center gap-1 bg-blue-50/80 px-2.5 py-1 rounded-lg border border-blue-200/60">
+                                                <i class="ph-bold ph-magnifying-glass-plus"></i> Ampliar imagem da alternativa <?= $letter ?>
+                                            </button>
+                                        </div>
+                                    <?php endif; ?>
                                 </div>
                             </label>
                         <?php endforeach; ?>

@@ -25,6 +25,12 @@ function ensureCourseCapacitiesTable($pdo) {
             FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     ");
+    try {
+        $stmtCol = $pdo->query("SHOW COLUMNS FROM question_options LIKE 'image_url'");
+        if ($stmtCol && !$stmtCol->fetch()) {
+            $pdo->exec("ALTER TABLE question_options ADD COLUMN image_url VARCHAR(500) NULL DEFAULT NULL AFTER text");
+        }
+    } catch (Exception $e) {}
 }
 
 /**
@@ -528,24 +534,25 @@ if ($action === 'update_question') {
             $cleanOpts = [];
             foreach ($options as $opt) {
                 $txt = trim($opt['text'] ?? '');
-                if ($txt === '') continue;
+                $imgUrl = !empty($opt['image_url']) ? trim($opt['image_url']) : null;
+                if ($txt === '' && $imgUrl === null) continue;
                 $isCorr = (!empty($opt['is_correct']) && !$hasCorrect) ? 1 : 0;
                 if ($isCorr === 1) $hasCorrect = true;
-                $cleanOpts[] = ['text' => $txt, 'is_correct' => $isCorr];
+                $cleanOpts[] = ['text' => $txt, 'image_url' => $imgUrl, 'is_correct' => $isCorr];
             }
 
             if (!$hasCorrect && !empty($cleanOpts)) {
                 $cleanOpts[0]['is_correct'] = 1;
             }
 
-            $stmtUpdOpt = $pdo->prepare("UPDATE question_options SET text = ?, is_correct = ? WHERE id = ? AND question_id = ?");
-            $stmtInsOpt = $pdo->prepare("INSERT INTO question_options (question_id, text, is_correct) VALUES (?, ?, ?)");
+            $stmtUpdOpt = $pdo->prepare("UPDATE question_options SET text = ?, image_url = ?, is_correct = ? WHERE id = ? AND question_id = ?");
+            $stmtInsOpt = $pdo->prepare("INSERT INTO question_options (question_id, text, image_url, is_correct) VALUES (?, ?, ?, ?)");
 
             foreach ($cleanOpts as $idx => $co) {
                 if (isset($existingIds[$idx])) {
-                    $stmtUpdOpt->execute([$co['text'], $co['is_correct'], $existingIds[$idx], $questionId]);
+                    $stmtUpdOpt->execute([$co['text'], $co['image_url'], $co['is_correct'], $existingIds[$idx], $questionId]);
                 } else {
-                    $stmtInsOpt->execute([$questionId, $co['text'], $co['is_correct']]);
+                    $stmtInsOpt->execute([$questionId, $co['text'], $co['image_url'], $co['is_correct']]);
                 }
             }
 
@@ -572,8 +579,8 @@ if ($action === 'update_question') {
             syncCourseCapacitiesToModules($pdo, $courseId);
         }
 
-        // Recarrega alternativas atualizadas
-        $stmtReloadOpts = $pdo->prepare("SELECT id, text, is_correct FROM question_options WHERE question_id = ? ORDER BY id ASC");
+        // Recarrega alternativas atualizadas (incluindo image_url)
+        $stmtReloadOpts = $pdo->prepare("SELECT id, text, image_url, is_correct FROM question_options WHERE question_id = ? ORDER BY id ASC");
         $stmtReloadOpts->execute([$questionId]);
         $updatedOptions = $stmtReloadOpts->fetchAll();
 

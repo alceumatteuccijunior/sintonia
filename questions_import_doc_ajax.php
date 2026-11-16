@@ -256,13 +256,14 @@ REGRAS OBRIGATÓRIAS DE EXTRAÇÃO:
 - Mantenha o texto integral da questão sem resumir nem alterar nenhuma palavra.
 - Remova apenas o prefixo de numeração ("Questão 01 -", "1.", "1)") do início.
 
-4. ALTERNATIVAS E GABARITO:
+4. ALTERNATIVAS (COM TEXTO E/OU IMAGEM) E GABARITO:
 - Extraia todas as alternativas da questão (normalmente 4 ou 5 alternativas), removendo letras de prefixo ("a)", "A -", "(A)").
+- Se alguma alternativa no documento original era composta apenas por uma imagem/figura (e por isso ficou sem texto após a letra a, b, c, d, e), gere normalmente as alternativas com o texto "[Imagem na Alternativa A]", "[Imagem na Alternativa B]" etc. e defina "needs_image": true!
 - Se houver gabarito informado pelo usuário ou marcado no documento, use-o e defina "ai_solved_key": false. Caso contrário, resolva tecnicamente a questão, marque a correta com "is_correct": true e defina "ai_solved_key": true.
 - Exatamente UMA alternativa por questão deve ter "is_correct": true.
 
 5. DETECÇÃO DE IMAGEM ("needs_image"):
-- Defina "needs_image": true se o contexto ou comando fizer referência a qualquer figura, imagem, diagrama, circuito, gráfico, esquema, desenho ou quadro visual que não veio no texto. Caso contrário, false.
+- Defina "needs_image": true se o contexto, comando OU qualquer alternativa fizer referência a figura, imagem, diagrama, circuito, gráfico, esquema, desenho ou quadro visual que não veio no texto. Caso contrário, false.
 
 6. CLASSIFICAÇÃO ("difficulty"):
 - Estritamente um destes três valores: "Fácil", "Médio" ou "Difícil".
@@ -416,25 +417,40 @@ PROMPT;
         $rawOptions = isset($q['options']) && is_array($q['options']) ? $q['options'] : [];
         $cleanOptions = [];
         $hasCorrect = false;
+        $optLetters = ['A', 'B', 'C', 'D', 'E', 'F'];
 
-        foreach ($rawOptions as $opt) {
+        foreach ($rawOptions as $oIdx => $opt) {
             $optText = trim($opt['text'] ?? '');
+            $optImg  = !empty($opt['image_url']) ? trim($opt['image_url']) : null;
             // Remove prefixo residual como "a) " ou "A - " caso tenha escapado
             $optText = preg_replace('/^[a-eA-E][\)\.\-]\s+/', '', $optText);
-            if ($optText === '') continue;
+            if ($optText === '' && $optImg === null) {
+                $letterLbl = $optLetters[$oIdx] ?? ($oIdx + 1);
+                $optText = "[Imagem na Alternativa {$letterLbl}]";
+            }
 
             $isCorr = !empty($opt['is_correct']) && !$hasCorrect;
             if ($isCorr) {
                 $hasCorrect = true;
             }
             $cleanOptions[] = [
-                'text' => $optText,
+                'text'       => $optText,
+                'image_url'  => $optImg,
                 'is_correct' => $isCorr
             ];
         }
 
+        // Se a questão veio sem alternativas textuais porque eram 4 imagens, cria 4 espaços padrão A..D
         if (count($cleanOptions) < 2) {
-            continue;
+            for ($k = 0; $k < 4; $k++) {
+                $cleanOptions[] = [
+                    'text'       => "[Imagem na Alternativa " . $optLetters[$k] . "]",
+                    'image_url'  => null,
+                    'is_correct' => ($k === 0)
+                ];
+            }
+            $hasCorrect = true;
+            $q['needs_image'] = true;
         }
 
         // Garante que exatamente 1 alternativa esteja marcada como correta
@@ -502,6 +518,14 @@ if ($action === 'save_questions') {
 
     $importTagDb = $importTag !== '' ? $importTag : null;
 
+    // Garante coluna image_url em question_options ANTES de abrir transação
+    try {
+        $stmtCol = $pdo->query("SHOW COLUMNS FROM question_options LIKE 'image_url'");
+        if ($stmtCol && !$stmtCol->fetch()) {
+            $pdo->exec("ALTER TABLE question_options ADD COLUMN image_url VARCHAR(500) NULL DEFAULT NULL AFTER text");
+        }
+    } catch (Exception $e) {}
+
     $cursosCache = [];
     $modulosCache = [];
     $importedQuestionsList = [];
@@ -530,7 +554,7 @@ if ($action === 'save_questions') {
         $stmtFindMod   = $pdo->prepare("SELECT id FROM modules WHERE course_id = ? AND LOWER(name) = LOWER(?) LIMIT 1");
         $stmtInsertMod = $pdo->prepare("INSERT INTO modules (course_id, name) VALUES (?, ?)");
         $stmtInsertQ   = $pdo->prepare("INSERT INTO questions (module_id, capacity, context, command, difficulty, import_tag, teacher_id) VALUES (?, ?, ?, ?, ?, ?, ?)");
-        $stmtInsertOpt = $pdo->prepare("INSERT INTO question_options (question_id, text, is_correct) VALUES (?, ?, ?)");
+        $stmtInsertOpt = $pdo->prepare("INSERT INTO question_options (question_id, text, image_url, is_correct) VALUES (?, ?, ?, ?)");
         $stmtSyncModCap = $pdo->prepare("
             INSERT INTO module_capacities (module_id, capacity_code, description)
             VALUES (?, ?, ?)
@@ -588,25 +612,31 @@ if ($action === 'save_questions') {
             $stmtInsertQ->execute([$moduleId, $capacity, $context, $command, $difficulty, $importTagDb, $teacher_id]);
             $questionId = $pdo->lastInsertId();
 
-            // 4. Embaralhar e Inserir Alternativas
+            // 4. Inserir Alternativas preservando a ordem A, B, C, D, E e imagens das alternativas
             $validOpts = [];
             $hasCorrect = false;
             foreach ($options as $opt) {
                 $txt = trim($opt['text'] ?? '');
-                if ($txt === '') continue;
+                $imgUrl = !empty($opt['image_url']) ? trim($opt['image_url']) : null;
+                if ($txt === '' && $imgUrl === null) continue;
                 $isCorr = !empty($opt['is_correct']) && !$hasCorrect ? 1 : 0;
                 if ($isCorr === 1) $hasCorrect = true;
-                $validOpts[] = ['text' => $txt, 'is_correct' => $isCorr];
+                $validOpts[] = ['text' => $txt, 'image_url' => $imgUrl, 'is_correct' => $isCorr];
             }
 
             if (!$hasCorrect && !empty($validOpts)) {
                 $validOpts[0]['is_correct'] = 1;
             }
 
-            shuffle($validOpts);
-
+            $savedOptsForStep2 = [];
             foreach ($validOpts as $vo) {
-                $stmtInsertOpt->execute([$questionId, $vo['text'], $vo['is_correct']]);
+                $stmtInsertOpt->execute([$questionId, $vo['text'], $vo['image_url'], $vo['is_correct']]);
+                $savedOptsForStep2[] = [
+                    'id'         => (int)$pdo->lastInsertId(),
+                    'text'       => $vo['text'],
+                    'image_url'  => $vo['image_url'],
+                    'is_correct' => $vo['is_correct']
+                ];
             }
 
             $needsImg = !empty($q['needs_image']) || detectNeedsImage($context . ' ' . $command);
@@ -619,7 +649,8 @@ if ($action === 'save_questions') {
                 'module'      => $modName,
                 'capacity'    => $capacity,
                 'difficulty'  => $difficulty,
-                'needs_image' => $needsImg
+                'needs_image' => $needsImg,
+                'options'     => $savedOptsForStep2
             ];
 
             $importedCount++;

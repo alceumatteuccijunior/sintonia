@@ -112,8 +112,14 @@ foreach ($questoes as &$q) {
         $capacidades_unicas[$q['capacity']] = $q['capacity'];
     }
 
-    // Buscar alternativas (incluindo ID para edição segura sem quebrar respostas históricas)
-    $stmtOpt = $pdo->prepare("SELECT id, text, is_correct FROM question_options WHERE question_id = ? ORDER BY id ASC");
+    // Buscar alternativas (incluindo ID e image_url para edição segura sem quebrar respostas históricas)
+    try {
+        $stmtColOpt = $pdo->query("SHOW COLUMNS FROM question_options LIKE 'image_url'");
+        if ($stmtColOpt && !$stmtColOpt->fetch()) {
+            $pdo->exec("ALTER TABLE question_options ADD COLUMN image_url VARCHAR(500) NULL DEFAULT NULL AFTER text");
+        }
+    } catch (Exception $e) {}
+    $stmtOpt = $pdo->prepare("SELECT id, text, image_url, is_correct FROM question_options WHERE question_id = ? ORDER BY id ASC");
     $stmtOpt->execute([$q['id']]);
     $q['options'] = $stmtOpt->fetchAll();
 
@@ -778,10 +784,17 @@ include 'includes/header.php';
                 }
 
                 optsContainer.innerHTML += `
-                    <div class="flex items-start gap-3 p-3 rounded-xl border ${cssClass}">
-                        <div class="w-6 h-6 rounded bg-slate-100 flex items-center justify-center font-bold text-xs text-slate-500 shrink-0 mt-0.5">${letter}</div>
-                        <div class="text-sm font-medium pt-0.5 flex-1">${escapeHtml(opt.text)}</div>
-                        ${icon}
+                    <div class="flex flex-col gap-2 p-3 rounded-xl border ${cssClass}">
+                        <div class="flex items-start gap-3">
+                            <div class="w-6 h-6 rounded bg-slate-100 flex items-center justify-center font-bold text-xs text-slate-500 shrink-0 mt-0.5">${letter}</div>
+                            <div class="text-sm font-medium pt-0.5 flex-1">${opt.text ? escapeHtml(opt.text) : `<span class="text-xs italic text-slate-400">(Alternativa ${letter} em imagem)</span>`}</div>
+                            ${icon}
+                        </div>
+                        ${opt.image_url ? `
+                        <div class="pl-9 pt-1">
+                            <img src="${escapeHtml(opt.image_url)}" alt="Alternativa ${letter}" onclick="openLightbox('${escapeHtml(opt.image_url)}')" class="max-h-44 rounded-lg border border-slate-200 bg-white p-1 shadow-sm cursor-zoom-in hover:shadow-md transition-all object-contain">
+                        </div>
+                        ` : ''}
                     </div>
                 `;
             });
@@ -856,14 +869,14 @@ include 'includes/header.php';
         document.getElementById('edit_q_command').value = q.command || '';
         document.getElementById('edit-q-alert').classList.add('hidden');
 
-        // Clona alternativas para edição
+        // Clona alternativas para edição (incluindo image_url)
         currentEditOptions = (q.options && q.options.length > 0)
-            ? q.options.map(o => ({ id: o.id, text: o.text, is_correct: Number(o.is_correct) === 1 }))
+            ? q.options.map(o => ({ id: o.id, text: o.text || '', image_url: o.image_url || null, is_correct: Number(o.is_correct) === 1 }))
             : [
-                { text: '', is_correct: true },
-                { text: '', is_correct: false },
-                { text: '', is_correct: false },
-                { text: '', is_correct: false }
+                { text: '', image_url: null, is_correct: true },
+                { text: '', image_url: null, is_correct: false },
+                { text: '', image_url: null, is_correct: false },
+                { text: '', image_url: null, is_correct: false }
             ];
 
         renderEditQuestionOptions();
@@ -896,18 +909,74 @@ include 'includes/header.php';
         currentEditOptions.forEach((opt, idx) => {
             const isCorr = !!opt.is_correct;
             const letter = letters[idx] || (idx + 1);
+            const hasImg = !!opt.image_url;
             const row = document.createElement('div');
-            row.className = `flex items-center gap-2.5 p-2 rounded-xl border transition-all ${isCorr ? 'bg-emerald-50 border-emerald-300' : 'bg-slate-50 border-slate-200'}`;
+            row.className = `flex flex-col gap-1.5 p-2.5 rounded-xl border transition-all ${isCorr ? 'bg-emerald-50 border-emerald-300' : 'bg-slate-50 border-slate-200'}`;
             row.innerHTML = `
-                <button type="button" onclick="setEditCorrectOption(${idx})" title="Clique para marcar esta alternativa como correta" class="w-7 h-7 rounded-lg font-extrabold text-xs flex items-center justify-center shrink-0 transition-all ${isCorr ? 'bg-emerald-600 text-white shadow-sm' : 'bg-white border border-slate-300 text-slate-500 hover:border-emerald-400'}">
-                    ${letter}
-                </button>
-                <input type="text" value="${escapeHtml(opt.text)}" required placeholder="Texto da alternativa ${letter}..." oninput="currentEditOptions[${idx}].text = this.value" class="flex-1 bg-transparent text-xs font-medium ${isCorr ? 'text-emerald-950 font-bold' : 'text-slate-700'} outline-none py-1">
-                ${isCorr ? '<span class="text-[10px] font-extrabold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md shrink-0">Correta</span>' : ''}
-                ${currentEditOptions.length > 2 ? `<button type="button" onclick="removeEditOption(${idx})" class="text-slate-400 hover:text-red-500 p-1" title="Remover alternativa"><i class="ph-bold ph-x"></i></button>` : ''}
+                <div class="flex items-center gap-2">
+                    <button type="button" onclick="setEditCorrectOption(${idx})" title="Clique para marcar esta alternativa como correta" class="w-7 h-7 rounded-lg font-extrabold text-xs flex items-center justify-center shrink-0 transition-all ${isCorr ? 'bg-emerald-600 text-white shadow-sm' : 'bg-white border border-slate-300 text-slate-500 hover:border-emerald-400'}">
+                        ${letter}
+                    </button>
+                    <input type="text" value="${escapeHtml(opt.text)}" placeholder="Texto da alternativa ${letter} (opcional se tiver imagem)..." oninput="currentEditOptions[${idx}].text = this.value" class="flex-1 bg-transparent text-xs font-medium ${isCorr ? 'text-emerald-950 font-bold' : 'text-slate-700'} outline-none py-1">
+                    <input type="file" id="edit-opt-img-input-${idx}" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml" class="hidden" onchange="uploadEditOptionImage(${idx}, this)">
+                    <button type="button" onclick="document.getElementById('edit-opt-img-input-${idx}').click()" class="px-2.5 py-1 rounded-lg border text-[11px] font-bold flex items-center gap-1 shrink-0 transition-all ${hasImg ? 'bg-indigo-100 text-indigo-800 border-indigo-300' : 'bg-white text-slate-600 border-slate-200 hover:bg-indigo-50 hover:text-indigo-700'}" title="Vincular ou trocar imagem da alternativa ${letter}">
+                        <i class="ph-bold ph-image"></i> ${hasImg ? 'Trocar Img' : '+ Imagem'}
+                    </button>
+                    ${isCorr ? '<span class="text-[10px] font-extrabold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md shrink-0">Correta</span>' : ''}
+                    ${currentEditOptions.length > 2 ? `<button type="button" onclick="removeEditOption(${idx})" class="text-slate-400 hover:text-red-500 p-1" title="Remover alternativa"><i class="ph-bold ph-x"></i></button>` : ''}
+                </div>
+                ${hasImg ? `
+                <div class="pl-9 flex items-center gap-2 pt-1">
+                    <img src="${escapeHtml(opt.image_url)}" alt="Img Alternativa ${letter}" class="h-14 w-auto object-contain rounded-lg border border-slate-200 bg-white p-0.5 shadow-sm">
+                    <span class="text-[11px] font-bold text-indigo-700">✓ Imagem na alternativa ${letter}</span>
+                    <button type="button" onclick="removeEditOptionImage(${idx})" class="text-[11px] font-bold text-red-500 hover:underline ml-auto flex items-center gap-0.5">
+                        <i class="ph-bold ph-trash"></i> Remover imagem
+                    </button>
+                </div>
+                ` : ''}
             `;
             container.appendChild(row);
         });
+    }
+
+    async function uploadEditOptionImage(idx, input) {
+        if (!input.files || !input.files[0]) return;
+        const file = input.files[0];
+        if (file.size > 10 * 1024 * 1024) {
+            alert('A imagem deve ter no máximo 10MB.');
+            input.value = '';
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('action', 'upload_temp');
+        formData.append('image', file);
+
+        try {
+            const res = await fetch('question_image_ajax.php', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await res.json();
+            if (data.success && currentEditOptions[idx]) {
+                currentEditOptions[idx].image_url = data.image_url;
+                const currTxt = (currentEditOptions[idx].text || '').trim();
+                if (/^\[Imagem na Alternativa [A-F0-9]+\]$/i.test(currTxt)) {
+                    currentEditOptions[idx].text = '';
+                }
+                renderEditQuestionOptions();
+            } else {
+                alert(data.error || 'Erro ao enviar imagem da alternativa.');
+            }
+        } catch (err) {
+            alert('Erro de comunicação ao enviar imagem da alternativa.');
+        }
+    }
+
+    function removeEditOptionImage(idx) {
+        if (!currentEditOptions[idx]) return;
+        currentEditOptions[idx].image_url = null;
+        renderEditQuestionOptions();
     }
 
     function setEditCorrectOption(correctIdx) {

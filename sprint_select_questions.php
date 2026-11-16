@@ -131,7 +131,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
 
                 // Buscar alternativas desta questão
-                $stmtOpt = $pdo->prepare("SELECT text, is_correct FROM question_options WHERE question_id = ?");
+                $stmtOpt = $pdo->prepare("SELECT * FROM question_options WHERE question_id = ?");
                 $stmtOpt->execute([$q['id']]);
                 $q['options'] = $stmtOpt->fetchAll();
 
@@ -541,10 +541,17 @@ include 'includes/header.php';
                 }
 
                 optsContainer.innerHTML += `
-                    <div class="flex items-start gap-3 p-3 rounded-xl border ${cssClass}">
-                        <div class="w-6 h-6 rounded bg-slate-100 flex items-center justify-center font-bold text-xs text-slate-500 shrink-0 mt-0.5">${letter}</div>
-                        <div class="text-sm font-medium pt-0.5 flex-1">${opt.text}</div>
-                        ${icon}
+                    <div class="flex flex-col gap-2 p-3 rounded-xl border ${cssClass}">
+                        <div class="flex items-start gap-3">
+                            <div class="w-6 h-6 rounded bg-slate-100 flex items-center justify-center font-bold text-xs text-slate-500 shrink-0 mt-0.5">${letter}</div>
+                            <div class="text-sm font-medium pt-0.5 flex-1">${opt.text || `<span class="text-xs italic text-slate-400">(Alternativa ${letter} em imagem)</span>`}</div>
+                            ${icon}
+                        </div>
+                        ${opt.image_url ? `
+                        <div class="pl-9">
+                            <img src="${opt.image_url}" alt="Alternativa ${letter}" class="max-h-40 rounded-lg border border-slate-200 bg-white p-1 object-contain">
+                        </div>
+                        ` : ''}
                     </div>
                 `;
             });

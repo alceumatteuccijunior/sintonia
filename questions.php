@@ -1197,13 +1197,29 @@ include 'includes/header.php';
             (q.options || []).forEach((opt, optIdx) => {
                 const isCorr = !!opt.is_correct;
                 const letter = letters[optIdx] || (optIdx + 1);
+                const hasOptImg = !!opt.image_url;
                 optionsHtml += `
-                    <div class="flex items-start gap-2.5 p-2 rounded-xl border transition-all ${isCorr ? 'bg-emerald-50 border-emerald-300' : 'bg-slate-50/70 border-slate-200'}">
-                        <button type="button" onclick="setReviewCorrectOption(${qIdx}, ${optIdx})" title="Clique para definir esta como a alternativa correta" class="mt-0.5 w-6 h-6 rounded-lg font-extrabold text-xs flex items-center justify-center shrink-0 transition-all ${isCorr ? 'bg-emerald-600 text-white shadow-sm' : 'bg-white border border-slate-300 text-slate-500 hover:border-emerald-400'}">
-                            ${letter}
-                        </button>
-                        <input type="text" value="${escapeHtml(opt.text)}" oninput="extractedDocQuestions[${qIdx}].options[${optIdx}].text = this.value" class="flex-1 bg-transparent text-xs font-medium ${isCorr ? 'text-emerald-950 font-bold' : 'text-slate-700'} outline-none border-b border-transparent focus:border-slate-300 py-0.5">
-                        ${isCorr ? '<span class="text-[10px] font-extrabold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md shrink-0">Correta</span>' : ''}
+                    <div class="flex flex-col gap-1.5 p-2.5 rounded-xl border transition-all ${isCorr ? 'bg-emerald-50 border-emerald-300' : 'bg-slate-50/70 border-slate-200'}">
+                        <div class="flex items-start gap-2.5">
+                            <button type="button" onclick="setReviewCorrectOption(${qIdx}, ${optIdx})" title="Clique para definir esta como a alternativa correta" class="mt-0.5 w-6 h-6 rounded-lg font-extrabold text-xs flex items-center justify-center shrink-0 transition-all ${isCorr ? 'bg-emerald-600 text-white shadow-sm' : 'bg-white border border-slate-300 text-slate-500 hover:border-emerald-400'}">
+                                ${letter}
+                            </button>
+                            <input type="text" value="${escapeHtml(opt.text)}" placeholder="Texto da alternativa ${letter} (opcional se tiver imagem)..." oninput="extractedDocQuestions[${qIdx}].options[${optIdx}].text = this.value" class="flex-1 bg-transparent text-xs font-medium ${isCorr ? 'text-emerald-950 font-bold' : 'text-slate-700'} outline-none border-b border-transparent focus:border-slate-300 py-0.5">
+                            <input type="file" id="rev-opt-img-input-${qIdx}-${optIdx}" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml" class="hidden" onchange="uploadReviewOptionImage(${qIdx}, ${optIdx}, this)">
+                            <button type="button" onclick="document.getElementById('rev-opt-img-input-${qIdx}-${optIdx}').click()" class="px-2 py-1 rounded-lg border text-[10px] font-bold flex items-center gap-1 shrink-0 transition-all ${hasOptImg ? 'bg-indigo-100 text-indigo-800 border-indigo-300' : 'bg-white text-slate-600 border-slate-200 hover:bg-indigo-50 hover:text-indigo-700'}" title="Vincular ou trocar imagem desta alternativa">
+                                <i class="ph-bold ph-image"></i> ${hasOptImg ? 'Trocar Img' : '+ Imagem'}
+                            </button>
+                            ${isCorr ? '<span class="text-[10px] font-extrabold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md shrink-0">Correta</span>' : ''}
+                        </div>
+                        ${hasOptImg ? `
+                        <div class="pl-8 flex items-center gap-2 pt-1">
+                            <img src="${escapeHtml(opt.image_url)}" alt="Img Alternativa ${letter}" class="h-14 w-auto object-contain rounded-lg border border-slate-200 bg-white p-0.5 shadow-sm">
+                            <span class="text-[10px] font-bold text-indigo-700">✓ Imagem vinculada à alternativa ${letter}</span>
+                            <button type="button" onclick="removeReviewOptionImage(${qIdx}, ${optIdx})" class="text-[10px] font-bold text-red-500 hover:underline ml-auto flex items-center gap-0.5">
+                                <i class="ph-bold ph-trash"></i> Remover imagem
+                            </button>
+                        </div>
+                        ` : ''}
                     </div>
                 `;
             });
@@ -1270,6 +1286,47 @@ include 'includes/header.php';
 
             container.appendChild(card);
         });
+    }
+
+    async function uploadReviewOptionImage(qIdx, optIdx, input) {
+        if (!input.files || !input.files[0]) return;
+        const file = input.files[0];
+        if (file.size > 10 * 1024 * 1024) {
+            alert('A imagem deve ter no máximo 10MB.');
+            input.value = '';
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('action', 'upload_temp');
+        formData.append('image', file);
+
+        try {
+            const res = await fetch('question_image_ajax.php', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await res.json();
+            if (data.success && extractedDocQuestions[qIdx] && extractedDocQuestions[qIdx].options[optIdx]) {
+                extractedDocQuestions[qIdx].options[optIdx].image_url = data.image_url;
+                // Se o texto era apenas o placeholder "[Imagem na Alternativa X]", limpa para ficar elegante
+                const currTxt = (extractedDocQuestions[qIdx].options[optIdx].text || '').trim();
+                if (/^\[Imagem na Alternativa [A-F0-9]+\]$/i.test(currTxt)) {
+                    extractedDocQuestions[qIdx].options[optIdx].text = '';
+                }
+                renderDocReviewList();
+            } else {
+                alert(data.error || 'Erro ao enviar imagem da alternativa.');
+            }
+        } catch (err) {
+            alert('Erro de comunicação ao enviar imagem da alternativa.');
+        }
+    }
+
+    function removeReviewOptionImage(qIdx, optIdx) {
+        if (!extractedDocQuestions[qIdx] || !extractedDocQuestions[qIdx].options[optIdx]) return;
+        extractedDocQuestions[qIdx].options[optIdx].image_url = null;
+        renderDocReviewList();
     }
 
     function setReviewCorrectOption(qIdx, correctOptIdx) {
@@ -1445,31 +1502,80 @@ include 'includes/header.php';
             return;
         }
         
+        const letters = ['A', 'B', 'C', 'D', 'E', 'F'];
+
         list.forEach((q, index) => {
             const card = document.createElement('div');
             card.id = `q-imported-card-${q.id}`;
             const highlightClass = q.needs_image
                 ? 'bg-amber-50/60 hover:bg-amber-50 border-amber-300'
                 : 'bg-slate-50/70 hover:bg-slate-50 border-slate-200';
-            card.className = `p-3.5 border rounded-2xl transition-all flex flex-col md:flex-row md:items-center justify-between gap-3 ${highlightClass}`;
+            card.className = `p-3.5 border rounded-2xl transition-all flex flex-col gap-3 ${highlightClass}`;
+
+            let optionsRowsHtml = '';
+            if (q.options && q.options.length > 0) {
+                q.options.forEach((opt, optIdx) => {
+                    const letter = letters[optIdx] || (optIdx + 1);
+                    const isCorr = Number(opt.is_correct) === 1;
+                    const hasImg = !!opt.image_url;
+                    optionsRowsHtml += `
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2.5 rounded-xl border ${isCorr ? 'bg-emerald-50/70 border-emerald-200' : 'bg-white border-slate-200'}">
+                            <div class="flex items-center gap-2 min-w-0 flex-1">
+                                <span class="w-6 h-6 rounded-lg font-extrabold text-xs flex items-center justify-center shrink-0 ${isCorr ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600'}">${letter}</span>
+                                <span class="text-xs font-medium text-slate-700 truncate">${escapeHtml(opt.text || `(Alternativa ${letter})`)}</span>
+                                ${isCorr ? '<span class="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded shrink-0">Correta</span>' : ''}
+                            </div>
+                            <div class="shrink-0 flex items-center gap-2" id="opt-upload-zone-${opt.id}">
+                                ${hasImg ? `
+                                    <img src="${escapeHtml(opt.image_url)}" alt="Alt ${letter}" class="w-9 h-9 object-contain rounded-lg border border-slate-200 bg-white">
+                                    <span class="text-[11px] font-bold text-emerald-600 flex items-center gap-1"><i class="ph-bold ph-check-circle"></i> Img ${letter}</span>
+                                    <button type="button" onclick="removeImageForImportedOption(${opt.id}, '${letter}')" class="p-1 text-slate-400 hover:text-red-500 rounded-lg hover:bg-red-50" title="Remover imagem da alternativa ${letter}">
+                                        <i class="ph-bold ph-trash"></i>
+                                    </button>
+                                ` : `
+                                    <input type="file" id="import-opt-file-${opt.id}" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml" class="hidden" onchange="uploadImageForImportedOption(${opt.id}, '${letter}', this)">
+                                    <button type="button" onclick="document.getElementById('import-opt-file-${opt.id}').click()" class="px-2.5 py-1.5 bg-slate-50 hover:bg-indigo-50 text-indigo-600 border border-indigo-200 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1">
+                                        <i class="ph-bold ph-image"></i> + Imagem na Alt. ${letter}
+                                    </button>
+                                `}
+                            </div>
+                        </div>
+                    `;
+                });
+            }
             
             card.innerHTML = `
-                <div class="flex-1 min-w-0">
-                    <div class="flex items-center gap-2 mb-1.5 flex-wrap">
-                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-200 text-slate-700 uppercase">#${index + 1}</span>
-                        ${q.needs_image ? `<span class="text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-amber-200/80 text-amber-900 flex items-center gap-1"><i class="ph-fill ph-camera"></i> Pede imagem no enunciado</span>` : ''}
-                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-700 truncate max-w-[200px]" title="${escapeHtml(q.module)}">${escapeHtml(q.module)}</span>
-                        ${q.capacity ? `<span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-senai-cyan/15 text-senai-blue">CAP: ${escapeHtml(q.capacity)}</span>` : ''}
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2 mb-1.5 flex-wrap">
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-200 text-slate-700 uppercase">#${index + 1}</span>
+                            ${q.needs_image ? `<span class="text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-amber-200/80 text-amber-900 flex items-center gap-1"><i class="ph-fill ph-camera"></i> Pede imagem</span>` : ''}
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-700 truncate max-w-[200px]" title="${escapeHtml(q.module)}">${escapeHtml(q.module)}</span>
+                            ${q.capacity ? `<span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-senai-cyan/15 text-senai-blue">CAP: ${escapeHtml(q.capacity)}</span>` : ''}
+                        </div>
+                        <p class="text-xs font-semibold text-slate-800 line-clamp-2" title="${escapeHtml(q.command)}">${escapeHtml(q.command)}</p>
                     </div>
-                    <p class="text-xs font-semibold text-slate-800 line-clamp-2" title="${escapeHtml(q.command)}">${escapeHtml(q.command)}</p>
+                    
+                    <div class="shrink-0 flex flex-wrap items-center gap-2">
+                        <div id="q-upload-zone-${q.id}" class="flex items-center gap-2">
+                            <input type="file" id="import-file-input-${q.id}" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml" class="hidden" onchange="uploadImageForImportedQ(${q.id}, this)">
+                            <button type="button" onclick="document.getElementById('import-file-input-${q.id}').click()" class="px-3 py-2 bg-white hover:bg-indigo-50 text-indigo-600 hover:text-indigo-700 border border-indigo-200 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm active:scale-95">
+                                <i class="ph-bold ph-cloud-arrow-up text-sm"></i> Imagem no Enunciado
+                            </button>
+                        </div>
+                        ${optionsRowsHtml ? `
+                        <button type="button" onclick="document.getElementById('imported-opts-panel-${q.id}').classList.toggle('hidden')" class="px-3 py-2 bg-violet-50 hover:bg-violet-100 text-violet-700 border border-violet-200 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm">
+                            <i class="ph-bold ph-list-bullets"></i> Imagens nas Alternativas
+                        </button>
+                        ` : ''}
+                    </div>
                 </div>
-                
-                <div class="shrink-0 flex items-center gap-2" id="q-upload-zone-${q.id}">
-                    <input type="file" id="import-file-input-${q.id}" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml" class="hidden" onchange="uploadImageForImportedQ(${q.id}, this)">
-                    <button type="button" onclick="document.getElementById('import-file-input-${q.id}').click()" class="px-3.5 py-2 bg-white hover:bg-indigo-50 text-indigo-600 hover:text-indigo-700 border border-indigo-200 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm active:scale-95">
-                        <i class="ph-bold ph-cloud-arrow-up text-sm"></i> Vincular Imagem
-                    </button>
+                ${optionsRowsHtml ? `
+                <div id="imported-opts-panel-${q.id}" class="hidden pt-2.5 border-t border-slate-200/80 space-y-1.5">
+                    <p class="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Vincular Imagens às Alternativas desta Questão:</p>
+                    ${optionsRowsHtml}
                 </div>
+                ` : ''}
             `;
             container.appendChild(card);
         });
@@ -1563,6 +1669,77 @@ include 'includes/header.php';
                     <input type="file" id="import-file-input-${questionId}" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml" class="hidden" onchange="uploadImageForImportedQ(${questionId}, this)">
                     <button type="button" onclick="document.getElementById('import-file-input-${questionId}').click()" class="px-3.5 py-2 bg-white hover:bg-indigo-50 text-indigo-600 hover:text-indigo-700 border border-indigo-200 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm active:scale-95">
                         <i class="ph-bold ph-cloud-arrow-up text-sm"></i> Vincular Imagem
+                    </button>
+                `;
+            } else {
+                alert(data.error || 'Erro ao remover imagem.');
+            }
+        } catch (err) {
+            alert('Erro de comunicação.');
+        }
+    }
+    async function uploadImageForImportedOption(optionId, letter, input) {
+        if (!input.files || !input.files[0]) return;
+        const file = input.files[0];
+        if (file.size > 10 * 1024 * 1024) {
+            alert('A imagem deve ter no máximo 10MB.');
+            input.value = '';
+            return;
+        }
+
+        const zone = document.getElementById(`opt-upload-zone-${optionId}`);
+        const originalContent = zone.innerHTML;
+        zone.innerHTML = `<span class="text-[11px] font-bold text-indigo-600 flex items-center gap-1"><i class="ph-bold ph-spinner animate-spin"></i> Enviando...</span>`;
+
+        const formData = new FormData();
+        formData.append('action', 'upload_option');
+        formData.append('option_id', optionId);
+        formData.append('image', file);
+
+        try {
+            const res = await fetch('question_image_ajax.php', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await res.json();
+            if (data.success) {
+                zone.innerHTML = `
+                    <img src="${data.image_url}" alt="Alt ${letter}" class="w-9 h-9 object-contain rounded-lg border border-slate-200 bg-white">
+                    <span class="text-[11px] font-bold text-emerald-600 flex items-center gap-1"><i class="ph-bold ph-check-circle"></i> Img ${letter}</span>
+                    <button type="button" onclick="removeImageForImportedOption(${optionId}, '${letter}')" class="p-1 text-slate-400 hover:text-red-500 rounded-lg hover:bg-red-50" title="Remover imagem da alternativa ${letter}">
+                        <i class="ph-bold ph-trash"></i>
+                    </button>
+                `;
+            } else {
+                alert(data.error || 'Erro ao enviar imagem da alternativa.');
+                zone.innerHTML = originalContent;
+            }
+        } catch (err) {
+            alert('Erro de comunicação ao enviar imagem da alternativa.');
+            zone.innerHTML = originalContent;
+        }
+    }
+
+    async function removeImageForImportedOption(optionId, letter) {
+        if (!confirm(`Deseja remover a imagem da Alternativa ${letter}?`)) return;
+        const zone = document.getElementById(`opt-upload-zone-${optionId}`);
+        zone.innerHTML = `<span class="text-[11px] font-bold text-slate-400"><i class="ph-bold ph-spinner animate-spin"></i> Removendo...</span>`;
+
+        try {
+            const formData = new FormData();
+            formData.append('action', 'remove_option');
+            formData.append('option_id', optionId);
+
+            const res = await fetch('question_image_ajax.php', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await res.json();
+            if (data.success) {
+                zone.innerHTML = `
+                    <input type="file" id="import-opt-file-${optionId}" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml" class="hidden" onchange="uploadImageForImportedOption(${optionId}, '${letter}', this)">
+                    <button type="button" onclick="document.getElementById('import-opt-file-${optionId}').click()" class="px-2.5 py-1.5 bg-slate-50 hover:bg-indigo-50 text-indigo-600 border border-indigo-200 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1">
+                        <i class="ph-bold ph-image"></i> + Imagem na Alt. ${letter}
                     </button>
                 `;
             } else {
