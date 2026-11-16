@@ -31,6 +31,12 @@ function ensureCourseCapacitiesTable($pdo) {
             $pdo->exec("ALTER TABLE question_options ADD COLUMN image_url VARCHAR(500) NULL DEFAULT NULL AFTER text");
         }
     } catch (Exception $e) {}
+    try {
+        $stmtExt = $pdo->query("SHOW COLUMNS FROM questions LIKE 'external_code'");
+        if ($stmtExt && !$stmtExt->fetch()) {
+            $pdo->exec("ALTER TABLE questions ADD COLUMN external_code VARCHAR(100) NULL DEFAULT NULL AFTER import_tag");
+        }
+    } catch (Exception $e) {}
 }
 
 /**
@@ -450,6 +456,8 @@ if ($action === 'update_question') {
     $command       = trim($jsonInput['command'] ?? ($_POST['command'] ?? ''));
     $difficulty    = trim($jsonInput['difficulty'] ?? ($_POST['difficulty'] ?? 'Médio'));
     $importTag     = trim($jsonInput['import_tag'] ?? ($_POST['import_tag'] ?? ''));
+    $hasExtCodeParam = (is_array($jsonInput) && array_key_exists('external_code', $jsonInput)) || isset($_POST['external_code']);
+    $externalCode  = trim($jsonInput['external_code'] ?? ($_POST['external_code'] ?? ''));
     $options       = $jsonInput['options'] ?? [];
 
     if (!$questionId || $command === '') {
@@ -515,14 +523,27 @@ if ($action === 'update_question') {
         }
 
         $importTagDb = $importTag !== '' ? $importTag : null;
+        $externalCodeDb = $externalCode !== '' ? mb_substr($externalCode, 0, 100, 'UTF-8') : null;
 
         // Atualiza dados da questão
-        $stmtUpdQ = $pdo->prepare("
-            UPDATE questions
-            SET module_id = ?, capacity = ?, context = ?, command = ?, difficulty = ?, import_tag = ?
-            WHERE id = ?
-        ");
-        $stmtUpdQ->execute([$moduleId, $capacity, $context, $command, $difficulty, $importTagDb, $questionId]);
+        if ($hasExtCodeParam) {
+            $stmtUpdQ = $pdo->prepare("
+                UPDATE questions
+                SET module_id = ?, capacity = ?, context = ?, command = ?, difficulty = ?, import_tag = ?, external_code = ?
+                WHERE id = ?
+            ");
+            $stmtUpdQ->execute([$moduleId, $capacity, $context, $command, $difficulty, $importTagDb, $externalCodeDb, $questionId]);
+        } else {
+            $stmtUpdQ = $pdo->prepare("
+                UPDATE questions
+                SET module_id = ?, capacity = ?, context = ?, command = ?, difficulty = ?, import_tag = ?
+                WHERE id = ?
+            ");
+            $stmtUpdQ->execute([$moduleId, $capacity, $context, $command, $difficulty, $importTagDb, $questionId]);
+            $stmtGetExt = $pdo->prepare("SELECT external_code FROM questions WHERE id = ?");
+            $stmtGetExt->execute([$questionId]);
+            $externalCodeDb = $stmtGetExt->fetchColumn() ?: null;
+        }
 
         // Atualiza alternativas preservando IDs existentes para não quebrar respostas históricas de sprints
         if (is_array($options) && count($options) >= 2) {
@@ -594,9 +615,10 @@ if ($action === 'update_question') {
                 'capacity'    => $capacity,
                 'context'     => $context,
                 'command'     => $command,
-                'difficulty'  => $difficulty,
-                'import_tag'  => $importTagDb,
-                'options'     => $updatedOptions
+                'difficulty'    => $difficulty,
+                'import_tag'    => $importTagDb,
+                'external_code' => $externalCodeDb,
+                'options'       => $updatedOptions
             ]
         ]);
         exit;

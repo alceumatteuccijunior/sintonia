@@ -301,6 +301,9 @@ include 'includes/header.php';
                                         <span id="card-mod-<?= $q['id'] ?>" class="text-[10px] font-bold px-2 py-1 rounded-md bg-slate-100 text-slate-600 uppercase tracking-wider truncate max-w-[140px]" title="<?= htmlspecialchars($q['module_name']) ?>">
                                             <?= htmlspecialchars($q['module_name']) ?>
                                         </span>
+                                        <span id="card-ext-<?= $q['id'] ?>" class="<?= !empty($q['external_code']) ? '' : 'hidden' ?> text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-sky-50 text-sky-800 border border-sky-200" title="Código identificador da questão">
+                                            <?= htmlspecialchars($q['external_code'] ?? '') ?>
+                                        </span>
                                         <span id="badge-img-<?= $q['id'] ?>" class="<?= !empty($q['image_url']) ? '' : 'hidden' ?> text-[10px] font-bold px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200 flex items-center gap-1" title="Questão com Imagem de Apoio">
                                             <i class="ph-bold ph-image"></i> Imagem
                                         </span>
@@ -467,8 +470,8 @@ include 'includes/header.php';
                 <?php endif; ?>
             </div>
 
-            <!-- 2. Unidade Curricular (Módulo), Dificuldade e Tag -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <!-- 2. Unidade Curricular (Módulo), Dificuldade, Tag e Código SAEP -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
                 <div>
                     <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Unidade Curricular (Módulo)</label>
                     <select id="edit_q_module_id" onchange="toggleNewModuleInput(this.value)" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 outline-none focus:bg-white focus:border-senai-blue">
@@ -492,6 +495,11 @@ include 'includes/header.php';
                 <div>
                     <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Tag / Lote (Opcional)</label>
                     <input type="text" id="edit_q_tag" placeholder="Ex: SAEP2026" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-700 outline-none focus:bg-white focus:border-senai-blue">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Código SAEP (Opcional)</label>
+                    <input type="text" id="edit_q_external_code" placeholder="Ex: SAEP_96306 | SC" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-700 outline-none focus:bg-white focus:border-senai-blue">
                 </div>
             </div>
 
@@ -735,6 +743,7 @@ include 'includes/header.php';
 
         document.getElementById('modal-badges').innerHTML = `
             <span class="text-[10px] font-bold px-2 py-1 rounded-md bg-slate-100 text-slate-600 uppercase tracking-wider">${escapeHtml(q.module_name)}</span>
+            ${q.external_code ? `<span class="text-[10px] font-extrabold px-2 py-1 rounded-md bg-sky-50 text-sky-800 border border-sky-200 uppercase tracking-wider">CÓD: ${escapeHtml(q.external_code)}</span>` : ''}
             <span class="text-[10px] font-bold px-2 py-1 rounded-md bg-senai-cyan/10 text-senai-cyan uppercase tracking-wider">CAP: ${escapeHtml(q.capacity || 'N/A')}</span>
             <span class="text-[10px] font-bold px-2 py-1 rounded-md ${diffColor} uppercase tracking-wider">${escapeHtml(q.difficulty)}</span>
             ${q.import_tag ? `<span class="text-[10px] font-bold px-2 py-1 rounded-md bg-violet-50 text-violet-700 border border-violet-200 uppercase tracking-wider">TAG: ${escapeHtml(q.import_tag)}</span>` : ''}
@@ -787,7 +796,7 @@ include 'includes/header.php';
                     <div class="flex flex-col gap-2 p-3 rounded-xl border ${cssClass}">
                         <div class="flex items-start gap-3">
                             <div class="w-6 h-6 rounded bg-slate-100 flex items-center justify-center font-bold text-xs text-slate-500 shrink-0 mt-0.5">${letter}</div>
-                            <div class="text-sm font-medium pt-0.5 flex-1">${opt.text ? escapeHtml(opt.text) : `<span class="text-xs italic text-slate-400">(Alternativa ${letter} em imagem)</span>`}</div>
+                            <div class="text-sm font-medium pt-0.5 flex-1 whitespace-pre-line">${opt.text ? escapeHtml(opt.text) : `<span class="text-xs italic text-slate-400">(Alternativa ${letter} em imagem)</span>`}</div>
                             ${icon}
                         </div>
                         ${opt.image_url ? `
@@ -865,6 +874,7 @@ include 'includes/header.php';
 
         document.getElementById('edit_q_difficulty').value = q.difficulty || 'Médio';
         document.getElementById('edit_q_tag').value = q.import_tag || '';
+        document.getElementById('edit_q_external_code').value = q.external_code || '';
         document.getElementById('edit_q_context').value = q.context || '';
         document.getElementById('edit_q_command').value = q.command || '';
         document.getElementById('edit-q-alert').classList.add('hidden');
@@ -917,7 +927,7 @@ include 'includes/header.php';
                     <button type="button" onclick="setEditCorrectOption(${idx})" title="Clique para marcar esta alternativa como correta" class="w-7 h-7 rounded-lg font-extrabold text-xs flex items-center justify-center shrink-0 transition-all ${isCorr ? 'bg-emerald-600 text-white shadow-sm' : 'bg-white border border-slate-300 text-slate-500 hover:border-emerald-400'}">
                         ${letter}
                     </button>
-                    <input type="text" value="${escapeHtml(opt.text)}" placeholder="Texto da alternativa ${letter} (opcional se tiver imagem)..." oninput="currentEditOptions[${idx}].text = this.value" class="flex-1 bg-transparent text-xs font-medium ${isCorr ? 'text-emerald-950 font-bold' : 'text-slate-700'} outline-none py-1">
+                    <textarea rows="${(opt.text && opt.text.includes('\n')) ? 3 : 2}" placeholder="Texto da alternativa ${letter} (opcional se tiver imagem)..." oninput="currentEditOptions[${idx}].text = this.value" class="flex-1 bg-transparent text-xs font-medium ${isCorr ? 'text-emerald-950 font-bold' : 'text-slate-700'} outline-none py-1 leading-relaxed resize-y">${escapeHtml(opt.text)}</textarea>
                     <input type="file" id="edit-opt-img-input-${idx}" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml" class="hidden" onchange="uploadEditOptionImage(${idx}, this)">
                     <button type="button" onclick="document.getElementById('edit-opt-img-input-${idx}').click()" class="px-2.5 py-1 rounded-lg border text-[11px] font-bold flex items-center gap-1 shrink-0 transition-all ${hasImg ? 'bg-indigo-100 text-indigo-800 border-indigo-300' : 'bg-white text-slate-600 border-slate-200 hover:bg-indigo-50 hover:text-indigo-700'}" title="Vincular ou trocar imagem da alternativa ${letter}">
                         <i class="ph-bold ph-image"></i> ${hasImg ? 'Trocar Img' : '+ Imagem'}
@@ -1008,6 +1018,7 @@ include 'includes/header.php';
         const newModName = document.getElementById('edit_q_new_module').value.trim();
         const diff = document.getElementById('edit_q_difficulty').value;
         const tag = document.getElementById('edit_q_tag').value.trim();
+        const extCode = document.getElementById('edit_q_external_code').value.trim();
         const ctx = document.getElementById('edit_q_context').value.trim();
         const cmd = document.getElementById('edit_q_command').value.trim();
         const btn = document.getElementById('btn-save-edit-q');
@@ -1037,6 +1048,7 @@ include 'includes/header.php';
                     command: cmd,
                     difficulty: diff,
                     import_tag: tag,
+                    external_code: extCode,
                     options: currentEditOptions
                 })
             });
@@ -1057,8 +1069,19 @@ include 'includes/header.php';
                 command: uq.command,
                 difficulty: uq.difficulty,
                 import_tag: uq.import_tag,
+                external_code: uq.external_code,
                 options: uq.options
             };
+
+            const extBadge = document.getElementById(`card-ext-${qId}`);
+            if (extBadge) {
+                if (uq.external_code) {
+                    extBadge.textContent = uq.external_code;
+                    extBadge.classList.remove('hidden');
+                } else {
+                    extBadge.classList.add('hidden');
+                }
+            }
 
             // Atualiza o card na grade imediatamente
             const cardEl = document.getElementById(`q-card-${qId}`);

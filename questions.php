@@ -56,6 +56,9 @@ include 'includes/header.php';
                         <button onclick="openModal('importModal', 'matrix')" class="bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2" title="Cadastrar ou atualizar a Matriz SAEP (.xls) de um curso">
                             <i class="ph-bold ph-table"></i> Matriz SAEP (.xls)
                         </button>
+                        <button onclick="openModal('importModal', 'xlsx')" class="bg-sky-50 text-sky-700 hover:bg-sky-100 border border-sky-200 px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2" title="Importar planilha de questões padrão SAEP/SISBIA (.xlsx) com links de imagens">
+                            <i class="ph-bold ph-file-xls"></i> Planilha SAEP (.xlsx)
+                        </button>
                         <button onclick="openModal('importModal', 'doc')" class="bg-gradient-to-r from-violet-600 to-indigo-600 text-white hover:from-violet-700 hover:to-indigo-700 px-4 py-2.5 rounded-xl font-bold text-sm transition-all shadow-[0_4px_14px_-3px_rgba(99,102,241,0.45)] hover:-translate-y-0.5 flex items-center gap-2">
                             <i class="ph-fill ph-sparkle text-amber-300"></i> Importar Word / PDF (IA)
                         </button>
@@ -199,6 +202,9 @@ include 'includes/header.php';
         <div id="import-tabs-bar" class="px-6 pt-4 bg-slate-50/40 border-b border-slate-100 flex flex-wrap gap-2 shrink-0">
             <button type="button" id="tab-btn-doc" onclick="switchImportTab('doc')" class="px-4 py-2.5 rounded-t-xl font-bold text-xs md:text-sm border-b-2 border-violet-600 text-violet-700 bg-white shadow-sm flex items-center gap-2 transition-all">
                 <i class="ph-fill ph-sparkle text-amber-500"></i> Prova Word (.docx) ou PDF (IA)
+            </button>
+            <button type="button" id="tab-btn-xlsx" onclick="switchImportTab('xlsx')" class="px-4 py-2.5 rounded-t-xl font-bold text-xs md:text-sm border-b-2 border-transparent text-slate-500 hover:text-slate-700 hover:bg-white/60 flex items-center gap-2 transition-all">
+                <i class="ph-bold ph-file-xls text-sky-600"></i> Planilha SAEP (.xlsx)
             </button>
             <button type="button" id="tab-btn-matrix" onclick="switchImportTab('matrix')" class="px-4 py-2.5 rounded-t-xl font-bold text-xs md:text-sm border-b-2 border-transparent text-slate-500 hover:text-slate-700 hover:bg-white/60 flex items-center gap-2 transition-all">
                 <i class="ph-bold ph-table text-emerald-600"></i> Cadastrar Matriz SAEP (.xls)
@@ -433,6 +439,127 @@ include 'includes/header.php';
         </div>
 
         <!-- ================================================================== -->
+        <!-- STEP 1-XLSX: Planilha SAEP / SISBIA (.xlsx) com Links de Imagens   -->
+        <!-- ================================================================== -->
+        <div id="step-xlsx-upload" class="p-6 overflow-y-auto flex-1 hidden">
+            <div class="bg-gradient-to-r from-sky-50 via-cyan-50 to-indigo-50 border border-sky-200 rounded-2xl p-4 mb-5 text-xs md:text-sm text-slate-700">
+                <div class="flex items-start gap-3">
+                    <div class="w-9 h-9 rounded-xl bg-sky-600 text-white flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
+                        <i class="ph-bold ph-file-xls text-lg"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-sky-950 mb-1">Importação Direta SAEP (.xlsx) + Estratégia Híbrida de Imagens</h4>
+                        <p class="text-slate-600 leading-relaxed">
+                            Compatível com planilhas padrão SISBIA/SAEP de 6 colunas (<b>Identificador</b>, <b>Capacidade</b>, <b>Questão</b>, <b>Alternativas</b>, <b>Gabarito</b>, <b>Imagem</b>). Lê tudo sem consumir créditos de IA, guarda o código original (ex: <code>SAEP_96306 | SC</code>), vincula automaticamente as imagens dos links no <b>enunciado</b> e dentro das <b>alternativas</b> e salva uma cópia local segura!
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <form id="xlsxImportForm" onsubmit="submitXlsxExtract(event)" class="space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                            Curso de Destino <span class="text-red-500">*</span>
+                        </label>
+                        <div class="relative">
+                            <i class="ph-bold ph-books absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                            <input type="text" id="xlsx_course_name" list="courses-datalist" required placeholder="Selecione o curso ou envie a Matriz .xls abaixo..." oninput="onXlsxCourseInput(this.value)" onchange="onXlsxCourseInput(this.value)" class="w-full pl-10 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 font-medium focus:bg-white focus:ring-2 focus:ring-sky-500 outline-none transition-all">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                            Módulo / Unidade Curricular Padrão (Opcional)
+                        </label>
+                        <div class="relative">
+                            <i class="ph-bold ph-folders absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                            <input type="text" id="xlsx_default_module" list="modules-datalist" placeholder="Deixe vazio para 'Sem UC vinculada' ou digite..." class="w-full pl-10 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 font-medium focus:bg-white focus:ring-2 focus:ring-sky-500 outline-none transition-all">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Painel de Vínculo da Matriz SAEP (.xls) -->
+                <div id="xlsx-matrix-status-box" class="rounded-2xl border p-4 transition-all bg-amber-50/70 border-amber-300">
+                    <div id="xlsx-matrix-linked-view" class="hidden">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                            <div class="flex items-center gap-2.5">
+                                <span class="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+                                    <i class="ph-bold ph-seal-check text-lg"></i>
+                                </span>
+                                <div>
+                                    <h5 class="text-xs md:text-sm font-extrabold text-emerald-950" id="xlsx-matrix-linked-title">
+                                        Matriz SAEP Vinculada
+                                    </h5>
+                                    <p class="text-[11px] text-emerald-700 font-medium">
+                                        A coluna Capacidade (C1, C2, C3...) da planilha será vinculada às capacidades oficiais deste curso.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="xlsx-matrix-upload-view">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div class="flex items-start gap-2.5">
+                                <i class="ph-fill ph-table text-xl text-amber-600 mt-0.5 shrink-0"></i>
+                                <div>
+                                    <h5 class="text-xs md:text-sm font-extrabold text-amber-950">
+                                        Matriz Curricular SAEP do Curso (.xls) <span class="text-red-600">* Obrigatória</span>
+                                    </h5>
+                                    <p class="text-[11px] text-amber-800 leading-relaxed mt-0.5">
+                                        Selecione um curso que já tenha Matriz cadastrada ou carregue aqui o arquivo <code>.xls</code> da Matriz SAEP antes de ler a planilha.
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="shrink-0">
+                                <input type="file" id="xlsx_matrix_xls_input" accept=".xls,.xlsx" class="hidden" onchange="uploadInlineMatrixXls(this, 'xlsx')">
+                                <button type="button" id="btn-inline-xlsx-matrix-upload" onclick="document.getElementById('xlsx_matrix_xls_input').click()" class="px-4 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shadow-sm transition-all flex items-center gap-1.5">
+                                    <i class="ph-bold ph-file-xls text-base"></i> Carregar Matriz (.xls)
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                            Tag da Prova / Lote (Opcional)
+                        </label>
+                        <input type="text" id="xlsx_import_tag" placeholder="Preenchida pelo nome do arquivo se vazio" class="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-sky-500 outline-none transition-all">
+                    </div>
+
+                    <label class="flex items-start gap-2.5 p-3 rounded-xl bg-sky-50/70 border border-sky-200 cursor-pointer select-none md:mt-5">
+                        <input type="checkbox" id="xlsx_download_images" checked class="mt-0.5 w-4 h-4 text-sky-600 rounded border-slate-300 focus:ring-sky-500">
+                        <span class="text-xs text-sky-950 leading-snug">
+                            <b>Baixar imagens dos links automaticamente</b> (Estratégia Híbrida: salva no servidor e usa o link original se offline)
+                        </span>
+                    </label>
+                </div>
+
+                <!-- Dropzone Planilha .xlsx -->
+                <div class="border-2 border-dashed border-sky-300 bg-sky-50/30 rounded-2xl p-6 text-center hover:bg-sky-50/70 hover:border-sky-500 transition-all cursor-pointer relative" id="xlsx-dropzone">
+                    <input type="file" id="xlsx_file" name="xlsx_file" accept=".xlsx" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onchange="updateXlsxFileName(this)">
+                    <div class="w-14 h-14 rounded-2xl bg-sky-100 flex items-center justify-center text-sky-600 mx-auto mb-3 shadow-inner">
+                        <i class="ph-fill ph-file-xls text-3xl"></i>
+                    </div>
+                    <h4 class="font-bold text-slate-700 text-base mb-1" id="xlsx-file-title">Selecione a Planilha SAEP (.xlsx)</h4>
+                    <p class="text-xs text-slate-500" id="xlsx-file-desc">Clique para procurar ou arraste a planilha (ex: SAEP2027_DESI_AV_DIAG_FASE2.xlsx)</p>
+                </div>
+
+                <div id="xlsx-import-alert" class="p-4 rounded-xl text-sm font-medium hidden"></div>
+
+                <div class="pt-2 flex justify-end gap-3">
+                    <button type="button" onclick="closeModal('importModal')" class="px-5 py-2.5 rounded-xl font-bold text-sm text-slate-500 hover:bg-slate-100 transition-colors">Cancelar</button>
+                    <button type="submit" id="btn-xlsx-extract" class="px-6 py-2.5 rounded-xl font-bold text-sm bg-sky-600 text-white hover:bg-sky-700 transition-all shadow-md flex items-center gap-2 disabled:opacity-50">
+                        <i class="ph-bold ph-images"></i> Ler Planilha e Importar Links de Imagens
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- ================================================================== -->
         <!-- STEP 1B: Revisão Visual das Questões Extraídas (Pré-Salvamento)    -->
         <!-- ================================================================== -->
         <div id="step-doc-review" class="p-6 overflow-y-auto flex-1 hidden flex-col">
@@ -441,6 +568,7 @@ include 'includes/header.php';
                     <div class="flex items-center gap-2 flex-wrap">
                         <span class="text-xs font-extrabold px-2.5 py-1 rounded-full bg-violet-100 text-violet-700" id="review-count-badge">0 questões extraídas</span>
                         <span class="text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800" id="review-matrix-badge">🔒 Vinculadas à Matriz Oficial</span>
+                        <span class="text-xs font-bold px-2.5 py-1 rounded-full bg-sky-100 text-sky-800 hidden" id="review-xlsx-images-badge">🖼️ 0 imagens importadas</span>
                         <span class="text-xs font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 hidden" id="review-images-badge">📷 0 pedem imagem</span>
                         <span class="text-xs font-bold px-2.5 py-1 rounded-full bg-blue-100 text-blue-700 hidden" id="review-ai-key-badge">🤖 0 gabaritos sugeridos pela IA</span>
                     </div>
@@ -590,6 +718,9 @@ include 'includes/header.php';
     let extractedDocQuestions = [];
     let onlyNeedsImageFilter = false;
     let matrixUpdatedNeedsReload = false;
+    let currentImportSource = 'doc';
+    let lastXlsxImageStats = null;
+    let activeImportContext = { course_name: '', default_module: '', import_tag: '' };
 
     function escapeHtml(str) {
         return String(str ?? '')
@@ -602,6 +733,11 @@ include 'includes/header.php';
     function onDocCourseInput(courseName) {
         updateModuleSuggestions(courseName);
         refreshCourseMatrixStatus(courseName);
+    }
+
+    function onXlsxCourseInput(courseName) {
+        updateModuleSuggestions(courseName);
+        refreshXlsxMatrixStatus(courseName);
     }
 
     function updateModuleSuggestions(courseName) {
@@ -654,6 +790,28 @@ include 'includes/header.php';
         }
     }
 
+    function refreshXlsxMatrixStatus(courseName) {
+        const key = (courseName || '').trim().toLowerCase();
+        const box = document.getElementById('xlsx-matrix-status-box');
+        const linkedView = document.getElementById('xlsx-matrix-linked-view');
+        const uploadView = document.getElementById('xlsx-matrix-upload-view');
+        const titleEl = document.getElementById('xlsx-matrix-linked-title');
+        if (!box || !linkedView || !uploadView) return;
+
+        if (key && courseMatricesMap[key] && courseMatricesMap[key].length > 0) {
+            currentCourseMatrixCapacities = courseMatricesMap[key];
+            box.className = 'rounded-2xl border p-4 transition-all bg-emerald-50/70 border-emerald-300';
+            linkedView.classList.remove('hidden');
+            uploadView.classList.add('hidden');
+            titleEl.textContent = `Matriz SAEP Vinculada (${currentCourseMatrixCapacities.length} capacidades: C1 a C${currentCourseMatrixCapacities.length})`;
+        } else {
+            currentCourseMatrixCapacities = [];
+            box.className = 'rounded-2xl border p-4 transition-all bg-amber-50/70 border-amber-300';
+            linkedView.classList.add('hidden');
+            uploadView.classList.remove('hidden');
+        }
+    }
+
     // Extrai capacidades C7, D7, E7... no cliente via SheetJS como suporte universal (.xls e .xlsx)
     async function extractMatrixFromExcelClient(file) {
         if (typeof XLSX === 'undefined') return null;
@@ -696,12 +854,13 @@ include 'includes/header.php';
         }
     }
 
-    async function uploadInlineMatrixXls(input) {
+    async function uploadInlineMatrixXls(input, target = 'doc') {
         if (!input.files || !input.files[0]) return;
         const file = input.files[0];
-        const btn = document.getElementById('btn-inline-matrix-upload');
-        const courseInput = document.getElementById('doc_course_name');
-        const alertBox = document.getElementById('doc-import-alert');
+        const isXlsxTab = (target === 'xlsx');
+        const btn = document.getElementById(isXlsxTab ? 'btn-inline-xlsx-matrix-upload' : 'btn-inline-matrix-upload');
+        const courseInput = document.getElementById(isXlsxTab ? 'xlsx_course_name' : 'doc_course_name');
+        const alertBox = document.getElementById(isXlsxTab ? 'xlsx-import-alert' : 'doc-import-alert');
 
         btn.disabled = true;
         const origHtml = btn.innerHTML;
@@ -734,7 +893,10 @@ include 'includes/header.php';
             courseInput.value = data.course_name;
             const cKey = data.course_name.trim().toLowerCase();
             courseMatricesMap[cKey] = data.capacities;
+            document.getElementById('doc_course_name').value = data.course_name;
+            document.getElementById('xlsx_course_name').value = data.course_name;
             onDocCourseInput(data.course_name);
+            onXlsxCourseInput(data.course_name);
 
             alertBox.className = 'p-4 rounded-xl text-sm font-medium bg-emerald-50 text-emerald-800 border border-emerald-200';
             alertBox.innerHTML = `<div class="flex items-center gap-2"><i class="ph-fill ph-seal-check text-lg text-emerald-600"></i> <span>${data.message}</span></div>`;
@@ -803,7 +965,9 @@ include 'includes/header.php';
             const cKey = data.course_name.trim().toLowerCase();
             courseMatricesMap[cKey] = data.capacities;
             document.getElementById('doc_course_name').value = data.course_name;
+            document.getElementById('xlsx_course_name').value = data.course_name;
             onDocCourseInput(data.course_name);
+            onXlsxCourseInput(data.course_name);
 
             let capsHtml = data.capacities.map(c =>
                 `<li class="py-1 border-b border-emerald-100 last:border-0"><b>${escapeHtml(c.capacity_code)}:</b> ${escapeHtml(c.description)}</li>`
@@ -835,9 +999,11 @@ include 'includes/header.php';
 
     function switchImportTab(mode) {
         const tabDoc = document.getElementById('tab-btn-doc');
+        const tabXlsx = document.getElementById('tab-btn-xlsx');
         const tabMatrix = document.getElementById('tab-btn-matrix');
         const tabCsv = document.getElementById('tab-btn-csv');
         const stepDoc = document.getElementById('step-doc-upload');
+        const stepXlsx = document.getElementById('step-xlsx-upload');
         const stepMatrix = document.getElementById('step-matrix-upload');
         const stepReview = document.getElementById('step-doc-review');
         const stepCsv = document.getElementById('step-csv-upload');
@@ -845,10 +1011,12 @@ include 'includes/header.php';
 
         const inactiveTabClass = 'px-4 py-2.5 rounded-t-xl font-bold text-xs md:text-sm border-b-2 border-transparent text-slate-500 hover:text-slate-700 hover:bg-white/60 flex items-center gap-2 transition-all';
         tabDoc.className = inactiveTabClass;
+        tabXlsx.className = inactiveTabClass;
         tabMatrix.className = inactiveTabClass;
         tabCsv.className = inactiveTabClass;
 
         stepDoc.classList.add('hidden');
+        stepXlsx.classList.add('hidden');
         stepMatrix.classList.add('hidden');
         stepCsv.classList.add('hidden');
         stepReview.classList.add('hidden');
@@ -864,6 +1032,10 @@ include 'includes/header.php';
             tabMatrix.className = 'px-4 py-2.5 rounded-t-xl font-bold text-xs md:text-sm border-b-2 border-emerald-600 text-emerald-700 bg-white shadow-sm flex items-center gap-2 transition-all';
             stepMatrix.classList.remove('hidden');
             document.getElementById('import-modal-title').innerHTML = '<i class="ph-bold ph-table text-emerald-600"></i> Cadastrar / Atualizar Matriz Curricular SAEP (.xls)';
+        } else if (mode === 'xlsx') {
+            tabXlsx.className = 'px-4 py-2.5 rounded-t-xl font-bold text-xs md:text-sm border-b-2 border-sky-600 text-sky-700 bg-white shadow-sm flex items-center gap-2 transition-all';
+            stepXlsx.classList.remove('hidden');
+            document.getElementById('import-modal-title').innerHTML = '<i class="ph-bold ph-file-xls text-sky-600"></i> Importar Planilha SAEP (.xlsx) com Links de Imagens';
         } else {
             tabDoc.className = 'px-4 py-2.5 rounded-t-xl font-bold text-xs md:text-sm border-b-2 border-violet-600 text-violet-700 bg-white shadow-sm flex items-center gap-2 transition-all';
             stepDoc.classList.remove('hidden');
@@ -886,9 +1058,17 @@ include 'includes/header.php';
         document.getElementById('doc-file-title').textContent = 'Selecione o arquivo da Prova em Word (.docx) ou PDF (.pdf)';
         document.getElementById('doc-file-desc').textContent = 'Clique para procurar ou arraste a prova aqui';
         document.getElementById('doc-import-alert').classList.add('hidden');
+
+        const xlsxForm = document.getElementById('xlsxImportForm');
+        if (xlsxForm) xlsxForm.reset();
+        document.getElementById('xlsx-file-title').textContent = 'Selecione a Planilha SAEP (.xlsx)';
+        document.getElementById('xlsx-file-desc').textContent = 'Clique para procurar ou arraste a planilha (ex: SAEP2027_DESI_AV_DIAG_FASE2.xlsx)';
+        document.getElementById('xlsx-import-alert').classList.add('hidden');
+
         document.getElementById('import-tabs-bar').classList.remove('hidden');
 
         refreshCourseMatrixStatus('');
+        refreshXlsxMatrixStatus('');
         switchImportTab(mode);
         
         setTimeout(() => {
@@ -1095,6 +1275,9 @@ include 'includes/header.php';
             if (result.matrix_capacities && result.matrix_capacities.length > 0) {
                 currentCourseMatrixCapacities = result.matrix_capacities;
             }
+            currentImportSource = 'doc';
+            lastXlsxImageStats = null;
+            activeImportContext = { course_name: courseName, default_module: defaultModule, import_tag: importTag };
             extractedDocQuestions = result.questions || [];
             showDocReviewStep();
 
@@ -1106,23 +1289,134 @@ include 'includes/header.php';
         }
     }
 
+    function updateXlsxFileName(input) {
+        if (input.files && input.files[0]) {
+            const f = input.files[0];
+            document.getElementById('xlsx-file-title').textContent = f.name;
+            document.getElementById('xlsx-file-desc').textContent = (f.size / 1024).toFixed(1) + ' KB • Planilha SAEP pronta para leitura';
+            const tagInput = document.getElementById('xlsx_import_tag');
+            if (tagInput && !tagInput.value.trim()) {
+                tagInput.value = f.name.replace(/\.xlsx$/i, '');
+            }
+        }
+    }
+
+    async function extractRowsFromXlsxClient(file) {
+        if (typeof XLSX === 'undefined') return null;
+        try {
+            const buf = await file.arrayBuffer();
+            const wb = XLSX.read(buf, { type: 'array' });
+            const ws = wb.Sheets[wb.SheetNames[0]];
+            if (!ws) return null;
+            const rows = XLSX.utils.sheet_to_json(ws, { header: 'A', defval: '', raw: false });
+            return Array.isArray(rows) ? rows : null;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    async function submitXlsxExtract(e) {
+        e.preventDefault();
+
+        const courseName = document.getElementById('xlsx_course_name').value.trim();
+        const defaultModule = document.getElementById('xlsx_default_module').value.trim();
+        const importTag = document.getElementById('xlsx_import_tag').value.trim();
+        const downloadImages = document.getElementById('xlsx_download_images').checked;
+        const fileInput = document.getElementById('xlsx_file');
+        const btn = document.getElementById('btn-xlsx-extract');
+        const alertBox = document.getElementById('xlsx-import-alert');
+
+        if (!courseName) {
+            alert('Por favor, informe o Curso de Destino.');
+            return;
+        }
+
+        const cKey = courseName.toLowerCase();
+        if (!courseMatricesMap[cKey] || courseMatricesMap[cKey].length === 0) {
+            alertBox.className = 'p-4 rounded-xl text-sm font-medium bg-amber-50 text-amber-900 border border-amber-300';
+            alertBox.innerHTML = '<div class="flex items-start gap-2"><i class="ph-fill ph-warning-circle text-lg text-amber-600 mt-0.5"></i> <div><b>Matriz SAEP Obrigatória:</b> Carregue primeiro o arquivo <code>.xls</code> da Matriz Curricular deste curso no painel acima!</div></div>';
+            alertBox.classList.remove('hidden');
+            return;
+        }
+
+        if (!fileInput.files || !fileInput.files[0]) {
+            alertBox.className = 'p-4 rounded-xl text-sm font-medium bg-amber-50 text-amber-800 border border-amber-200';
+            alertBox.innerHTML = '<i class="ph-fill ph-warning-circle"></i> Selecione o arquivo <b>.xlsx</b> da prova SAEP para importar.';
+            alertBox.classList.remove('hidden');
+            return;
+        }
+
+        const file = fileInput.files[0];
+        btn.disabled = true;
+        alertBox.className = 'p-4 rounded-xl text-sm font-medium bg-sky-50 text-sky-900 border border-sky-200';
+        alertBox.innerHTML = '<div class="flex items-center gap-2.5"><i class="ph-bold ph-spinner animate-spin text-lg text-sky-600"></i> <span>Lendo planilha SAEP e baixando imagens dos links (Estratégia Híbrida)...</span></div>';
+        alertBox.classList.remove('hidden');
+
+        try {
+            const formData = new FormData();
+            formData.append('action', 'parse_xlsx_saep');
+            formData.append('course_name', courseName);
+            formData.append('default_module', defaultModule);
+            formData.append('import_tag', importTag);
+            formData.append('download_images', downloadImages ? '1' : '0');
+            formData.append('xlsx_file', file);
+
+            const clientRows = await extractRowsFromXlsxClient(file);
+            if (clientRows && clientRows.length > 0) {
+                formData.append('rows_json', JSON.stringify(clientRows));
+            }
+
+            const response = await fetch('questions_import_doc_ajax.php', {
+                method: 'POST',
+                body: formData
+            });
+            const result = await response.json();
+
+            if (!result.success) {
+                throw new Error(result.message || 'Erro ao ler a planilha .xlsx.');
+            }
+
+            if (result.matrix_capacities && result.matrix_capacities.length > 0) {
+                currentCourseMatrixCapacities = result.matrix_capacities;
+            }
+            currentImportSource = 'xlsx';
+            lastXlsxImageStats = result.image_stats || null;
+            activeImportContext = { course_name: courseName, default_module: defaultModule, import_tag: importTag };
+            extractedDocQuestions = result.questions || [];
+            showDocReviewStep();
+
+        } catch (err) {
+            alertBox.className = 'p-4 rounded-xl text-sm font-medium bg-red-50 text-red-700 border border-red-200';
+            alertBox.innerHTML = '<div class="flex items-start gap-2"><i class="ph-fill ph-warning-circle text-lg mt-0.5"></i> <div>' + escapeHtml(err.message || 'Erro ao processar planilha .xlsx.') + '</div></div>';
+        } finally {
+            btn.disabled = false;
+        }
+    }
+
     function backToDocUpload() {
         document.getElementById('step-doc-review').classList.add('hidden');
         document.getElementById('step-doc-review').classList.remove('flex');
-        document.getElementById('step-doc-upload').classList.remove('hidden');
         document.getElementById('import-tabs-bar').classList.remove('hidden');
-        document.getElementById('doc-import-alert').classList.add('hidden');
-        document.getElementById('import-modal-title').innerHTML = '<i class="ph-fill ph-sparkle text-violet-600"></i> Importação Inteligente (Word / PDF com IA)';
+        if (currentImportSource === 'xlsx') {
+            document.getElementById('step-xlsx-upload').classList.remove('hidden');
+            document.getElementById('xlsx-import-alert').classList.add('hidden');
+            switchImportTab('xlsx');
+        } else {
+            document.getElementById('step-doc-upload').classList.remove('hidden');
+            document.getElementById('doc-import-alert').classList.add('hidden');
+            switchImportTab('doc');
+        }
     }
 
     function showDocReviewStep() {
         document.getElementById('import-tabs-bar').classList.add('hidden');
         document.getElementById('step-doc-upload').classList.add('hidden');
+        document.getElementById('step-xlsx-upload').classList.add('hidden');
         const reviewStep = document.getElementById('step-doc-review');
         reviewStep.classList.remove('hidden');
         reviewStep.classList.add('flex');
 
-        const courseName = document.getElementById('doc_course_name').value.trim();
+        const courseName = activeImportContext.course_name || document.getElementById('doc_course_name').value.trim();
         document.getElementById('import-modal-title').innerHTML = `<i class="ph-bold ph-list-checks text-violet-600"></i> Revisão de Questões e Capacidades (${escapeHtml(courseName)})`;
 
         renderDocReviewList();
@@ -1169,6 +1463,16 @@ include 'includes/header.php';
             aiKeyBadge.classList.add('hidden');
         }
 
+        const xlsxImgBadge = document.getElementById('review-xlsx-images-badge');
+        if (xlsxImgBadge) {
+            if (currentImportSource === 'xlsx' && lastXlsxImageStats && lastXlsxImageStats.total_links > 0) {
+                xlsxImgBadge.textContent = `🖼️ ${lastXlsxImageStats.total_links} img dos links (${lastXlsxImageStats.downloaded_local} no servidor, ${lastXlsxImageStats.kept_external} link direto)`;
+                xlsxImgBadge.classList.remove('hidden');
+            } else {
+                xlsxImgBadge.classList.add('hidden');
+            }
+        }
+
         const btnSave = document.getElementById('btn-save-reviewed');
         btnSave.innerHTML = `<i class="ph-bold ph-floppy-disk"></i> Salvar ${total} Questão(ões) e Avançar`;
         btnSave.disabled = (total === 0);
@@ -1204,7 +1508,7 @@ include 'includes/header.php';
                             <button type="button" onclick="setReviewCorrectOption(${qIdx}, ${optIdx})" title="Clique para definir esta como a alternativa correta" class="mt-0.5 w-6 h-6 rounded-lg font-extrabold text-xs flex items-center justify-center shrink-0 transition-all ${isCorr ? 'bg-emerald-600 text-white shadow-sm' : 'bg-white border border-slate-300 text-slate-500 hover:border-emerald-400'}">
                                 ${letter}
                             </button>
-                            <input type="text" value="${escapeHtml(opt.text)}" placeholder="Texto da alternativa ${letter} (opcional se tiver imagem)..." oninput="extractedDocQuestions[${qIdx}].options[${optIdx}].text = this.value" class="flex-1 bg-transparent text-xs font-medium ${isCorr ? 'text-emerald-950 font-bold' : 'text-slate-700'} outline-none border-b border-transparent focus:border-slate-300 py-0.5">
+                            <textarea rows="${(opt.text && opt.text.includes('\n')) ? 3 : 2}" placeholder="Texto da alternativa ${letter} (opcional se tiver imagem)..." oninput="extractedDocQuestions[${qIdx}].options[${optIdx}].text = this.value" class="flex-1 bg-transparent text-xs font-medium ${isCorr ? 'text-emerald-950 font-bold' : 'text-slate-700'} outline-none border border-transparent focus:border-slate-300 rounded-lg p-1 leading-relaxed resize-y">${escapeHtml(opt.text)}</textarea>
                             <input type="file" id="rev-opt-img-input-${qIdx}-${optIdx}" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml" class="hidden" onchange="uploadReviewOptionImage(${qIdx}, ${optIdx}, this)">
                             <button type="button" onclick="document.getElementById('rev-opt-img-input-${qIdx}-${optIdx}').click()" class="px-2 py-1 rounded-lg border text-[10px] font-bold flex items-center gap-1 shrink-0 transition-all ${hasOptImg ? 'bg-indigo-100 text-indigo-800 border-indigo-300' : 'bg-white text-slate-600 border-slate-200 hover:bg-indigo-50 hover:text-indigo-700'}" title="Vincular ou trocar imagem desta alternativa">
                                 <i class="ph-bold ph-image"></i> ${hasOptImg ? 'Trocar Img' : '+ Imagem'}
@@ -1212,9 +1516,9 @@ include 'includes/header.php';
                             ${isCorr ? '<span class="text-[10px] font-extrabold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md shrink-0">Correta</span>' : ''}
                         </div>
                         ${hasOptImg ? `
-                        <div class="pl-8 flex items-center gap-2 pt-1">
-                            <img src="${escapeHtml(opt.image_url)}" alt="Img Alternativa ${letter}" class="h-14 w-auto object-contain rounded-lg border border-slate-200 bg-white p-0.5 shadow-sm">
-                            <span class="text-[10px] font-bold text-indigo-700">✓ Imagem vinculada à alternativa ${letter}</span>
+                        <div class="pl-8 flex items-center gap-2 pt-1 flex-wrap">
+                            <img src="${escapeHtml(opt.image_url)}" alt="Img Alternativa ${letter}" class="h-16 w-auto object-contain rounded-lg border border-slate-200 bg-white p-0.5 shadow-sm">
+                            <span class="text-[10px] font-bold text-indigo-700">✓ Imagem vinculada à alternativa ${letter} ${opt.image_url.startsWith('http') ? '(Link direto)' : '(Salva no servidor)'}</span>
                             <button type="button" onclick="removeReviewOptionImage(${qIdx}, ${optIdx})" class="text-[10px] font-bold text-red-500 hover:underline ml-auto flex items-center gap-0.5">
                                 <i class="ph-bold ph-trash"></i> Remover imagem
                             </button>
@@ -1224,14 +1528,44 @@ include 'includes/header.php';
                 `;
             });
 
+            const hasStmtImg = !!q.image_url;
+            const stmtImgBlock = hasStmtImg ? `
+                <div class="mb-3 p-3 rounded-xl bg-indigo-50/50 border border-indigo-200 flex flex-col sm:flex-row sm:items-center gap-3">
+                    <img src="${escapeHtml(q.image_url)}" alt="Imagem Enunciado" class="h-24 w-auto object-contain rounded-lg border border-slate-200 bg-white p-1 shadow-sm self-start sm:self-center">
+                    <div class="flex-1 min-w-0">
+                        <span class="text-[11px] font-extrabold text-indigo-900 flex items-center gap-1">
+                            <i class="ph-fill ph-image text-indigo-600"></i> Imagem do Enunciado Vinculada ${q.image_url.startsWith('http') ? '(Link direto)' : '(Salva no servidor)'}
+                        </span>
+                        <p class="text-[10px] text-slate-500 truncate mt-0.5">${escapeHtml(q.image_url)}</p>
+                        <div class="flex items-center gap-2 mt-2">
+                            <input type="file" id="rev-q-img-input-${qIdx}" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml" class="hidden" onchange="uploadReviewQuestionImage(${qIdx}, this)">
+                            <button type="button" onclick="document.getElementById('rev-q-img-input-${qIdx}').click()" class="px-2.5 py-1 rounded-lg bg-white border border-indigo-200 text-indigo-700 text-[10px] font-bold hover:bg-indigo-50">
+                                <i class="ph-bold ph-arrows-clockwise"></i> Trocar Imagem
+                            </button>
+                            <button type="button" onclick="removeReviewQuestionImage(${qIdx})" class="px-2.5 py-1 rounded-lg bg-white border border-red-200 text-red-600 text-[10px] font-bold hover:bg-red-50">
+                                <i class="ph-bold ph-trash"></i> Remover
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            ` : `
+                <div class="mb-3 flex items-center justify-end">
+                    <input type="file" id="rev-q-img-input-${qIdx}" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml" class="hidden" onchange="uploadReviewQuestionImage(${qIdx}, this)">
+                    <button type="button" onclick="document.getElementById('rev-q-img-input-${qIdx}').click()" class="px-2.5 py-1 rounded-lg border border-indigo-200 bg-indigo-50/50 text-indigo-700 hover:bg-indigo-100 text-[11px] font-bold flex items-center gap-1 transition-colors">
+                        <i class="ph-bold ph-image"></i> + Imagem no Enunciado
+                    </button>
+                </div>
+            `;
+
             card.innerHTML = `
                 <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
                     <div class="flex items-center gap-2 flex-wrap">
                         <span class="text-xs font-extrabold px-2.5 py-0.5 rounded-lg bg-slate-800 text-white">Questão #${qIdx + 1}</span>
+                        ${q.external_code ? `<span class="text-[10px] font-extrabold px-2 py-0.5 rounded-lg bg-sky-100 text-sky-800 border border-sky-200" title="Código identificador original da planilha">${escapeHtml(q.external_code)}</span>` : ''}
                         <button type="button" onclick="toggleReviewNeedsImage(${qIdx})" class="text-[11px] font-bold px-2.5 py-0.5 rounded-lg border transition-all flex items-center gap-1 ${q.needs_image ? 'bg-amber-100 text-amber-800 border-amber-300' : 'bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200'}" title="Clique para marcar/desmarcar se esta questão precisa de imagem">
-                            <i class="ph-fill ph-camera"></i> ${q.needs_image ? 'Pede Imagem (Destacada no próx. passo)' : 'Sem Imagem'}
+                            <i class="ph-fill ph-camera"></i> ${q.needs_image ? 'Pede Imagem (Destacada no próx. passo)' : 'Sem Pendência de Imagem'}
                         </button>
-                        ${q.ai_matched_capacity ? '<span class="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-emerald-100 text-emerald-800">🎯 Capacidade classificada pela IA</span>' : ''}
+                        ${q.ai_matched_capacity ? '<span class="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-emerald-100 text-emerald-800">🎯 Capacidade classificada</span>' : ''}
                         ${q.ai_solved_key ? '<span class="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-blue-100 text-blue-700">🤖 Gabarito sugerido pela IA</span>' : ''}
                     </div>
                     <button type="button" onclick="removeReviewQuestion(${qIdx})" class="text-xs font-bold text-slate-400 hover:text-red-600 flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-red-50 transition-colors">
@@ -1261,6 +1595,8 @@ include 'includes/header.php';
                     </div>
                 </div>
 
+                ${stmtImgBlock}
+
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mb-3">
                     <div>
                         <label class="block text-[10px] font-bold text-slate-400 uppercase mb-0.5">Unidade Curricular / Módulo</label>
@@ -1286,6 +1622,43 @@ include 'includes/header.php';
 
             container.appendChild(card);
         });
+    }
+
+    async function uploadReviewQuestionImage(qIdx, input) {
+        if (!input.files || !input.files[0]) return;
+        const file = input.files[0];
+        if (file.size > 10 * 1024 * 1024) {
+            alert('A imagem deve ter no máximo 10MB.');
+            input.value = '';
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('action', 'upload_temp');
+        formData.append('image', file);
+
+        try {
+            const res = await fetch('question_image_ajax.php', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await res.json();
+            if (data.success && extractedDocQuestions[qIdx]) {
+                extractedDocQuestions[qIdx].image_url = data.image_url;
+                extractedDocQuestions[qIdx].needs_image = false;
+                renderDocReviewList();
+            } else {
+                alert(data.error || 'Erro ao enviar imagem do enunciado.');
+            }
+        } catch (err) {
+            alert('Erro de comunicação ao enviar imagem.');
+        }
+    }
+
+    function removeReviewQuestionImage(qIdx) {
+        if (!extractedDocQuestions[qIdx]) return;
+        extractedDocQuestions[qIdx].image_url = null;
+        renderDocReviewList();
     }
 
     async function uploadReviewOptionImage(qIdx, optIdx, input) {
@@ -1350,9 +1723,9 @@ include 'includes/header.php';
     }
 
     async function saveReviewedQuestions() {
-        const courseName = document.getElementById('doc_course_name').value.trim();
-        const defaultModule = document.getElementById('doc_default_module').value.trim();
-        const importTag = document.getElementById('doc_import_tag').value.trim();
+        const courseName = (activeImportContext.course_name || document.getElementById('doc_course_name').value).trim();
+        const defaultModule = (activeImportContext.default_module || document.getElementById('doc_default_module').value).trim();
+        const importTag = (activeImportContext.import_tag || document.getElementById('doc_import_tag').value).trim();
         const btn = document.getElementById('btn-save-reviewed');
         const alertBox = document.getElementById('doc-review-alert');
 
@@ -1445,6 +1818,7 @@ include 'includes/header.php';
         document.getElementById('import-tabs-bar').classList.add('hidden');
         document.getElementById('step-csv-upload').classList.add('hidden');
         document.getElementById('step-doc-upload').classList.add('hidden');
+        document.getElementById('step-xlsx-upload').classList.add('hidden');
         document.getElementById('step-matrix-upload').classList.add('hidden');
         document.getElementById('step-doc-review').classList.add('hidden');
         document.getElementById('step-doc-review').classList.remove('flex');
@@ -1549,6 +1923,7 @@ include 'includes/header.php';
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2 mb-1.5 flex-wrap">
                             <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-200 text-slate-700 uppercase">#${index + 1}</span>
+                            ${q.external_code ? `<span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-sky-100 text-sky-800 border border-sky-200">${escapeHtml(q.external_code)}</span>` : ''}
                             ${q.needs_image ? `<span class="text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-amber-200/80 text-amber-900 flex items-center gap-1"><i class="ph-fill ph-camera"></i> Pede imagem</span>` : ''}
                             <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-700 truncate max-w-[200px]" title="${escapeHtml(q.module)}">${escapeHtml(q.module)}</span>
                             ${q.capacity ? `<span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-senai-cyan/15 text-senai-blue">CAP: ${escapeHtml(q.capacity)}</span>` : ''}
@@ -1558,10 +1933,20 @@ include 'includes/header.php';
                     
                     <div class="shrink-0 flex flex-wrap items-center gap-2">
                         <div id="q-upload-zone-${q.id}" class="flex items-center gap-2">
-                            <input type="file" id="import-file-input-${q.id}" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml" class="hidden" onchange="uploadImageForImportedQ(${q.id}, this)">
-                            <button type="button" onclick="document.getElementById('import-file-input-${q.id}').click()" class="px-3 py-2 bg-white hover:bg-indigo-50 text-indigo-600 hover:text-indigo-700 border border-indigo-200 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm active:scale-95">
-                                <i class="ph-bold ph-cloud-arrow-up text-sm"></i> Imagem no Enunciado
-                            </button>
+                            ${q.image_url ? `
+                                <div class="flex items-center gap-2">
+                                    <img src="${escapeHtml(q.image_url)}" alt="Preview" class="w-10 h-10 object-contain rounded-lg border border-slate-200 bg-white">
+                                    <span class="text-xs font-bold text-emerald-600 flex items-center gap-1"><i class="ph-bold ph-check-circle text-emerald-500"></i> Vinculada</span>
+                                    <button type="button" onclick="removeImageForImportedQ(${q.id})" class="p-1.5 text-slate-400 hover:text-red-500 rounded-lg hover:bg-red-50 transition-colors" title="Remover imagem">
+                                        <i class="ph-bold ph-trash"></i>
+                                    </button>
+                                </div>
+                            ` : `
+                                <input type="file" id="import-file-input-${q.id}" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml" class="hidden" onchange="uploadImageForImportedQ(${q.id}, this)">
+                                <button type="button" onclick="document.getElementById('import-file-input-${q.id}').click()" class="px-3 py-2 bg-white hover:bg-indigo-50 text-indigo-600 hover:text-indigo-700 border border-indigo-200 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm active:scale-95">
+                                    <i class="ph-bold ph-cloud-arrow-up text-sm"></i> Imagem no Enunciado
+                                </button>
+                            `}
                         </div>
                         ${optionsRowsHtml ? `
                         <button type="button" onclick="document.getElementById('imported-opts-panel-${q.id}').classList.toggle('hidden')" class="px-3 py-2 bg-violet-50 hover:bg-violet-100 text-violet-700 border border-violet-200 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm">
