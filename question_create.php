@@ -68,8 +68,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // Fetch Courses and Modules to build a cascaded select or a grouped select
-$stmt = $pdo->query("SELECT m.id, m.name as module_name, c.name as course_name FROM modules m JOIN courses c ON m.course_id = c.id ORDER BY c.name, m.name");
+$stmt = $pdo->query("SELECT m.id, m.course_id, m.name as module_name, c.name as course_name FROM modules m JOIN courses c ON m.course_id = c.id ORDER BY c.name, m.name");
 $modules = $stmt->fetchAll();
+
+// Carrega capacidades oficiais da Matriz SAEP por curso
+$courseCapsByCourseId = [];
+try {
+    $stmtCC = $pdo->query("
+        SELECT course_id, capacity_code, description
+        FROM course_capacities
+        ORDER BY course_id, CAST(SUBSTRING(capacity_code, 2) AS UNSIGNED) ASC, capacity_code ASC
+    ");
+    if ($stmtCC) {
+        foreach ($stmtCC->fetchAll() as $rowCC) {
+            $courseCapsByCourseId[$rowCC['course_id']][] = [
+                'code' => $rowCC['capacity_code'],
+                'desc' => $rowCC['description']
+            ];
+        }
+    }
+} catch (Exception $e) {}
+$moduleToCourseMap = [];
+foreach ($modules as $modRow) {
+    $moduleToCourseMap[$modRow['id']] = (int)$modRow['course_id'];
+}
 
 include 'includes/header.php';
 ?>
@@ -124,7 +146,7 @@ include 'includes/header.php';
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <div class="md:col-span-2">
                                 <label class="block text-sm font-bold text-slate-700 mb-2">Unidade Curricular (Módulo)</label>
-                                <select name="module_id" required class="search-select w-full px-5 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-senai-blue/20 focus:border-senai-blue bg-slate-50/50 font-medium text-slate-700">
+                                <select name="module_id" id="manual-module-select" onchange="onManualModuleChange(this.value)" required class="search-select w-full px-5 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-senai-blue/20 focus:border-senai-blue bg-slate-50/50 font-medium text-slate-700">
                                     <option value="" disabled selected>Selecione...</option>
                                     <?php 
                                     $current_course = '';
@@ -135,8 +157,8 @@ include 'includes/header.php';
                                             echo "<optgroup label='" . htmlspecialchars($current_course) . "'>";
                                         }
                                     ?>
-                                        <option value="<?= $m['id'] ?>"><?= htmlspecialchars($m['module_name']) ?></option>
-                                    <?php endforeach; echo "</optgroup>"; ?>
+                                        <option value="<?= $m['id'] ?>" data-course-id="<?= $m['course_id'] ?>"><?= htmlspecialchars($m['module_name']) ?></option>
+                                    <?php endforeach; if ($current_course !== '') echo "</optgroup>"; ?>
                                 </select>
                             </div>
                             
@@ -150,10 +172,15 @@ include 'includes/header.php';
                             </div>
                         </div>
 
-                        <!-- Estrutura da Questão -->
-                        <div>
-                            <label class="block text-sm font-bold text-slate-700 mb-2">Capacidade (Ex: C1, C2, C3...)</label>
-                            <input type="text" name="capacity" required placeholder="Código ou nome da capacidade avaliada" class="w-full px-5 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-senai-blue/20 focus:border-senai-blue bg-slate-50/50 font-medium text-slate-700">
+                        <!-- Estrutura da Questão: Capacidade Oficial da Matriz -->
+                        <div class="p-4 rounded-2xl bg-emerald-50/60 border border-emerald-200">
+                            <label class="block text-sm font-bold text-emerald-950 mb-2 flex items-center gap-1.5">
+                                <i class="ph-fill ph-lock-key text-emerald-600"></i> Capacidade Oficial da Matriz SAEP (Inviolável)
+                            </label>
+                            <select name="capacity" id="manual-capacity-select" onchange="onManualCapacityChange(this.value)" required class="w-full px-4 py-3 rounded-xl border border-emerald-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-bold text-slate-800 text-sm">
+                                <option value="" disabled selected>Selecione primeiro a Unidade Curricular acima...</option>
+                            </select>
+                            <div id="manual-capacity-desc" class="mt-2 p-3 rounded-xl bg-white/90 border border-emerald-100 text-xs text-emerald-900 font-medium leading-relaxed hidden"></div>
                         </div>
 
                         <div>
@@ -230,6 +257,45 @@ include 'includes/header.php';
 </div>
 
 <script>
+const courseCapsByCourseId = <?= json_encode($courseCapsByCourseId, JSON_UNESCAPED_UNICODE) ?>;
+const moduleToCourseMap = <?= json_encode($moduleToCourseMap) ?>;
+let currentManualCourseCaps = [];
+
+function onManualModuleChange(moduleId) {
+    const courseId = moduleToCourseMap[moduleId];
+    const capSelect = document.getElementById('manual-capacity-select');
+    const descBox = document.getElementById('manual-capacity-desc');
+    capSelect.innerHTML = '';
+    descBox.classList.add('hidden');
+
+    currentManualCourseCaps = (courseId && courseCapsByCourseId[courseId]) ? courseCapsByCourseId[courseId] : [];
+    if (currentManualCourseCaps.length === 0) {
+        capSelect.innerHTML = '<option value="" disabled selected>Este curso ainda não possui Matriz SAEP (.xls) vinculada no Banco de Questões</option>';
+        return;
+    }
+
+    currentManualCourseCaps.forEach((c, idx) => {
+        const opt = document.createElement('option');
+        opt.value = c.code;
+        const shortD = c.desc.length > 90 ? c.desc.substring(0, 90) + '...' : c.desc;
+        opt.textContent = `${c.code} — ${shortD}`;
+        if (idx === 0) opt.selected = true;
+        capSelect.appendChild(opt);
+    });
+    onManualCapacityChange(currentManualCourseCaps[0].code);
+}
+
+function onManualCapacityChange(code) {
+    const descBox = document.getElementById('manual-capacity-desc');
+    const found = currentManualCourseCaps.find(c => c.code === code);
+    if (found) {
+        descBox.textContent = `${found.code}: ${found.desc}`;
+        descBox.classList.remove('hidden');
+    } else {
+        descBox.classList.add('hidden');
+    }
+}
+
 function previewManualImage(input) {
     if (input.files && input.files[0]) {
         const file = input.files[0];

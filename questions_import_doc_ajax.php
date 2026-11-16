@@ -135,6 +135,67 @@ if ($action === 'parse_text') {
     $defaultCap    = trim($_POST['default_capacity'] ?? ($jsonInput['default_capacity'] ?? ''));
     $answerKey     = trim($_POST['answer_key'] ?? ($jsonInput['answer_key'] ?? ''));
 
+    // Garante tabela course_capacities e busca as capacidades oficiais da Matriz do Curso
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS course_capacities (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            course_id INT NOT NULL,
+            capacity_code VARCHAR(50) NOT NULL,
+            description TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY uq_course_cap (course_id, capacity_code),
+            FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
+
+    $matrixCapacities = [];
+    if ($courseName !== '') {
+        $stmtC = $pdo->prepare("SELECT id FROM courses WHERE LOWER(name) = LOWER(?) LIMIT 1");
+        $stmtC->execute([$courseName]);
+        $cId = (int)$stmtC->fetchColumn();
+        if ($cId > 0) {
+            $stmtCaps = $pdo->prepare("
+                SELECT capacity_code, description
+                FROM course_capacities
+                WHERE course_id = ?
+                ORDER BY CAST(SUBSTRING(capacity_code, 2) AS UNSIGNED) ASC, capacity_code ASC
+            ");
+            $stmtCaps->execute([$cId]);
+            $matrixCapacities = $stmtCaps->fetchAll();
+
+            // Fallback: hidrata a partir de module_capacities caso já existissem capacidades antigas no curso
+            if (empty($matrixCapacities)) {
+                $stmtLeg = $pdo->prepare("
+                    SELECT DISTINCT mc.capacity_code, mc.description
+                    FROM module_capacities mc
+                    JOIN modules m ON mc.module_id = m.id
+                    WHERE m.course_id = ? AND mc.capacity_code != '' AND mc.description != ''
+                    ORDER BY LENGTH(mc.capacity_code), mc.capacity_code
+                ");
+                $stmtLeg->execute([$cId]);
+                $matrixCapacities = $stmtLeg->fetchAll();
+            }
+        }
+    }
+
+    if (empty($matrixCapacities)) {
+        echo json_encode([
+            'success'      => false,
+            'needs_matrix' => true,
+            'message'      => 'Este curso ainda não possui uma Matriz Curricular de Capacidades (.xls) vinculada. Por favor, anexe o arquivo .xls da Matriz SAEP do curso antes de extrair as questões!'
+        ]);
+        exit;
+    }
+
+    $validCapMap = [];
+    $matrixPromptBlock = "MATRIZ OFICIAL DE CAPACIDADES DO CURSO (TEXTOS INVIOLÁVEIS):\n";
+    foreach ($matrixCapacities as $mc) {
+        $code = strtoupper(trim($mc['capacity_code']));
+        $desc = trim($mc['description']);
+        $validCapMap[$code] = $desc;
+        $matrixPromptBlock .= "- {$code}: {$desc}\n";
+    }
+
     // Fallback: se o arquivo .docx foi enviado diretamente via FormData e raw_text veio vazio
     if ($rawText === '' && isset($_FILES['doc_file']) && $_FILES['doc_file']['error'] === UPLOAD_ERR_OK) {
         $ext = strtolower(pathinfo($_FILES['doc_file']['name'], PATHINFO_EXTENSION));
@@ -168,9 +229,11 @@ REGRAS OBRIGATÓRIAS DE EXTRAÇÃO:
   "questions": [
     {
       "number": 1,
-      "command": "Texto completo do enunciado (incluindo texto-base, contexto, itens I, II, III se houverem e a pergunta/comando final). Não inclua o número da questão no início.",
+      "context": "Texto-base / contextualização / situação-problema inicial da questão (se houver). Se a questão for direta em um único parágrafo curto, deixe vazio.",
+      "command": "Comando da questão (a pergunta final e eventuais afirmações I, II, III que antecedem as alternativas). Se não houver divisão clara entre contexto e comando, coloque o enunciado completo aqui.",
       "module": "Nome do módulo/unidade curricular se citado na questão, ou o módulo padrão informado",
-      "capacity": "Código ou nome da capacidade/competência/habilidade se citado na questão (ex: C1, H2), ou vazio",
+      "capacity": "Código exato da capacidade da Matriz Oficial do Curso (ex: C1, C2, C3...)",
+      "ai_matched_capacity": true ou false,
       "difficulty": "Fácil, Médio ou Difícil",
       "needs_image": true ou false,
       "ai_solved_key": true ou false,
@@ -184,31 +247,33 @@ REGRAS OBRIGATÓRIAS DE EXTRAÇÃO:
   ]
 }
 
-2. PRESERVAÇÃO DO ENUNCIADO:
-- Mantenha o texto integral do enunciado e contexto técnico sem resumir.
-- Se a questão tiver afirmações em algarismos romanos (I, II, III...) ou código-fonte, preserve-os dentro de "command" usando quebras de linha (\n).
-- Remova apenas o prefixo de numeração ("Questão 01 -", "1.", "1)") do início do enunciado.
+2. VÍNCULO OBRIGATÓRIO E INVIOLÁVEL COM A MATRIZ DE CAPACIDADES DO CURSO:
+- O campo "capacity" DEVE conter APENAS o código oficial (ex: "C1", "C2", "C3"...) presente na MATRIZ OFICIAL DE CAPACIDADES DO CURSO fornecida pelo usuário.
+- Se a questão trouxer explícito no texto qual é a capacidade (ex: "Capacidade: C3"), use esse código e defina "ai_matched_capacity": false.
+- Se a questão NÃO trouxer explícito qual é a capacidade, analise profundamente o tema técnico do enunciado e das alternativas, compare com as descrições de todas as capacidades (C1, C2, C3...) da Matriz Oficial do Curso, escolha o código (ex: "C5") que melhor se encaixa pedagogicamente e defina "ai_matched_capacity": true.
 
-3. ALTERNATIVAS E GABARITO:
-- Extraia todas as alternativas da questão (normalmente 4 ou 5 alternativas).
-- Remova as letras de prefixo ("a)", "A -", "(A)") do campo "text" de cada alternativa.
-- Determine qual alternativa é a correta ("is_correct": true) seguindo esta prioridade:
-  a) Se o usuário forneceu um GABARITO RÁPIDO nas instruções ou se há uma tabela de gabarito / marcação explícita no documento (ex: [X], *(correta)*, Gabarito: C), use esse gabarito e defina "ai_solved_key": false.
-  b) Se NÃO houver gabarito informado para a questão, resolva tecnicamente a questão com seu conhecimento especialista, marque a alternativa correta com "is_correct": true e defina "ai_solved_key": true.
+3. PRESERVAÇÃO DO ENUNCIADO (CONTEXTO E COMANDO):
+- Mantenha o texto integral da questão sem resumir nem alterar nenhuma palavra.
+- Remova apenas o prefixo de numeração ("Questão 01 -", "1.", "1)") do início.
+
+4. ALTERNATIVAS E GABARITO:
+- Extraia todas as alternativas da questão (normalmente 4 ou 5 alternativas), removendo letras de prefixo ("a)", "A -", "(A)").
+- Se houver gabarito informado pelo usuário ou marcado no documento, use-o e defina "ai_solved_key": false. Caso contrário, resolva tecnicamente a questão, marque a correta com "is_correct": true e defina "ai_solved_key": true.
 - Exatamente UMA alternativa por questão deve ter "is_correct": true.
 
-4. DETECÇÃO DE IMAGEM ("needs_image"):
-- Defina "needs_image": true se o enunciado fizer referência a qualquer figura, imagem, diagrama, circuito, gráfico, esquema, desenho ou quadro visual que não veio no texto (ex: "Observe a figura a seguir", "No circuito abaixo", "De acordo com o diagrama"). Caso contrário, false.
+5. DETECÇÃO DE IMAGEM ("needs_image"):
+- Defina "needs_image": true se o contexto ou comando fizer referência a qualquer figura, imagem, diagrama, circuito, gráfico, esquema, desenho ou quadro visual que não veio no texto. Caso contrário, false.
 
-5. CLASSIFICAÇÃO ("difficulty"):
-- O campo "difficulty" deve ser estritamente um destes três valores: "Fácil", "Médio" ou "Difícil".
+6. CLASSIFICAÇÃO ("difficulty"):
+- Estritamente um destes três valores: "Fácil", "Médio" ou "Difícil".
 PROMPT;
 
     $userPrompt = "CONTEXTO PADRÃO INFORMADO PELO PROFESSOR:\n";
     $userPrompt .= "- Curso: " . ($courseName !== '' ? $courseName : 'Não especificado') . "\n";
-    $userPrompt .= "- Módulo Padrão (usar se a questão não especificar outro): " . ($defaultModule !== '' ? $defaultModule : 'Sem UC vinculada') . "\n";
-    if ($defaultCap !== '') {
-        $userPrompt .= "- Capacidade Padrão (usar se a questão não especificar outra): " . $defaultCap . "\n";
+    $userPrompt .= "- Módulo Padrão (usar se a questão não especificar outro): " . ($defaultModule !== '' ? $defaultModule : 'Sem UC vinculada') . "\n\n";
+    $userPrompt .= $matrixPromptBlock . "\n";
+    if ($defaultCap !== '' && isset($validCapMap[strtoupper($defaultCap)])) {
+        $userPrompt .= "- Capacidade Preferencial (se aplicável): " . strtoupper($defaultCap) . "\n";
     }
     if ($answerKey !== '') {
         $userPrompt .= "- GABARITO OFICIAL INFORMADO PELO PROFESSOR: " . $answerKey . " (Aplique este gabarito às respectivas questões pela ordem numérica e marque ai_solved_key: false nelas).\n";
@@ -308,9 +373,15 @@ PROMPT;
         exit;
     }
 
+    $defaultCapCode = array_key_first($validCapMap) ?: 'C1';
     $normalizedQuestions = [];
     foreach ($parsedJson['questions'] as $idx => $q) {
+        $ctx = trim($q['context'] ?? '');
         $cmd = trim($q['command'] ?? '');
+        if ($cmd === '' && $ctx !== '') {
+            $cmd = $ctx;
+            $ctx = '';
+        }
         if ($cmd === '') {
             continue;
         }
@@ -320,9 +391,18 @@ PROMPT;
             $mod = $defaultModule !== '' ? $defaultModule : 'Sem UC vinculada';
         }
 
-        $cap = trim($q['capacity'] ?? '');
-        if ($cap === '' && $defaultCap !== '') {
-            $cap = $defaultCap;
+        $rawCap = strtoupper(trim($q['capacity'] ?? ''));
+        // Extrai apenas o código C1, C2... caso a IA tenha retornado "C1 - ..."
+        if (preg_match('/^(C\d+)\b/i', $rawCap, $mCap)) {
+            $rawCap = strtoupper($mCap[1]);
+        } elseif (is_numeric($rawCap)) {
+            $rawCap = 'C' . $rawCap;
+        }
+
+        if (!isset($validCapMap[$rawCap])) {
+            $rawCap = ($defaultCap !== '' && isset($validCapMap[strtoupper($defaultCap)]))
+                ? strtoupper($defaultCap)
+                : $defaultCapCode;
         }
 
         $diff = ucfirst(mb_strtolower(trim($q['difficulty'] ?? 'Médio'), 'UTF-8'));
@@ -362,18 +442,22 @@ PROMPT;
             $cleanOptions[0]['is_correct'] = true;
         }
 
-        $needsImg = !empty($q['needs_image']) || detectNeedsImage($cmd);
+        $fullTextForImg = $ctx . ' ' . $cmd;
+        $needsImg = !empty($q['needs_image']) || detectNeedsImage($fullTextForImg);
         $aiSolved = !empty($q['ai_solved_key']);
+        $aiMatchedCap = !isset($q['ai_matched_capacity']) || !empty($q['ai_matched_capacity']);
 
         $normalizedQuestions[] = [
-            'number' => $idx + 1,
-            'command' => $cmd,
-            'module' => $mod,
-            'capacity' => $cap,
-            'difficulty' => $diff,
-            'needs_image' => $needsImg,
-            'ai_solved_key' => $aiSolved,
-            'options' => $cleanOptions
+            'number'              => $idx + 1,
+            'context'             => $ctx,
+            'command'             => $cmd,
+            'module'              => $mod,
+            'capacity'            => $rawCap,
+            'ai_matched_capacity' => $aiMatchedCap,
+            'difficulty'          => $diff,
+            'needs_image'         => $needsImg,
+            'ai_solved_key'       => $aiSolved,
+            'options'             => $cleanOptions
         ];
     }
 
@@ -386,9 +470,10 @@ PROMPT;
     }
 
     echo json_encode([
-        'success' => true,
-        'count' => count($normalizedQuestions),
-        'questions' => $normalizedQuestions
+        'success'           => true,
+        'count'             => count($normalizedQuestions),
+        'matrix_capacities' => $matrixCapacities,
+        'questions'         => $normalizedQuestions
     ]);
     exit;
 }
@@ -436,15 +521,31 @@ if ($action === 'save_questions') {
             $courseId = $pdo->lastInsertId();
         }
 
+        // Busca as capacidades oficiais da Matriz do Curso
+        $stmtMatrixCaps = $pdo->prepare("SELECT capacity_code, description FROM course_capacities WHERE course_id = ?");
+        $stmtMatrixCaps->execute([$courseId]);
+        $courseCaps = $stmtMatrixCaps->fetchAll();
+
         // Statements preparados para Módulos, Questões e Alternativas
         $stmtFindMod   = $pdo->prepare("SELECT id FROM modules WHERE course_id = ? AND LOWER(name) = LOWER(?) LIMIT 1");
         $stmtInsertMod = $pdo->prepare("INSERT INTO modules (course_id, name) VALUES (?, ?)");
-        $stmtInsertQ   = $pdo->prepare("INSERT INTO questions (module_id, capacity, command, difficulty, import_tag, teacher_id) VALUES (?, ?, ?, ?, ?, ?)");
+        $stmtInsertQ   = $pdo->prepare("INSERT INTO questions (module_id, capacity, context, command, difficulty, import_tag, teacher_id) VALUES (?, ?, ?, ?, ?, ?, ?)");
         $stmtInsertOpt = $pdo->prepare("INSERT INTO question_options (question_id, text, is_correct) VALUES (?, ?, ?)");
+        $stmtSyncModCap = $pdo->prepare("
+            INSERT INTO module_capacities (module_id, capacity_code, description)
+            VALUES (?, ?, ?)
+            ON DUPLICATE KEY UPDATE description = VALUES(description)
+        ");
 
         foreach ($questions as $q) {
+            $context = trim($q['context'] ?? '');
             $command = trim($q['command'] ?? '');
             $options = isset($q['options']) && is_array($q['options']) ? $q['options'] : [];
+
+            if ($command === '' && $context !== '') {
+                $command = $context;
+                $context = '';
+            }
 
             if ($command === '' || count($options) < 2) {
                 continue;
@@ -455,7 +556,11 @@ if ($action === 'save_questions') {
                 $modName = $defaultModule !== '' ? $defaultModule : 'Sem UC vinculada';
             }
 
-            $capacity = trim($q['capacity'] ?? '');
+            $capacity = strtoupper(trim($q['capacity'] ?? ''));
+            if (preg_match('/^(C\d+)\b/i', $capacity, $mC)) {
+                $capacity = strtoupper($mC[1]);
+            }
+
             $difficulty = trim($q['difficulty'] ?? 'Médio');
             if (!in_array($difficulty, ['Fácil', 'Médio', 'Difícil'])) {
                 $difficulty = 'Médio';
@@ -472,11 +577,15 @@ if ($action === 'save_questions') {
                     $stmtInsertMod->execute([$courseId, $modName]);
                     $moduleId = $pdo->lastInsertId();
                 }
+                // Sincroniza todas as capacidades da Matriz do Curso para este módulo
+                foreach ($courseCaps as $cc) {
+                    $stmtSyncModCap->execute([$moduleId, $cc['capacity_code'], $cc['description']]);
+                }
                 $modulosCache[$modKey] = $moduleId;
             }
 
-            // 3. Inserir Questão
-            $stmtInsertQ->execute([$moduleId, $capacity, $command, $difficulty, $importTagDb, $teacher_id]);
+            // 3. Inserir Questão (com Contexto + Comando + Capacidade Oficial da Matriz)
+            $stmtInsertQ->execute([$moduleId, $capacity, $context, $command, $difficulty, $importTagDb, $teacher_id]);
             $questionId = $pdo->lastInsertId();
 
             // 4. Embaralhar e Inserir Alternativas
@@ -500,10 +609,11 @@ if ($action === 'save_questions') {
                 $stmtInsertOpt->execute([$questionId, $vo['text'], $vo['is_correct']]);
             }
 
-            $needsImg = !empty($q['needs_image']) || detectNeedsImage($command);
+            $needsImg = !empty($q['needs_image']) || detectNeedsImage($context . ' ' . $command);
 
             $importedQuestionsList[] = [
                 'id'          => (int)$questionId,
+                'context'     => $context,
                 'command'     => $command,
                 'course'      => $courseName,
                 'module'      => $modName,

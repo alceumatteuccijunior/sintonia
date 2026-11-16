@@ -53,6 +53,9 @@ include 'includes/header.php';
                     </div>
                     <?php if ($_SESSION['user_role'] === 'teacher' || $_SESSION['user_role'] === 'admin'): ?>
                     <div class="mt-4 md:mt-0 flex flex-wrap items-center gap-2.5">
+                        <button onclick="openModal('importModal', 'matrix')" class="bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2" title="Cadastrar ou atualizar a Matriz SAEP (.xls) de um curso">
+                            <i class="ph-bold ph-table"></i> Matriz SAEP (.xls)
+                        </button>
                         <button onclick="openModal('importModal', 'doc')" class="bg-gradient-to-r from-violet-600 to-indigo-600 text-white hover:from-violet-700 hover:to-indigo-700 px-4 py-2.5 rounded-xl font-bold text-sm transition-all shadow-[0_4px_14px_-3px_rgba(99,102,241,0.45)] hover:-translate-y-0.5 flex items-center gap-2">
                             <i class="ph-fill ph-sparkle text-amber-300"></i> Importar Word / PDF (IA)
                         </button>
@@ -69,6 +72,21 @@ include 'includes/header.php';
                 <div class="bg-white/70 backdrop-blur-md border border-white/80 rounded-2xl p-6 shadow-sm mb-10 animate-fade-in delay-200">
                     
                     <?php
+                    // Garante que a tabela course_capacities exista
+                    try {
+                        $pdo->exec("
+                            CREATE TABLE IF NOT EXISTS course_capacities (
+                                id INT AUTO_INCREMENT PRIMARY KEY,
+                                course_id INT NOT NULL,
+                                capacity_code VARCHAR(50) NOT NULL,
+                                description TEXT NOT NULL,
+                                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                                UNIQUE KEY uq_course_cap (course_id, capacity_code),
+                                FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE
+                            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                        ");
+                    } catch (Exception $e) {}
+
                     $stmtCursos = $pdo->query("SELECT * FROM courses ORDER BY name");
                     $cursos = $stmtCursos->fetchAll();
 
@@ -79,31 +97,62 @@ include 'includes/header.php';
                         ORDER BY m.name
                     ");
                     $modulosAll = $stmtModulosAll->fetchAll();
+
+                    // Carrega todas as matrizes de capacidades já cadastradas por curso
+                    $stmtCapsAll = $pdo->query("
+                        SELECT cc.course_id, c.name AS course_name, cc.capacity_code, cc.description
+                        FROM course_capacities cc
+                        JOIN courses c ON cc.course_id = c.id
+                        ORDER BY cc.course_id, CAST(SUBSTRING(cc.capacity_code, 2) AS UNSIGNED) ASC, cc.capacity_code ASC
+                    ");
+                    $allCourseCapsRows = $stmtCapsAll ? $stmtCapsAll->fetchAll() : [];
+                    $courseMatricesByName = [];
+                    $courseCapCountsById = [];
+                    foreach ($allCourseCapsRows as $rCap) {
+                        $cKey = mb_strtolower(trim($rCap['course_name']), 'UTF-8');
+                        $courseMatricesByName[$cKey][] = [
+                            'capacity_code' => $rCap['capacity_code'],
+                            'description'   => $rCap['description']
+                        ];
+                        $courseCapCountsById[$rCap['course_id']] = ($courseCapCountsById[$rCap['course_id']] ?? 0) + 1;
+                    }
                     
                     if (empty($cursos)):
                     ?>
                         <div class="text-center text-slate-500 py-10">
                             <i class="ph-thin ph-database text-4xl mb-3 opacity-50"></i>
                             <p class="font-medium">O Banco de Questões está vazio.</p>
-                            <p class="text-sm mt-1">Nenhum curso cadastrado.</p>
+                            <p class="text-sm mt-1">Nenhum curso cadastrado. Clique em <b>Matriz SAEP (.xls)</b> ou <b>Importar Word / PDF (IA)</b> para começar!</p>
                         </div>
                     <?php else: ?>
                         
                         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             <?php foreach ($cursos as $curso): 
-                                // Conta total de questões nesse curso
+                                // Conta total de questões ativas nesse curso
                                 $stmtCount = $pdo->prepare("
                                     SELECT count(q.id) 
                                     FROM questions q 
                                     JOIN modules m ON q.module_id = m.id 
-                                    WHERE m.course_id = ?
+                                    WHERE m.course_id = ? AND (q.is_active = 1 OR q.is_active IS NULL)
                                 ");
                                 $stmtCount->execute([$curso['id']]);
                                 $qtdQuestoes = $stmtCount->fetchColumn();
+                                $qtdCaps = $courseCapCountsById[$curso['id']] ?? 0;
                             ?>
                                 <a href="questions_view.php?course_id=<?= $curso['id'] ?>" class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm hover:shadow-lg hover:border-senai-blue/30 hover:-translate-y-1 transition-all group flex flex-col h-full">
-                                    <div class="w-12 h-12 rounded-full bg-senai-blue/10 flex items-center justify-center text-senai-blue mb-4 group-hover:bg-senai-blue group-hover:text-white transition-colors">
-                                        <i class="ph-fill ph-books text-2xl"></i>
+                                    <div class="flex items-center justify-between mb-4">
+                                        <div class="w-12 h-12 rounded-full bg-senai-blue/10 flex items-center justify-center text-senai-blue group-hover:bg-senai-blue group-hover:text-white transition-colors">
+                                            <i class="ph-fill ph-books text-2xl"></i>
+                                        </div>
+                                        <?php if ($qtdCaps > 0): ?>
+                                            <span class="text-[10px] font-extrabold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full flex items-center gap-1" title="Matriz SAEP vinculada com <?= $qtdCaps ?> capacidades invioláveis">
+                                                <i class="ph-fill ph-seal-check text-emerald-600"></i> Matriz: C1 a C<?= $qtdCaps ?>
+                                            </span>
+                                        <?php else: ?>
+                                            <span class="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full flex items-center gap-1" title="Clique para acessar o curso ou importe a Matriz .xls">
+                                                <i class="ph-fill ph-warning-circle"></i> Sem Matriz .xls
+                                            </span>
+                                        <?php endif; ?>
                                     </div>
                                     <h3 class="text-lg font-bold text-slate-800 mb-2 line-clamp-2">
                                         <?= htmlspecialchars($curso['name']) ?>
@@ -147,13 +196,62 @@ include 'includes/header.php';
         </div>
 
         <!-- Barra de Abas (Exibida na Etapa 1) -->
-        <div id="import-tabs-bar" class="px-6 pt-4 bg-slate-50/40 border-b border-slate-100 flex gap-2 shrink-0">
+        <div id="import-tabs-bar" class="px-6 pt-4 bg-slate-50/40 border-b border-slate-100 flex flex-wrap gap-2 shrink-0">
             <button type="button" id="tab-btn-doc" onclick="switchImportTab('doc')" class="px-4 py-2.5 rounded-t-xl font-bold text-xs md:text-sm border-b-2 border-violet-600 text-violet-700 bg-white shadow-sm flex items-center gap-2 transition-all">
                 <i class="ph-fill ph-sparkle text-amber-500"></i> Prova Word (.docx) ou PDF (IA)
+            </button>
+            <button type="button" id="tab-btn-matrix" onclick="switchImportTab('matrix')" class="px-4 py-2.5 rounded-t-xl font-bold text-xs md:text-sm border-b-2 border-transparent text-slate-500 hover:text-slate-700 hover:bg-white/60 flex items-center gap-2 transition-all">
+                <i class="ph-bold ph-table text-emerald-600"></i> Cadastrar Matriz SAEP (.xls)
             </button>
             <button type="button" id="tab-btn-csv" onclick="switchImportTab('csv')" class="px-4 py-2.5 rounded-t-xl font-bold text-xs md:text-sm border-b-2 border-transparent text-slate-500 hover:text-slate-700 hover:bg-white/60 flex items-center gap-2 transition-all">
                 <i class="ph-bold ph-file-csv text-indigo-600"></i> Planilha Padrão (.csv)
             </button>
+        </div>
+
+        <!-- ================================================================== -->
+        <!-- STEP 1-MATRIX: Cadastrar / Atualizar Matriz SAEP (.xls) de Curso   -->
+        <!-- ================================================================== -->
+        <div id="step-matrix-upload" class="p-6 overflow-y-auto flex-1 hidden">
+            <div class="bg-emerald-50 border border-emerald-200 rounded-2xl p-5 mb-5 text-xs md:text-sm text-emerald-950">
+                <div class="flex items-start gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
+                        <i class="ph-bold ph-seal-check text-xl"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-emerald-950 mb-1">Matriz de Referência SAEP (Capacidades Invioláveis)</h4>
+                        <p class="text-emerald-800 leading-relaxed">
+                            Envie o arquivo <b>.xls</b> oficial da Matriz SAEP do curso (ex: <code>Matriz_SAEP_Técnico em Informática para Internet.xls</code>). O sistema extrai automaticamente o nome do Curso (célula <b>A1</b>) e todas as capacidades oficiais das células <b>C7, D7, E7, F7...</b> como <b>C1, C2, C3, C4...</b> preservando cada vírgula do texto original!
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <form id="standaloneMatrixForm" onsubmit="submitStandaloneMatrix(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                        Curso (Opcional — se deixar em branco, será lido da célula A1 da planilha .xls)
+                    </label>
+                    <input type="text" id="standalone_matrix_course" list="courses-datalist" placeholder="Deixe vazio para detectar automaticamente da Matriz .xls ou selecione..." class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 font-medium focus:bg-white focus:ring-2 focus:ring-emerald-500 outline-none transition-all">
+                </div>
+
+                <div class="border-2 border-dashed border-emerald-300 bg-emerald-50/30 rounded-2xl p-7 text-center hover:bg-emerald-50/60 hover:border-emerald-500 transition-all cursor-pointer relative">
+                    <input type="file" id="standalone_matrix_file" accept=".xls,.xlsx" required class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onchange="previewStandaloneMatrixFile(this)">
+                    <div class="w-14 h-14 rounded-2xl bg-emerald-100 flex items-center justify-center text-emerald-700 mx-auto mb-3 shadow-inner">
+                        <i class="ph-fill ph-file-xls text-3xl"></i>
+                    </div>
+                    <h4 class="font-bold text-slate-700 text-base mb-1" id="standalone-matrix-title">Selecione a planilha da Matriz SAEP (.xls ou .xlsx)</h4>
+                    <p class="text-xs text-slate-500" id="standalone-matrix-desc">Lê automaticamente as células C7, D7, E7, F7... (C1, C2, C3, C4...)</p>
+                </div>
+
+                <div id="standalone-matrix-alert" class="p-4 rounded-xl text-sm font-medium hidden"></div>
+
+                <div class="pt-2 flex justify-end gap-3">
+                    <button type="button" onclick="closeModal('importModal')" class="px-5 py-2.5 rounded-xl font-bold text-sm text-slate-500 hover:bg-slate-100 transition-colors">Cancelar</button>
+                    <button type="submit" id="btn-save-standalone-matrix" class="px-6 py-2.5 rounded-xl font-bold text-sm bg-emerald-600 text-white hover:bg-emerald-700 transition-all shadow-md flex items-center gap-2">
+                        <i class="ph-bold ph-check"></i> Extrair e Salvar Matriz do Curso
+                    </button>
+                </div>
+            </form>
         </div>
 
         <!-- ================================================================== -->
@@ -166,9 +264,9 @@ include 'includes/header.php';
                         <i class="ph-fill ph-magic-wand text-lg"></i>
                     </div>
                     <div>
-                        <h4 class="font-bold text-violet-950 mb-1">Como funciona a Importação por Documento com IA?</h4>
+                        <h4 class="font-bold text-violet-950 mb-1">Importação com Vínculo Obrigatório à Matriz Curricular SAEP</h4>
                         <p class="text-slate-600 leading-relaxed">
-                            Envie qualquer prova ou lista de exercícios em <b>.docx (Word)</b> ou <b>.pdf</b>. A Inteligência Artificial identifica automaticamente cada enunciado, separa as alternativas, detecta quais questões citam <b>figuras/circuitos/diagramas</b> e abre uma tela de conferência antes de salvar. Na etapa seguinte, você poderá <b>vincular as imagens</b> com 1 clique!
+                            Selecione um curso com <b>Matriz SAEP</b> já cadastrada ou envie o arquivo <code>.xls</code> da Matriz abaixo. A IA extrairá o <b>Contexto</b>, <b>Comando</b> e <b>Alternativas</b> de cada questão do Word/PDF e <b>classificará automaticamente cada questão na Capacidade Oficial (C1, C2, C3...)</b> correspondente da Matriz!
                         </p>
                     </div>
                 </div>
@@ -194,9 +292,8 @@ include 'includes/header.php';
                         </label>
                         <div class="relative">
                             <i class="ph-bold ph-books absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                            <input type="text" id="doc_course_name" list="courses-datalist" required placeholder="Selecione da lista ou digite um novo curso..." oninput="updateModuleSuggestions(this.value)" class="w-full pl-10 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 font-medium focus:bg-white focus:ring-2 focus:ring-violet-500 outline-none transition-all">
+                            <input type="text" id="doc_course_name" list="courses-datalist" required placeholder="Selecione o curso ou envie a Matriz .xls abaixo..." oninput="onDocCourseInput(this.value)" onchange="onDocCourseInput(this.value)" class="w-full pl-10 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 font-medium focus:bg-white focus:ring-2 focus:ring-violet-500 outline-none transition-all">
                         </div>
-                        <p class="text-[11px] text-slate-400 mt-1">Se o curso não existir, será criado automaticamente.</p>
                     </div>
 
                     <div>
@@ -207,32 +304,79 @@ include 'includes/header.php';
                             <i class="ph-bold ph-folders absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
                             <input type="text" id="doc_default_module" list="modules-datalist" placeholder="Deixe vazio para 'Sem UC vinculada' ou digite..." class="w-full pl-10 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 font-medium focus:bg-white focus:ring-2 focus:ring-violet-500 outline-none transition-all">
                         </div>
-                        <p class="text-[11px] text-slate-400 mt-1">Se não preencher, ficará como <b>Sem UC vinculada</b>.</p>
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <!-- PAINEL DE VÍNCULO DA MATRIZ CURRICULAR SAEP (.XLS) -->
+                <div id="doc-matrix-status-box" class="rounded-2xl border p-4 transition-all bg-amber-50/70 border-amber-300">
+                    <!-- Estado 1: Curso JÁ possui Matriz cadastrada -->
+                    <div id="doc-matrix-linked-view" class="hidden">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                            <div class="flex items-center gap-2.5">
+                                <span class="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+                                    <i class="ph-bold ph-seal-check text-lg"></i>
+                                </span>
+                                <div>
+                                    <h5 class="text-xs md:text-sm font-extrabold text-emerald-950" id="doc-matrix-linked-title">
+                                        Matriz SAEP Vinculada
+                                    </h5>
+                                    <p class="text-[11px] text-emerald-700 font-medium">
+                                        Todas as questões importadas serão vinculadas obrigatoriamente às capacidades oficiais invioláveis abaixo.
+                                    </p>
+                                </div>
+                            </div>
+                            <button type="button" onclick="document.getElementById('doc-matrix-upload-view').classList.toggle('hidden')" class="px-3 py-1.5 rounded-xl bg-white border border-emerald-300 text-emerald-800 hover:bg-emerald-100 text-xs font-bold shrink-0 flex items-center gap-1 self-start sm:self-center">
+                                <i class="ph-bold ph-arrows-clockwise"></i> Atualizar Matriz (.xls)
+                            </button>
+                        </div>
+                        <details class="mt-2.5 bg-white/80 border border-emerald-200 rounded-xl px-3.5 py-2 text-xs">
+                            <summary class="font-bold text-emerald-900 cursor-pointer select-none">
+                                Ver Capacidades Oficiais da Matriz (<span id="doc-matrix-linked-count">0</span>)
+                            </summary>
+                            <div id="doc-matrix-linked-list" class="mt-2 space-y-1.5 max-h-36 overflow-y-auto pr-1 text-[11px] text-slate-700"></div>
+                        </details>
+                    </div>
+
+                    <!-- Estado 2: Curso ainda NÃO possui Matriz ou usuário quer enviar novo .xls -->
+                    <div id="doc-matrix-upload-view">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div class="flex items-start gap-2.5">
+                                <i class="ph-fill ph-table text-xl text-amber-600 mt-0.5 shrink-0"></i>
+                                <div>
+                                    <h5 class="text-xs md:text-sm font-extrabold text-amber-950" id="doc-matrix-missing-title">
+                                        Matriz Curricular SAEP do Curso (.xls) <span class="text-red-600">* Obrigatória</span>
+                                    </h5>
+                                    <p class="text-[11px] text-amber-800 leading-relaxed mt-0.5">
+                                        Selecione um curso que já tenha Matriz cadastrada ou envie aqui a planilha <b>.xls</b> da Matriz SAEP (células <b>C7, D7, E7...</b> = <b>C1, C2, C3...</b>). Se você enviar o arquivo <code>.xls</code> primeiro, o nome do Curso já será preenchido automaticamente!
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="shrink-0">
+                                <input type="file" id="doc_matrix_xls_input" accept=".xls,.xlsx" class="hidden" onchange="uploadInlineMatrixXls(this)">
+                                <button type="button" id="btn-inline-matrix-upload" onclick="document.getElementById('doc_matrix_xls_input').click()" class="px-4 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shadow-sm transition-all flex items-center gap-1.5">
+                                    <i class="ph-bold ph-file-xls text-base"></i> Carregar Matriz (.xls)
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                             Tag da Prova / Lote (Opcional)
                         </label>
-                        <input type="text" id="doc_import_tag" placeholder="Ex: SAEP2026_ELETRO" class="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-violet-500 outline-none transition-all">
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                            Capacidade Padrão (Opcional)
-                        </label>
-                        <input type="text" id="doc_default_capacity" placeholder="Ex: C1, H2 (se não houver no texto)" class="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-violet-500 outline-none transition-all">
+                        <input type="text" id="doc_import_tag" placeholder="Ex: SAEP2026_TI" class="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-violet-500 outline-none transition-all">
                     </div>
 
                     <div>
                         <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5" title="Se o documento não tiver as respostas marcadas, informe ex: 1-C, 2-A, 3-D ou deixe vazio para a IA resolver">
-                            Gabarito Rápido (Opcional)
+                            Gabarito Rápido da Prova (Opcional)
                         </label>
-                        <input type="text" id="doc_answer_key" placeholder="Ex: 1-C, 2-A, 3-B (ou vazio p/ IA)" class="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-violet-500 outline-none transition-all">
+                        <input type="text" id="doc_answer_key" placeholder="Ex: 1-C, 2-A, 3-B (ou deixe vazio p/ IA)" class="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-violet-500 outline-none transition-all">
                     </div>
                 </div>
+                <input type="hidden" id="doc_default_capacity" value="">
 
                 <!-- Dropzone Word / PDF -->
                 <div class="border-2 border-dashed border-violet-300 bg-violet-50/30 rounded-2xl p-6 text-center hover:bg-violet-50/70 hover:border-violet-500 transition-all cursor-pointer relative" id="doc-dropzone">
@@ -242,7 +386,7 @@ include 'includes/header.php';
                         <i class="ph-fill ph-file-doc text-3xl" id="doc-upload-icon"></i>
                     </div>
                     
-                    <h4 class="font-bold text-slate-700 text-base mb-1" id="doc-file-title">Selecione o arquivo Word (.docx) ou PDF (.pdf)</h4>
+                    <h4 class="font-bold text-slate-700 text-base mb-1" id="doc-file-title">Selecione o arquivo da Prova em Word (.docx) ou PDF (.pdf)</h4>
                     <p class="text-xs text-slate-500" id="doc-file-desc">Clique para procurar ou arraste a prova aqui</p>
                 </div>
 
@@ -256,7 +400,7 @@ include 'includes/header.php';
                     </div>
                 </details>
 
-                <!-- Configuração Permanente da Chave OpenAI no Banco de Dados (Exibida se o servidor estiver sem chave após deploy) -->
+                <!-- Configuração Permanente da Chave OpenAI no Banco de Dados -->
                 <?php $hasConfiguredOpenAiKey = (defined('OPENAI_API_KEY') && trim(OPENAI_API_KEY) !== '' && trim(OPENAI_API_KEY) !== 'sua_chave_aqui'); ?>
                 <div id="api-key-setup-box" class="<?= $hasConfiguredOpenAiKey ? 'hidden' : '' ?> bg-amber-50 border border-amber-300 rounded-2xl p-4 text-xs">
                     <div class="flex items-start gap-2.5 mb-2.5">
@@ -264,7 +408,7 @@ include 'includes/header.php';
                         <div class="flex-1">
                             <h5 class="font-bold text-amber-950 text-sm">Configurar Chave da OpenAI no Servidor (Única Vez)</h5>
                             <p class="text-amber-800 mt-0.5 leading-relaxed">
-                                O GitHub bloqueia o envio de chaves <code>sk-proj-...</code> pelo Git, por isso o servidor de produção estava com <code>sua_chave_aqui</code>. Cole sua chave abaixo para <b>salvá-la diretamente no Banco de Dados MySQL do servidor</b> — assim ela nunca mais será perdida ao fazer <code>git push</code>!
+                                Cole sua chave abaixo para <b>salvá-la diretamente no Banco de Dados MySQL do servidor</b> — assim ela nunca mais será perdida ao fazer <code>git push</code>!
                             </p>
                         </div>
                     </div>
@@ -282,7 +426,7 @@ include 'includes/header.php';
                 <div class="pt-2 flex justify-end gap-3">
                     <button type="button" onclick="closeModal('importModal')" class="px-5 py-2.5 rounded-xl font-bold text-sm text-slate-500 hover:bg-slate-100 transition-colors">Cancelar</button>
                     <button type="submit" id="btn-doc-extract" class="px-6 py-2.5 rounded-xl font-bold text-sm bg-gradient-to-r from-violet-600 to-indigo-600 text-white hover:from-violet-700 hover:to-indigo-700 transition-all shadow-md flex items-center gap-2 disabled:opacity-50">
-                        <i class="ph-fill ph-sparkle"></i> Analisar e Extrair Questões com IA
+                        <i class="ph-fill ph-sparkle"></i> Analisar e Classificar nas Capacidades com IA
                     </button>
                 </div>
             </form>
@@ -296,11 +440,12 @@ include 'includes/header.php';
                 <div>
                     <div class="flex items-center gap-2 flex-wrap">
                         <span class="text-xs font-extrabold px-2.5 py-1 rounded-full bg-violet-100 text-violet-700" id="review-count-badge">0 questões extraídas</span>
+                        <span class="text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800" id="review-matrix-badge">🔒 Vinculadas à Matriz Oficial</span>
                         <span class="text-xs font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 hidden" id="review-images-badge">📷 0 pedem imagem</span>
                         <span class="text-xs font-bold px-2.5 py-1 rounded-full bg-blue-100 text-blue-700 hidden" id="review-ai-key-badge">🤖 0 gabaritos sugeridos pela IA</span>
                     </div>
                     <p class="text-xs text-slate-600 mt-1.5">
-                        Confira os enunciados e alternativas abaixo. Você pode <b>editar qualquer texto</b>, clicar em outra opção para <b>alterar a resposta correta</b> ou marcar quais questões receberão imagem no próximo passo.
+                        Confira a classificação de <b>Capacidade Oficial (C1..Cn)</b> sugerida pela IA, edite o <b>Contexto</b>, <b>Comando</b> ou <b>Alternativas</b> se desejar e clique em <b>Salvar</b>.
                     </p>
                 </div>
                 <button type="button" onclick="backToDocUpload()" class="px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-600 text-xs font-bold flex items-center gap-1.5 shrink-0 self-start md:self-center">
@@ -340,7 +485,7 @@ include 'includes/header.php';
                 <p class="mb-3">Para cadastrar dezenas de questões via planilha, siga as regras do modelo:</p>
                 <ul class="list-disc pl-5 space-y-1.5 mb-4 text-indigo-800 text-xs md:text-sm">
                     <li>Baixe a planilha modelo abaixo e não altere a ordem das colunas (Curso, Módulo, Capacidade, Enunciado, etc).</li>
-                    <li>Se o <b>Curso</b> ou <b>Módulo</b> digitado no CSV não existir no sistema, eles serão <b>criados automaticamente</b>.</li>
+                    <li>Na coluna <b>Capacidade</b>, informe o código oficial da Matriz do Curso (ex: <code>C1</code>, <code>C2</code>, <code>C3</code>).</li>
                     <li>A coluna <b>Tag</b> serve para identificar as questões de uma prova específica (ex: "SAEP2026TI2"), facilitando na hora de criar uma Sprint!</li>
                     <li>Salve o arquivo no formato <code>.csv</code> (separado por vírgula ou ponto-e-vírgula) e faça o upload abaixo.</li>
                 </ul>
@@ -429,18 +574,35 @@ include 'includes/header.php';
     </div>
 </div>
 
-<!-- Bibliotecas Client-Side para leitura instantânea de Word (.docx) e PDF (.pdf) -->
+<!-- Bibliotecas Client-Side para leitura de Word (.docx), PDF (.pdf) e Excel (.xls/.xlsx) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
     if (typeof pdfjsLib !== 'undefined') {
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     }
 
     const allModulesFromDb = <?= json_encode($modulosAll, JSON_UNESCAPED_UNICODE) ?>;
+    const courseMatricesMap = <?= json_encode($courseMatricesByName, JSON_UNESCAPED_UNICODE) ?>;
+    let currentCourseMatrixCapacities = [];
     let importedQuestionsGlobal = [];
     let extractedDocQuestions = [];
     let onlyNeedsImageFilter = false;
+    let matrixUpdatedNeedsReload = false;
+
+    function escapeHtml(str) {
+        return String(str ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+
+    function onDocCourseInput(courseName) {
+        updateModuleSuggestions(courseName);
+        refreshCourseMatrixStatus(courseName);
+    }
 
     function updateModuleSuggestions(courseName) {
         const datalist = document.getElementById('modules-datalist');
@@ -465,14 +627,230 @@ include 'includes/header.php';
         });
     }
 
+    function refreshCourseMatrixStatus(courseName) {
+        const key = (courseName || '').trim().toLowerCase();
+        const box = document.getElementById('doc-matrix-status-box');
+        const linkedView = document.getElementById('doc-matrix-linked-view');
+        const uploadView = document.getElementById('doc-matrix-upload-view');
+        const titleEl = document.getElementById('doc-matrix-linked-title');
+        const countEl = document.getElementById('doc-matrix-linked-count');
+        const listEl = document.getElementById('doc-matrix-linked-list');
+
+        if (key && courseMatricesMap[key] && courseMatricesMap[key].length > 0) {
+            currentCourseMatrixCapacities = courseMatricesMap[key];
+            box.className = 'rounded-2xl border p-4 transition-all bg-emerald-50/70 border-emerald-300';
+            linkedView.classList.remove('hidden');
+            uploadView.classList.add('hidden');
+            titleEl.textContent = `Matriz SAEP Vinculada (${currentCourseMatrixCapacities.length} capacidades: C1 a C${currentCourseMatrixCapacities.length})`;
+            countEl.textContent = currentCourseMatrixCapacities.length;
+            listEl.innerHTML = currentCourseMatrixCapacities.map(c =>
+                `<div class="p-1.5 rounded-lg bg-emerald-50/60 border border-emerald-100"><b class="text-emerald-900">${escapeHtml(c.capacity_code)}:</b> ${escapeHtml(c.description)}</div>`
+            ).join('');
+        } else {
+            currentCourseMatrixCapacities = [];
+            box.className = 'rounded-2xl border p-4 transition-all bg-amber-50/70 border-amber-300';
+            linkedView.classList.add('hidden');
+            uploadView.classList.remove('hidden');
+        }
+    }
+
+    // Extrai capacidades C7, D7, E7... no cliente via SheetJS como suporte universal (.xls e .xlsx)
+    async function extractMatrixFromExcelClient(file) {
+        if (typeof XLSX === 'undefined') return null;
+        try {
+            const buf = await file.arrayBuffer();
+            const wb = XLSX.read(buf, { type: 'array' });
+            const firstSheetName = wb.SheetNames[0];
+            const ws = wb.Sheets[firstSheetName];
+            if (!ws) return null;
+
+            const a1 = ws['A1'] ? String(ws['A1'].v || '').trim() : '';
+            let extractedCourse = '';
+            const mCourse = a1.match(/Habilita[cç][aã]o\s+Profissional\s*:\s*([^\r\n]+)/i);
+            if (mCourse) {
+                extractedCourse = mCourse[1].trim();
+            }
+
+            // Linha 7 (r = 6 em 0-index) a partir da coluna C (c = 2 em 0-index)
+            const capacities = [];
+            let seq = 1;
+            for (let col = 2; col <= 30; col++) {
+                const cellAddrDesc = XLSX.utils.encode_cell({ r: 6, c: col });
+                const cellAddrCode = XLSX.utils.encode_cell({ r: 5, c: col });
+                const descCell = ws[cellAddrDesc];
+                if (!descCell || !String(descCell.v || '').trim()) continue;
+
+                const desc = String(descCell.v).replace(/\s+/g, ' ').trim();
+                let code = ws[cellAddrCode] ? String(ws[cellAddrCode].v || '').trim().toUpperCase() : '';
+                if (!/^C\d+$/i.test(code)) {
+                    code = 'C' + seq;
+                }
+                capacities.push({ capacity_code: code, description: desc });
+                seq++;
+            }
+
+            if (capacities.length === 0) return null;
+            return { extracted_course_name: extractedCourse, capacities };
+        } catch (e) {
+            return null;
+        }
+    }
+
+    async function uploadInlineMatrixXls(input) {
+        if (!input.files || !input.files[0]) return;
+        const file = input.files[0];
+        const btn = document.getElementById('btn-inline-matrix-upload');
+        const courseInput = document.getElementById('doc_course_name');
+        const alertBox = document.getElementById('doc-import-alert');
+
+        btn.disabled = true;
+        const origHtml = btn.innerHTML;
+        btn.innerHTML = '<i class="ph-bold ph-spinner animate-spin"></i> Lendo Matriz .xls...';
+
+        try {
+            const clientParsed = await extractMatrixFromExcelClient(file);
+            const formData = new FormData();
+            formData.append('action', 'parse_and_save_matrix');
+            formData.append('course_name', courseInput.value.trim());
+            formData.append('matrix_file', file);
+            if (clientParsed) {
+                formData.append('capacities_json', JSON.stringify(clientParsed.capacities));
+                if (clientParsed.extracted_course_name) {
+                    formData.append('extracted_course_name', clientParsed.extracted_course_name);
+                }
+            }
+
+            const res = await fetch('course_matrix_ajax.php', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await res.json();
+
+            if (!data.success) {
+                throw new Error(data.message || 'Erro ao processar a Matriz .xls.');
+            }
+
+            matrixUpdatedNeedsReload = true;
+            courseInput.value = data.course_name;
+            const cKey = data.course_name.trim().toLowerCase();
+            courseMatricesMap[cKey] = data.capacities;
+            onDocCourseInput(data.course_name);
+
+            alertBox.className = 'p-4 rounded-xl text-sm font-medium bg-emerald-50 text-emerald-800 border border-emerald-200';
+            alertBox.innerHTML = `<div class="flex items-center gap-2"><i class="ph-fill ph-seal-check text-lg text-emerald-600"></i> <span>${data.message}</span></div>`;
+            alertBox.classList.remove('hidden');
+
+        } catch (err) {
+            alert(err.message || 'Erro ao enviar arquivo da Matriz.');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = origHtml;
+            input.value = '';
+        }
+    }
+
+    async function previewStandaloneMatrixFile(input) {
+        if (!input.files || !input.files[0]) return;
+        const f = input.files[0];
+        document.getElementById('standalone-matrix-title').textContent = f.name;
+        document.getElementById('standalone-matrix-desc').textContent = (f.size / 1024).toFixed(1) + ' KB • Pronto para importar capacidades';
+
+        const parsed = await extractMatrixFromExcelClient(f);
+        const courseField = document.getElementById('standalone_matrix_course');
+        if (parsed && parsed.extracted_course_name && !courseField.value.trim()) {
+            courseField.value = parsed.extracted_course_name;
+        }
+    }
+
+    async function submitStandaloneMatrix(e) {
+        e.preventDefault();
+        const fileInput = document.getElementById('standalone_matrix_file');
+        const courseInput = document.getElementById('standalone_matrix_course');
+        const btn = document.getElementById('btn-save-standalone-matrix');
+        const alertBox = document.getElementById('standalone-matrix-alert');
+
+        if (!fileInput.files || !fileInput.files[0]) return;
+        const file = fileInput.files[0];
+
+        btn.disabled = true;
+        btn.innerHTML = '<i class="ph-bold ph-spinner animate-spin"></i> Extraindo C1..Cn da Matriz...';
+        alertBox.classList.add('hidden');
+
+        try {
+            const clientParsed = await extractMatrixFromExcelClient(file);
+            const formData = new FormData();
+            formData.append('action', 'parse_and_save_matrix');
+            formData.append('course_name', courseInput.value.trim());
+            formData.append('matrix_file', file);
+            if (clientParsed) {
+                formData.append('capacities_json', JSON.stringify(clientParsed.capacities));
+                if (clientParsed.extracted_course_name) {
+                    formData.append('extracted_course_name', clientParsed.extracted_course_name);
+                }
+            }
+
+            const res = await fetch('course_matrix_ajax.php', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await res.json();
+
+            if (!data.success) {
+                throw new Error(data.message || 'Erro ao salvar Matriz.');
+            }
+
+            matrixUpdatedNeedsReload = true;
+            const cKey = data.course_name.trim().toLowerCase();
+            courseMatricesMap[cKey] = data.capacities;
+            document.getElementById('doc_course_name').value = data.course_name;
+            onDocCourseInput(data.course_name);
+
+            let capsHtml = data.capacities.map(c =>
+                `<li class="py-1 border-b border-emerald-100 last:border-0"><b>${escapeHtml(c.capacity_code)}:</b> ${escapeHtml(c.description)}</li>`
+            ).join('');
+
+            alertBox.className = 'p-4 rounded-xl text-xs md:text-sm font-medium bg-emerald-50 text-emerald-900 border border-emerald-200';
+            alertBox.innerHTML = `
+                <div class="font-bold text-emerald-800 mb-2 flex items-center gap-1.5">
+                    <i class="ph-fill ph-check-circle text-lg"></i> ${escapeHtml(data.message)}
+                </div>
+                <ul class="max-h-44 overflow-y-auto bg-white/80 rounded-xl p-3 border border-emerald-100 space-y-1 text-xs text-slate-700">${capsHtml}</ul>
+                <div class="mt-3 flex justify-end">
+                    <button type="button" onclick="switchImportTab('doc')" class="px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-sm">
+                        <i class="ph-fill ph-sparkle"></i> Ir para Importação de Questões deste Curso
+                    </button>
+                </div>
+            `;
+            alertBox.classList.remove('hidden');
+
+        } catch (err) {
+            alertBox.className = 'p-4 rounded-xl text-sm font-medium bg-red-50 text-red-700 border border-red-200';
+            alertBox.innerHTML = '<i class="ph-fill ph-warning-circle"></i> ' + (err.message || 'Erro ao importar Matriz.');
+            alertBox.classList.remove('hidden');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="ph-bold ph-check"></i> Extrair e Salvar Matriz do Curso';
+        }
+    }
+
     function switchImportTab(mode) {
         const tabDoc = document.getElementById('tab-btn-doc');
+        const tabMatrix = document.getElementById('tab-btn-matrix');
         const tabCsv = document.getElementById('tab-btn-csv');
         const stepDoc = document.getElementById('step-doc-upload');
+        const stepMatrix = document.getElementById('step-matrix-upload');
         const stepReview = document.getElementById('step-doc-review');
         const stepCsv = document.getElementById('step-csv-upload');
         const stepImages = document.getElementById('step-link-images');
 
+        const inactiveTabClass = 'px-4 py-2.5 rounded-t-xl font-bold text-xs md:text-sm border-b-2 border-transparent text-slate-500 hover:text-slate-700 hover:bg-white/60 flex items-center gap-2 transition-all';
+        tabDoc.className = inactiveTabClass;
+        tabMatrix.className = inactiveTabClass;
+        tabCsv.className = inactiveTabClass;
+
+        stepDoc.classList.add('hidden');
+        stepMatrix.classList.add('hidden');
+        stepCsv.classList.add('hidden');
         stepReview.classList.add('hidden');
         stepReview.classList.remove('flex');
         stepImages.classList.add('hidden');
@@ -480,14 +858,14 @@ include 'includes/header.php';
 
         if (mode === 'csv') {
             tabCsv.className = 'px-4 py-2.5 rounded-t-xl font-bold text-xs md:text-sm border-b-2 border-indigo-600 text-indigo-700 bg-white shadow-sm flex items-center gap-2 transition-all';
-            tabDoc.className = 'px-4 py-2.5 rounded-t-xl font-bold text-xs md:text-sm border-b-2 border-transparent text-slate-500 hover:text-slate-700 hover:bg-white/60 flex items-center gap-2 transition-all';
-            stepDoc.classList.add('hidden');
             stepCsv.classList.remove('hidden');
             document.getElementById('import-modal-title').innerHTML = '<i class="ph-bold ph-file-csv text-indigo-600"></i> Importação em Massa (CSV)';
+        } else if (mode === 'matrix') {
+            tabMatrix.className = 'px-4 py-2.5 rounded-t-xl font-bold text-xs md:text-sm border-b-2 border-emerald-600 text-emerald-700 bg-white shadow-sm flex items-center gap-2 transition-all';
+            stepMatrix.classList.remove('hidden');
+            document.getElementById('import-modal-title').innerHTML = '<i class="ph-bold ph-table text-emerald-600"></i> Cadastrar / Atualizar Matriz Curricular SAEP (.xls)';
         } else {
             tabDoc.className = 'px-4 py-2.5 rounded-t-xl font-bold text-xs md:text-sm border-b-2 border-violet-600 text-violet-700 bg-white shadow-sm flex items-center gap-2 transition-all';
-            tabCsv.className = 'px-4 py-2.5 rounded-t-xl font-bold text-xs md:text-sm border-b-2 border-transparent text-slate-500 hover:text-slate-700 hover:bg-white/60 flex items-center gap-2 transition-all';
-            stepCsv.classList.add('hidden');
             stepDoc.classList.remove('hidden');
             document.getElementById('import-modal-title').innerHTML = '<i class="ph-fill ph-sparkle text-violet-600"></i> Importação Inteligente (Word / PDF com IA)';
         }
@@ -499,18 +877,18 @@ include 'includes/header.php';
         modal.classList.remove('hidden');
         modal.classList.add('flex');
         
-        // Reset forms
         document.getElementById('importForm').reset();
         document.getElementById('file-title').textContent = 'Selecione o arquivo .csv';
         document.getElementById('file-desc').textContent = 'ou arraste e solte ele aqui';
         document.getElementById('import-alert').classList.add('hidden');
 
         document.getElementById('docImportForm').reset();
-        document.getElementById('doc-file-title').textContent = 'Selecione o arquivo Word (.docx) ou PDF (.pdf)';
+        document.getElementById('doc-file-title').textContent = 'Selecione o arquivo da Prova em Word (.docx) ou PDF (.pdf)';
         document.getElementById('doc-file-desc').textContent = 'Clique para procurar ou arraste a prova aqui';
         document.getElementById('doc-import-alert').classList.add('hidden');
         document.getElementById('import-tabs-bar').classList.remove('hidden');
 
+        refreshCourseMatrixStatus('');
         switchImportTab(mode);
         
         setTimeout(() => {
@@ -525,7 +903,7 @@ include 'includes/header.php';
         setTimeout(() => {
             modal.classList.add('hidden');
             modal.classList.remove('flex');
-            if (importedQuestionsGlobal.length > 0) {
+            if (importedQuestionsGlobal.length > 0 || matrixUpdatedNeedsReload) {
                 window.location.reload();
             }
         }, 300);
@@ -552,7 +930,6 @@ include 'includes/header.php';
         }
     }
 
-    // Extrai texto de um PDF diretamente no navegador via PDF.js
     async function extractTextFromPdfClient(file) {
         const arrayBuffer = await file.arrayBuffer();
         const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
@@ -577,7 +954,6 @@ include 'includes/header.php';
         return fullText.trim();
     }
 
-    // Extrai texto de um DOCX diretamente no navegador via Mammoth.js
     async function extractTextFromDocxClient(file) {
         const arrayBuffer = await file.arrayBuffer();
         const result = await mammoth.extractRawText({ arrayBuffer: arrayBuffer });
@@ -608,7 +984,7 @@ include 'includes/header.php';
             if (data.success) {
                 document.getElementById('api-key-setup-box').classList.add('hidden');
                 alertBox.className = 'p-4 rounded-xl text-sm font-medium bg-emerald-50 text-emerald-800 border border-emerald-200';
-                alertBox.innerHTML = '<div class="flex items-center gap-2"><i class="ph-fill ph-check-circle text-lg text-emerald-600"></i> <span>' + data.message + ' Agora clique em <b>Analisar e Extrair Questões com IA</b>!</span></div>';
+                alertBox.innerHTML = '<div class="flex items-center gap-2"><i class="ph-fill ph-check-circle text-lg text-emerald-600"></i> <span>' + data.message + ' Agora clique em <b>Analisar e Classificar nas Capacidades com IA</b>!</span></div>';
                 alertBox.classList.remove('hidden');
             } else {
                 alert(data.message || 'Erro ao salvar chave.');
@@ -637,6 +1013,15 @@ include 'includes/header.php';
 
         if (!courseName) {
             alert('Por favor, informe o Curso de Destino.');
+            return;
+        }
+
+        // Verifica se o curso já possui Matriz de Capacidades vinculada
+        const cKey = courseName.toLowerCase();
+        if (!courseMatricesMap[cKey] || courseMatricesMap[cKey].length === 0) {
+            alertBox.className = 'p-4 rounded-xl text-sm font-medium bg-amber-50 text-amber-900 border border-amber-300';
+            alertBox.innerHTML = '<div class="flex items-start gap-2"><i class="ph-fill ph-warning-circle text-lg text-amber-600 mt-0.5"></i> <div><b>Matriz SAEP Obrigatória:</b> O curso informado ainda não possui uma Matriz Curricular de Capacidades (<code>.xls</code>) cadastrada. Clique no botão <b>Carregar Matriz (.xls)</b> acima para vincular as capacidades oficiais (C1, C2, C3...) antes de extrair as questões!</div></div>';
+            alertBox.classList.remove('hidden');
             return;
         }
 
@@ -677,7 +1062,6 @@ include 'includes/header.php';
                     try {
                         extractedText = (await extractTextFromDocxClient(file)) + (manualText ? '\n\n' + manualText : '');
                     } catch (docxErr) {
-                        // Se falhar no client, envia o arquivo para o fallback ZipArchive do PHP
                         formData.append('doc_file', file);
                     }
                 } else if (ext === 'txt') {
@@ -688,7 +1072,7 @@ include 'includes/header.php';
             }
 
             formData.append('raw_text', extractedText);
-            document.getElementById('doc-progress-msg').innerHTML = 'A IA está estruturando os enunciados, alternativas e identificando figuras... <span class="text-xs opacity-75">(pode levar de 10 a 30 segundos)</span>';
+            document.getElementById('doc-progress-msg').innerHTML = 'A IA está estruturando as questões e classificando cada item nas Capacidades Oficiais da Matriz SAEP... <span class="text-xs opacity-75">(10 a 30s)</span>';
 
             const response = await fetch('questions_import_doc_ajax.php', {
                 method: 'POST',
@@ -705,10 +1089,12 @@ include 'includes/header.php';
                 throw new Error(result.message || 'Erro ao analisar o documento.');
             }
 
-            // Se salvou chave via override com sucesso, oculta o box
             const keyBox = document.getElementById('api-key-setup-box');
             if (keyBox) keyBox.classList.add('hidden');
 
+            if (result.matrix_capacities && result.matrix_capacities.length > 0) {
+                currentCourseMatrixCapacities = result.matrix_capacities;
+            }
             extractedDocQuestions = result.questions || [];
             showDocReviewStep();
 
@@ -737,17 +1123,24 @@ include 'includes/header.php';
         reviewStep.classList.add('flex');
 
         const courseName = document.getElementById('doc_course_name').value.trim();
-        document.getElementById('import-modal-title').innerHTML = `<i class="ph-bold ph-list-checks text-violet-600"></i> Revisão das Questões Extraídas (${escapeHtml(courseName)})`;
+        document.getElementById('import-modal-title').innerHTML = `<i class="ph-bold ph-list-checks text-violet-600"></i> Revisão de Questões e Capacidades (${escapeHtml(courseName)})`;
 
         renderDocReviewList();
     }
 
-    function escapeHtml(str) {
-        return String(str ?? '')
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;');
+    function getOfficialCapacityDescription(code) {
+        const found = (currentCourseMatrixCapacities || []).find(c => c.capacity_code === code);
+        return found ? found.description : '';
+    }
+
+    function onReviewCapacityChange(qIdx, newCode) {
+        if (!extractedDocQuestions[qIdx]) return;
+        extractedDocQuestions[qIdx].capacity = newCode;
+        extractedDocQuestions[qIdx].ai_matched_capacity = false;
+        const descEl = document.getElementById(`review-cap-desc-${qIdx}`);
+        if (descEl) {
+            descEl.textContent = getOfficialCapacityDescription(newCode);
+        }
     }
 
     function renderDocReviewList() {
@@ -791,6 +1184,15 @@ include 'includes/header.php';
             const card = document.createElement('div');
             card.className = 'p-4 rounded-2xl border transition-all ' + (q.needs_image ? 'bg-amber-50/40 border-amber-300' : 'bg-white border-slate-200 shadow-sm');
 
+            let capacityOptionsHtml = '';
+            (currentCourseMatrixCapacities || []).forEach(mc => {
+                const sel = (mc.capacity_code === q.capacity) ? 'selected' : '';
+                const shortDesc = mc.description.length > 95 ? mc.description.substring(0, 95) + '...' : mc.description;
+                capacityOptionsHtml += `<option value="${escapeHtml(mc.capacity_code)}" ${sel}>${escapeHtml(mc.capacity_code)} — ${escapeHtml(shortDesc)}</option>`;
+            });
+
+            const currentCapDesc = getOfficialCapacityDescription(q.capacity);
+
             let optionsHtml = '';
             (q.options || []).forEach((opt, optIdx) => {
                 const isCorr = !!opt.is_correct;
@@ -813,26 +1215,40 @@ include 'includes/header.php';
                         <button type="button" onclick="toggleReviewNeedsImage(${qIdx})" class="text-[11px] font-bold px-2.5 py-0.5 rounded-lg border transition-all flex items-center gap-1 ${q.needs_image ? 'bg-amber-100 text-amber-800 border-amber-300' : 'bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200'}" title="Clique para marcar/desmarcar se esta questão precisa de imagem">
                             <i class="ph-fill ph-camera"></i> ${q.needs_image ? 'Pede Imagem (Destacada no próx. passo)' : 'Sem Imagem'}
                         </button>
-                        ${q.ai_solved_key ? '<span class="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-blue-100 text-blue-700" title="O documento não tinha gabarito explícito, então a IA resolveu a questão. Confira se a alternativa marcada em verde está correta.">🤖 Gabarito sugerido pela IA</span>' : ''}
+                        ${q.ai_matched_capacity ? '<span class="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-emerald-100 text-emerald-800">🎯 Capacidade classificada pela IA</span>' : ''}
+                        ${q.ai_solved_key ? '<span class="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-blue-100 text-blue-700">🤖 Gabarito sugerido pela IA</span>' : ''}
                     </div>
                     <button type="button" onclick="removeReviewQuestion(${qIdx})" class="text-xs font-bold text-slate-400 hover:text-red-600 flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-red-50 transition-colors">
                         <i class="ph-bold ph-trash"></i> Remover
                     </button>
                 </div>
 
-                <div class="mb-3">
-                    <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Enunciado da Questão</label>
-                    <textarea rows="3" oninput="extractedDocQuestions[${qIdx}].command = this.value" class="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 font-medium leading-relaxed outline-none focus:ring-2 focus:ring-violet-500">${escapeHtml(q.command)}</textarea>
+                <!-- Seletor Travado na Matriz Oficial de Capacidades -->
+                <div class="mb-3 p-3 rounded-xl bg-emerald-50/60 border border-emerald-200">
+                    <label class="block text-[10px] font-extrabold text-emerald-900 uppercase tracking-wider mb-1 flex items-center gap-1">
+                        <i class="ph-fill ph-lock-key text-emerald-600"></i> Capacidade Oficial da Matriz SAEP (Texto Inviolável)
+                    </label>
+                    <select onchange="onReviewCapacityChange(${qIdx}, this.value)" class="w-full px-3 py-2 bg-white border border-emerald-300 rounded-lg text-xs text-slate-800 font-bold outline-none focus:ring-2 focus:ring-emerald-500">
+                        ${capacityOptionsHtml}
+                    </select>
+                    <p id="review-cap-desc-${qIdx}" class="text-[11px] text-emerald-900 mt-1.5 font-medium leading-relaxed bg-white/80 px-2.5 py-1.5 rounded-lg border border-emerald-100">${escapeHtml(currentCapDesc)}</p>
                 </div>
 
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-3">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-400 uppercase mb-0.5">Módulo</label>
-                        <input type="text" list="modules-datalist" value="${escapeHtml(q.module)}" oninput="extractedDocQuestions[${qIdx}].module = this.value" class="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-700 font-medium outline-none focus:bg-white focus:border-violet-400">
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Contexto / Texto-Base (Opcional)</label>
+                        <textarea rows="3" placeholder="Texto-base ou contextualização da questão..." oninput="extractedDocQuestions[${qIdx}].context = this.value" class="w-full p-2.5 bg-slate-50 focus:bg-white border border-slate-200 rounded-xl text-xs text-slate-700 font-medium leading-relaxed outline-none focus:ring-2 focus:ring-violet-500">${escapeHtml(q.context || '')}</textarea>
                     </div>
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-400 uppercase mb-0.5">Capacidade / Comp.</label>
-                        <input type="text" value="${escapeHtml(q.capacity)}" placeholder="Ex: C1, H2..." oninput="extractedDocQuestions[${qIdx}].capacity = this.value" class="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-700 font-medium outline-none focus:bg-white focus:border-violet-400">
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Comando / Enunciado da Questão <span class="text-red-500">*</span></label>
+                        <textarea rows="3" oninput="extractedDocQuestions[${qIdx}].command = this.value" class="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 font-semibold leading-relaxed outline-none focus:ring-2 focus:ring-violet-500">${escapeHtml(q.command)}</textarea>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mb-3">
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase mb-0.5">Unidade Curricular / Módulo</label>
+                        <input type="text" list="modules-datalist" value="${escapeHtml(q.module)}" oninput="extractedDocQuestions[${qIdx}].module = this.value" class="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-700 font-medium outline-none focus:bg-white focus:border-violet-400">
                     </div>
                     <div>
                         <label class="block text-[10px] font-bold text-slate-400 uppercase mb-0.5">Dificuldade</label>
@@ -861,7 +1277,7 @@ include 'includes/header.php';
         extractedDocQuestions[qIdx].options.forEach((opt, idx) => {
             opt.is_correct = (idx === correctOptIdx);
         });
-        extractedDocQuestions[qIdx].ai_solved_key = false; // Confirmado pelo professor
+        extractedDocQuestions[qIdx].ai_solved_key = false;
         renderDocReviewList();
     }
 
@@ -972,6 +1388,7 @@ include 'includes/header.php';
         document.getElementById('import-tabs-bar').classList.add('hidden');
         document.getElementById('step-csv-upload').classList.add('hidden');
         document.getElementById('step-doc-upload').classList.add('hidden');
+        document.getElementById('step-matrix-upload').classList.add('hidden');
         document.getElementById('step-doc-review').classList.add('hidden');
         document.getElementById('step-doc-review').classList.remove('flex');
 
@@ -979,7 +1396,6 @@ include 'includes/header.php';
         step2.classList.remove('hidden');
         step2.classList.add('flex');
 
-        // Ordena para que as questões que pedem imagem apareçam primeiro no topo!
         importedQuestionsGlobal.sort((a, b) => (b.needs_image ? 1 : 0) - (a.needs_image ? 1 : 0));
 
         const needsImgTotal = importedQuestionsGlobal.filter(q => q.needs_image).length;
