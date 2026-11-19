@@ -25,12 +25,15 @@ $stmtU = $pdo->prepare("SELECT name FROM users WHERE id = ?");
 $stmtU->execute([$student_id]);
 $student_name = $stmtU->fetchColumn();
 
-// Fetch Sprints the student participated in
+// Fetch Sprints the student participated in (apenas Sprints/Diagnósticas oficiais, excluindo Duelos e Treinamentos da Arena)
 $stmtSprints = $pdo->prepare("
     SELECT s.id, s.name, a.completed_at
     FROM sprint_attempts a
     JOIN sprints s ON a.sprint_id = s.id
     WHERE a.student_id = ?
+      AND s.teacher_id IS NOT NULL
+      AND s.name NOT LIKE 'DUELO|%'
+      AND s.name NOT LIKE 'Missão de Treinamento%'
     ORDER BY a.completed_at ASC
 ");
 $stmtSprints->execute([$student_id]);

@@ -27,12 +27,12 @@ if (!$sprint_id) {
     exit;
 }
 
-// Verifica permissão na sprint
+// Verifica permissão na sprint (apenas sprints/diagnósticas oficiais)
 if ($is_admin) {
-    $stmtCheck = $pdo->prepare("SELECT * FROM sprints WHERE id = ?");
+    $stmtCheck = $pdo->prepare("SELECT * FROM sprints WHERE id = ? AND teacher_id IS NOT NULL AND name NOT LIKE 'DUELO|%' AND name NOT LIKE 'Missão de Treinamento%'");
     $stmtCheck->execute([$sprint_id]);
 } else {
-    $stmtCheck = $pdo->prepare("SELECT * FROM sprints WHERE id = ? AND teacher_id = ?");
+    $stmtCheck = $pdo->prepare("SELECT * FROM sprints WHERE id = ? AND teacher_id = ? AND name NOT LIKE 'DUELO|%' AND name NOT LIKE 'Missão de Treinamento%'");
     $stmtCheck->execute([$sprint_id, $user_id]);
 }
 $sprint = $stmtCheck->fetch();

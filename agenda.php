@@ -110,9 +110,13 @@ if ($is_admin) {
 }
 
 // -------------------------------------------------------------
-// 3. Consulta de Sprints no Banco
+// 3. Consulta de Sprints no Banco (Apenas Sprints / Diagnósticas Oficiais — exclui Duelos e Treinamentos da Arena)
 // -------------------------------------------------------------
-$where = ["1=1"];
+$where = [
+    "s.teacher_id IS NOT NULL",
+    "s.name NOT LIKE 'DUELO|%'",
+    "s.name NOT LIKE 'Missão de Treinamento%'"
+];
 $params = [];
 
 // Restrição de Professor

@@ -18,21 +18,21 @@ $filter_regional_id = !empty($_GET['regional_id']) ? $_GET['regional_id'] : null
 $filter_unit_id = !empty($_GET['unit_id']) ? $_GET['unit_id'] : null;
 $filter_course_id = !empty($_GET['course_id']) ? $_GET['course_id'] : null;
 
-// Construir os wheres de filtro global
+// Construir os wheres de filtro global (Sprints oficiais excluem Duelos e Treinamentos da Arena)
 $where_global_unit = "";
-$where_sprints_unit = "";
+$where_sprints_unit = "WHERE s.teacher_id IS NOT NULL AND s.name NOT LIKE 'DUELO|%' AND s.name NOT LIKE 'Missão de Treinamento%'";
 $where_classes = "";
 $params_global = [];
 
 // Hierarquia: Unit > Regional
 if ($filter_unit_id) {
     $where_global_unit = "WHERE unit_id = ?";
-    $where_sprints_unit = "WHERE s.class_id IN (SELECT id FROM classes WHERE unit_id = ?)";
+    $where_sprints_unit .= " AND s.class_id IN (SELECT id FROM classes WHERE unit_id = ?)";
     $where_classes = "WHERE unit_id = ?";
     $params_global[] = $filter_unit_id;
 } elseif ($filter_regional_id) {
     $where_global_unit = "WHERE unit_id IN (SELECT id FROM units WHERE regional_id = ?)";
-    $where_sprints_unit = "WHERE s.class_id IN (SELECT id FROM classes WHERE unit_id IN (SELECT id FROM units WHERE regional_id = ?))";
+    $where_sprints_unit .= " AND s.class_id IN (SELECT id FROM classes WHERE unit_id IN (SELECT id FROM units WHERE regional_id = ?))";
     $where_classes = "WHERE unit_id IN (SELECT id FROM units WHERE regional_id = ?)";
     $params_global[] = $filter_regional_id;
 }
@@ -46,11 +46,7 @@ if ($filter_course_id) {
         $where_classes = "WHERE course_id = ?";
     }
     
-    if ($where_sprints_unit) {
-        $where_sprints_unit .= " AND s.class_id IN (SELECT id FROM classes WHERE course_id = ?)";
-    } else {
-        $where_sprints_unit = "WHERE s.class_id IN (SELECT id FROM classes WHERE course_id = ?)";
-    }
+    $where_sprints_unit .= " AND s.class_id IN (SELECT id FROM classes WHERE course_id = ?)";
     
     $params_classes[] = $filter_course_id;
 }
@@ -87,7 +83,9 @@ $sql = "
     FROM sprints s
     JOIN classes c ON s.class_id = c.id
     LEFT JOIN users u ON s.teacher_id = u.id
-    WHERE 1=1
+    WHERE s.teacher_id IS NOT NULL
+      AND s.name NOT LIKE 'DUELO|%'
+      AND s.name NOT LIKE 'Missão de Treinamento%'
 ";
 $params = [];
 
@@ -184,7 +182,7 @@ $stmtAcc->execute($params_analytics);
 $accData = $stmtAcc->fetch();
 $global_accuracy = ($accData && $accData['total_answers'] > 0) ? round(($accData['correct_answers'] / $accData['total_answers']) * 100, 1) : 0;
 
-// Gráfico 1: Evolução por Sprint
+// Gráfico 1: Evolução por Sprint (Apenas Sprints/Diagnósticas oficiais)
 $stmtEvol = $pdo->prepare("
     SELECT s.name as sprint_name,
            SUM(CASE WHEN sa.is_correct = 1 THEN 1 ELSE 0 END) as correct_answers,
@@ -193,6 +191,9 @@ $stmtEvol = $pdo->prepare("
     JOIN sprints s ON sa.sprint_id = s.id
     JOIN classes c ON s.class_id = c.id
     $where_analytics
+      AND s.teacher_id IS NOT NULL
+      AND s.name NOT LIKE 'DUELO|%'
+      AND s.name NOT LIKE 'Missão de Treinamento%'
     GROUP BY s.name
     ORDER BY MIN(s.created_at) ASC
 ");

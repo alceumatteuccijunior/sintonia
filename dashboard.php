@@ -93,7 +93,8 @@ include 'includes/header.php';
                         </div>
                         <h3 class="text-3xl font-bold text-slate-800 mb-1">
                             <?php
-                            $where_sprint = $unit_id ? "WHERE class_id IN (SELECT id FROM classes WHERE unit_id = ?)" : "";
+                            $base_sprint_filter = "WHERE teacher_id IS NOT NULL AND name NOT LIKE 'DUELO|%' AND name NOT LIKE 'Missão de Treinamento%'";
+                            $where_sprint = $unit_id ? "$base_sprint_filter AND class_id IN (SELECT id FROM classes WHERE unit_id = ?)" : $base_sprint_filter;
                             $stmt = $pdo->prepare("SELECT count(*) FROM sprints $where_sprint");
                             $stmt->execute($params);
                             echo $stmt->fetchColumn();
