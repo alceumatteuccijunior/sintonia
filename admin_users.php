@@ -11,11 +11,13 @@ $pdo = getPDOConnection(true);
 $msg = '';
 $msgType = '';
 
-// Buscar todas as turmas cadastradas para vínculos e importação
+// Buscar todas as turmas cadastradas para vínculos e importação (incluindo course_id e regional_id para cascata de filtros)
 $stmtAllClasses = $pdo->query("
-    SELECT c.id, c.name, c.year, c.semester, c.unit_id, co.name as course_name 
+    SELECT c.id, c.name, c.year, c.semester, c.unit_id, c.course_id,
+           un.regional_id, co.name as course_name 
     FROM classes c 
     LEFT JOIN courses co ON c.course_id = co.id 
+    LEFT JOIN units un ON c.unit_id = un.id
     ORDER BY c.year DESC, c.semester DESC, c.name ASC
 ");
 $allClasses = $stmtAllClasses->fetchAll();
@@ -319,13 +321,90 @@ try {
     }
 } catch (Exception $e) {}
 
-// Filtros Avançados
+// Filtros Avançados com Cascata Inteligente (Regional -> Unidade -> Curso -> Turma)
 $search         = trim($_GET['search'] ?? '');
 $roleFilter     = trim($_GET['role'] ?? '');
 $classFilter    = trim($_GET['class_id'] ?? '');
 $courseFilter   = !empty($_GET['course_id']) ? (int)$_GET['course_id'] : 0;
 $unitFilter     = trim($_GET['unit_id'] ?? '');
 $regionalFilter = !empty($_GET['regional_id']) ? (int)$_GET['regional_id'] : 0;
+
+// 1. Filtra Unidades pela Regional selecionada
+$filteredUnitsList = $allUnitsList;
+if ($regionalFilter > 0) {
+    $filteredUnitsList = array_values(array_filter($allUnitsList, function ($un) use ($regionalFilter) {
+        return (int)$un['regional_id'] === $regionalFilter;
+    }));
+    // Se a unidade selecionada não pertence à regional escolhida, reseta a unidade
+    if (is_numeric($unitFilter)) {
+        $validUnitIds = array_map(fn($u) => (int)$u['id'], $filteredUnitsList);
+        if (!in_array((int)$unitFilter, $validUnitIds, true)) {
+            $unitFilter = '';
+        }
+    }
+}
+
+// 2. Filtra Cursos que existem na Unidade (ou Regional) selecionada
+$filteredCoursesList = $allCoursesList;
+if (is_numeric($unitFilter)) {
+    $unitCourseIds = [];
+    foreach ($allClasses as $clItem) {
+        if ((int)$clItem['unit_id'] === (int)$unitFilter && !empty($clItem['course_id'])) {
+            $unitCourseIds[(int)$clItem['course_id']] = true;
+        }
+    }
+    $filteredCoursesList = array_values(array_filter($allCoursesList, function ($co) use ($unitCourseIds) {
+        return isset($unitCourseIds[(int)$co['id']]);
+    }));
+} elseif ($unitFilter === '__none__') {
+    $filteredCoursesList = [];
+} elseif ($regionalFilter > 0) {
+    $regCourseIds = [];
+    foreach ($allClasses as $clItem) {
+        if ((int)($clItem['regional_id'] ?? 0) === $regionalFilter && !empty($clItem['course_id'])) {
+            $regCourseIds[(int)$clItem['course_id']] = true;
+        }
+    }
+    $filteredCoursesList = array_values(array_filter($allCoursesList, function ($co) use ($regCourseIds) {
+        return isset($regCourseIds[(int)$co['id']]);
+    }));
+}
+
+// Se o curso selecionado não existe na unidade/regional atual, reseta o curso
+if ($courseFilter > 0) {
+    $validCourseIds = array_map(fn($co) => (int)$co['id'], $filteredCoursesList);
+    if (!in_array($courseFilter, $validCourseIds, true)) {
+        $courseFilter = 0;
+    }
+}
+
+// 3. Filtra Turmas pela Unidade, Regional e Curso selecionados
+$filteredClassesList = array_values(array_filter($allClasses, function ($clItem) use ($regionalFilter, $unitFilter, $courseFilter) {
+    if ($unitFilter === '__none__') {
+        return empty($clItem['unit_id']);
+    }
+    if (is_numeric($unitFilter) && (int)$clItem['unit_id'] !== (int)$unitFilter) {
+        return false;
+    }
+    if ($regionalFilter > 0 && (int)($clItem['regional_id'] ?? 0) !== $regionalFilter) {
+        return false;
+    }
+    if ($courseFilter > 0 && (int)($clItem['course_id'] ?? 0) !== $courseFilter) {
+        return false;
+    }
+    return true;
+}));
+
+// Se a turma selecionada não pertence ao filtro atual de Unidade/Curso, reseta a turma
+if (is_numeric($classFilter)) {
+    $validClassIds = array_map(fn($cl) => (int)$cl['id'], $filteredClassesList);
+    if (!in_array((int)$classFilter, $validClassIds, true)) {
+        $classFilter = '';
+    }
+}
+if (in_array($roleFilter, ['teacher', 'admin'], true) && in_array($classFilter, ['__none__', '__with_class__'], true)) {
+    $classFilter = '';
+}
 
 $sql = "SELECT u.id, u.unit_id, u.name, u.email, u.role, u.created_at, 
                un.name as unit_name, un.regional_id, r.name as regional_name,
@@ -489,78 +568,14 @@ include 'includes/header.php';
                     </a>
                 </div>
 
-                <!-- Painel Completo de Filtros -->
+                <!-- Painel Completo de Filtros em Cascata (Regional -> Unidade -> Curso -> Turma -> Perfil) -->
                 <div class="glass-panel p-5 mb-6">
-                    <form method="GET" action="admin_users.php" class="space-y-3">
+                    <form id="usersFilterForm" method="GET" action="admin_users.php" class="space-y-3">
                         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                            <!-- Busca textual -->
-                            <div class="sm:col-span-2">
-                                <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Buscar Usuário / E-mail / Turma</label>
-                                <div class="relative">
-                                    <i class="ph ph-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                                    <input type="text" name="search" value="<?= htmlspecialchars($search) ?>" placeholder="Digite nome, e-mail, turma ou curso..." class="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs md:text-sm focus:outline-none focus:border-senai-blue focus:ring-1 focus:ring-senai-blue transition-all">
-                                </div>
-                            </div>
-
-                            <!-- Tipo de Usuário (Role) -->
+                            <!-- 1. Filtro por Regional -->
                             <div>
-                                <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Tipo de Usuário</label>
-                                <select name="role" onchange="this.form.submit()" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs md:text-sm text-slate-700 font-medium focus:outline-none focus:border-senai-blue transition-all">
-                                    <option value="">Todos os Perfis</option>
-                                    <option value="student" <?= $roleFilter === 'student' ? 'selected' : '' ?>>Alunos</option>
-                                    <option value="teacher" <?= $roleFilter === 'teacher' ? 'selected' : '' ?>>Professores</option>
-                                    <option value="admin" <?= $roleFilter === 'admin' ? 'selected' : '' ?>>Administradores</option>
-                                </select>
-                            </div>
-
-                            <!-- Filtro por Turma -->
-                            <div>
-                                <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Turma</label>
-                                <select name="class_id" onchange="this.form.submit()" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs md:text-sm text-slate-700 font-medium focus:outline-none focus:border-senai-blue transition-all">
-                                    <option value="">Todas as Turmas</option>
-                                    <option value="__none__" <?= $classFilter === '__none__' ? 'selected' : '' ?>>⚠️ Alunos Sem Turma Vinculada</option>
-                                    <option value="__with_class__" <?= $classFilter === '__with_class__' ? 'selected' : '' ?>>✅ Alunos Com Turma Vinculada</option>
-                                    <?php foreach ($allClasses as $c): ?>
-                                        <option value="<?= $c['id'] ?>" <?= (is_numeric($classFilter) && (int)$classFilter === (int)$c['id']) ? 'selected' : '' ?>>
-                                            <?= htmlspecialchars($c['name']) ?><?= !empty($c['course_name']) ? ' — ' . htmlspecialchars($c['course_name']) : '' ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2 border-t border-slate-100 items-end">
-                            <!-- Filtro por Curso -->
-                            <div>
-                                <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Curso</label>
-                                <select name="course_id" onchange="this.form.submit()" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs md:text-sm text-slate-700 font-medium focus:outline-none focus:border-senai-blue transition-all">
-                                    <option value="">Todos os Cursos</option>
-                                    <?php foreach ($allCoursesList as $coItem): ?>
-                                        <option value="<?= $coItem['id'] ?>" <?= $courseFilter === (int)$coItem['id'] ? 'selected' : '' ?>>
-                                            <?= htmlspecialchars($coItem['name']) ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-
-                            <!-- Filtro por Unidade Escolar -->
-                            <div>
-                                <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Unidade Escolar</label>
-                                <select name="unit_id" onchange="this.form.submit()" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs md:text-sm text-slate-700 font-medium focus:outline-none focus:border-senai-blue transition-all">
-                                    <option value="">Todas as Unidades</option>
-                                    <option value="__none__" <?= $unitFilter === '__none__' ? 'selected' : '' ?>>Sem Unidade Vinculada</option>
-                                    <?php foreach ($allUnitsList as $unItem): ?>
-                                        <option value="<?= $unItem['id'] ?>" <?= (is_numeric($unitFilter) && (int)$unitFilter === (int)$unItem['id']) ? 'selected' : '' ?>>
-                                            <?= htmlspecialchars($unItem['unit_name']) ?><?= !empty($unItem['regional_name']) ? ' (' . htmlspecialchars($unItem['regional_name']) . ')' : '' ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-
-                            <!-- Filtro por Regional -->
-                            <div>
-                                <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Regional (DR)</label>
-                                <select name="regional_id" onchange="this.form.submit()" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs md:text-sm text-slate-700 font-medium focus:outline-none focus:border-senai-blue transition-all">
+                                <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">1. Regional (DR)</label>
+                                <select id="filter_regional_id" name="regional_id" onchange="onCascadeFilterChange('regional')" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs md:text-sm text-slate-700 font-medium focus:outline-none focus:border-senai-blue transition-all">
                                     <option value="">Todas as Regionais</option>
                                     <?php foreach ($allRegionals as $regItem): ?>
                                         <option value="<?= $regItem['id'] ?>" <?= $regionalFilter === (int)$regItem['id'] ? 'selected' : '' ?>>
@@ -568,6 +583,76 @@ include 'includes/header.php';
                                         </option>
                                     <?php endforeach; ?>
                                 </select>
+                            </div>
+
+                            <!-- 2. Filtro por Unidade Escolar (filtrado pela Regional) -->
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                                    2. Unidade Escolar <?= $regionalFilter > 0 ? '<span class="text-senai-blue">(' . count($filteredUnitsList) . ')</span>' : '' ?>
+                                </label>
+                                <select id="filter_unit_id" name="unit_id" onchange="onCascadeFilterChange('unit')" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs md:text-sm text-slate-700 font-medium focus:outline-none focus:border-senai-blue transition-all">
+                                    <option value="">Todas as Unidades<?= $regionalFilter > 0 ? ' da Regional' : '' ?></option>
+                                    <option value="__none__" <?= $unitFilter === '__none__' ? 'selected' : '' ?>>Sem Unidade Vinculada</option>
+                                    <?php foreach ($filteredUnitsList as $unItem): ?>
+                                        <option value="<?= $unItem['id'] ?>" <?= (is_numeric($unitFilter) && (int)$unitFilter === (int)$unItem['id']) ? 'selected' : '' ?>>
+                                            <?= htmlspecialchars($unItem['unit_name']) ?><?= ($regionalFilter === 0 && !empty($unItem['regional_name'])) ? ' (' . htmlspecialchars($unItem['regional_name']) . ')' : '' ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+
+                            <!-- 3. Filtro por Curso (filtrado pela Unidade / Regional) -->
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                                    3. Curso <?= (is_numeric($unitFilter) || $regionalFilter > 0) ? '<span class="text-senai-blue">(' . count($filteredCoursesList) . ')</span>' : '' ?>
+                                </label>
+                                <select id="filter_course_id" name="course_id" onchange="onCascadeFilterChange('course')" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs md:text-sm text-slate-700 font-medium focus:outline-none focus:border-senai-blue transition-all">
+                                    <option value="">Todos os Cursos<?= is_numeric($unitFilter) ? ' da Unidade' : ($regionalFilter > 0 ? ' da Regional' : '') ?></option>
+                                    <?php foreach ($filteredCoursesList as $coItem): ?>
+                                        <option value="<?= $coItem['id'] ?>" <?= $courseFilter === (int)$coItem['id'] ? 'selected' : '' ?>>
+                                            <?= htmlspecialchars($coItem['name']) ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+
+                            <!-- 4. Filtro por Turma (filtrado pela Unidade e Curso) -->
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                                    4. Turma <?= ($courseFilter > 0 || is_numeric($unitFilter) || $regionalFilter > 0) ? '<span class="text-senai-blue">(' . count($filteredClassesList) . ')</span>' : '' ?>
+                                </label>
+                                <select id="filter_class_id" name="class_id" onchange="onCascadeFilterChange('class')" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs md:text-sm text-slate-700 font-medium focus:outline-none focus:border-senai-blue transition-all">
+                                    <option value="">Todas as Turmas<?= $courseFilter > 0 ? ' do Curso' : (is_numeric($unitFilter) ? ' da Unidade' : '') ?></option>
+                                    <option value="__none__" <?= $classFilter === '__none__' ? 'selected' : '' ?>>⚠️ Alunos Sem Turma Vinculada</option>
+                                    <option value="__with_class__" <?= $classFilter === '__with_class__' ? 'selected' : '' ?>>✅ Alunos Com Turma Vinculada</option>
+                                    <?php foreach ($filteredClassesList as $c): ?>
+                                        <option value="<?= $c['id'] ?>" <?= (is_numeric($classFilter) && (int)$classFilter === (int)$c['id']) ? 'selected' : '' ?>>
+                                            <?= htmlspecialchars($c['name']) ?><?= ($courseFilter === 0 && !empty($c['course_name'])) ? ' — ' . htmlspecialchars($c['course_name']) : '' ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2 border-t border-slate-100 items-end">
+                            <!-- 5. Tipo de Usuário (Role) -->
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">5. Tipo de Usuário</label>
+                                <select id="filter_role" name="role" onchange="onCascadeFilterChange('role')" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs md:text-sm text-slate-700 font-medium focus:outline-none focus:border-senai-blue transition-all">
+                                    <option value="">Todos os Perfis</option>
+                                    <option value="student" <?= $roleFilter === 'student' ? 'selected' : '' ?>>Alunos</option>
+                                    <option value="teacher" <?= $roleFilter === 'teacher' ? 'selected' : '' ?>>Professores</option>
+                                    <option value="admin" <?= $roleFilter === 'admin' ? 'selected' : '' ?>>Administradores</option>
+                                </select>
+                            </div>
+
+                            <!-- 6. Busca textual -->
+                            <div class="sm:col-span-2">
+                                <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">6. Buscar por Nome / E-mail / Turma</label>
+                                <div class="relative">
+                                    <i class="ph ph-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                                    <input type="text" name="search" value="<?= htmlspecialchars($search) ?>" placeholder="Digite nome, e-mail, turma ou curso..." class="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs md:text-sm focus:outline-none focus:border-senai-blue focus:ring-1 focus:ring-senai-blue transition-all">
+                                </div>
                             </div>
 
                             <!-- Botões de Ação do Filtro -->
@@ -584,6 +669,27 @@ include 'includes/header.php';
                         </div>
                     </form>
                 </div>
+                <script>
+                    function onCascadeFilterChange(changedLevel) {
+                        const form = document.getElementById('usersFilterForm');
+                        if (!form) return;
+                        const unitSel = document.getElementById('filter_unit_id');
+                        const courseSel = document.getElementById('filter_course_id');
+                        const classSel = document.getElementById('filter_class_id');
+
+                        if (changedLevel === 'regional') {
+                            if (unitSel) unitSel.value = '';
+                            if (courseSel) courseSel.value = '';
+                            if (classSel) classSel.value = '';
+                        } else if (changedLevel === 'unit') {
+                            if (courseSel) courseSel.value = '';
+                            if (classSel) classSel.value = '';
+                        } else if (changedLevel === 'course') {
+                            if (classSel) classSel.value = '';
+                        }
+                        form.submit();
+                    }
+                </script>
 
                 <div class="glass-panel overflow-hidden">
                     <div class="px-4 py-3 border-b border-slate-100 bg-white/60 flex items-center justify-between text-xs text-slate-500 font-semibold">
