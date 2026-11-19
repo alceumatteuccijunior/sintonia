@@ -14,6 +14,19 @@ if (!$sprint_id || !$student_id) {
     die('<div class="text-red-500 font-bold p-4">Parâmetros inválidos.</div>');
 }
 
+try {
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS course_capacities (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            course_id INT NOT NULL,
+            capacity_code VARCHAR(50) NOT NULL,
+            description TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY uq_course_cap (course_id, capacity_code)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
+} catch (Exception $e) {}
+
 // Fetch all questions in the sprint and the student's answer
 $stmt = $pdo->prepare("
     SELECT 
@@ -21,6 +34,7 @@ $stmt = $pdo->prepare("
         q.id as question_id,
         q.command,
         q.capacity,
+        COALESCE(cc.description, mc.description) as capacity_desc,
         m.name as module_name,
         sa.is_correct,
         sa.selected_option_id,
@@ -31,6 +45,8 @@ $stmt = $pdo->prepare("
     FROM sprint_questions sq
     JOIN questions q ON sq.question_id = q.id
     LEFT JOIN modules m ON q.module_id = m.id
+    LEFT JOIN course_capacities cc ON cc.course_id = m.course_id AND cc.capacity_code = q.capacity
+    LEFT JOIN module_capacities mc ON mc.module_id = q.module_id AND mc.capacity_code = q.capacity
     LEFT JOIN student_answers sa ON sa.question_id = q.id AND sa.sprint_id = sq.sprint_id AND sa.student_id = ?
     LEFT JOIN question_options qo ON sa.selected_option_id = qo.id
     WHERE sq.sprint_id = ?
@@ -110,10 +126,12 @@ $rate = round(($correct_count / count($questions)) * 100, 1);
             <?= $icon ?>
         </div>
         <div class="flex-1">
-            <div class="flex items-center gap-2 mb-1">
+            <div class="flex flex-wrap items-center gap-2 mb-1.5">
                 <span class="bg-slate-800 text-white text-[10px] font-bold px-2 py-0.5 rounded">Q<?= $q['order_num'] ?></span>
                 <span class="text-xs font-bold text-slate-500 uppercase"><?= htmlspecialchars($q['module_name'] ?: 'Geral') ?></span>
-                <span class="text-xs text-slate-400 font-medium tracking-wide border-l border-slate-300 pl-2"><?= htmlspecialchars($q['capacity']) ?></span>
+                <span class="text-xs text-slate-700 font-semibold border-l border-slate-300 pl-2">
+                    <strong class="text-senai-blue"><?= htmlspecialchars($q['capacity']) ?></strong><?= !empty($q['capacity_desc']) ? ' — ' . htmlspecialchars($q['capacity_desc']) : '' ?>
+                </span>
             </div>
             
             <p class="text-sm font-semibold text-slate-800 mb-3 line-clamp-2"><?= htmlspecialchars($q['command']) ?></p>

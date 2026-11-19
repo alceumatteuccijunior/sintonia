@@ -9,8 +9,8 @@ if (!isset($_SESSION['user_id']) || ($_SESSION['user_role'] !== 'teacher' && $_S
 
 require_once 'config.php';
 
-if (!defined('OPENAI_API_KEY') || OPENAI_API_KEY === '') {
-    echo json_encode(['status' => 'error', 'message' => 'A chave da API da OpenAI (OPENAI_API_KEY) não está configurada no config.php.']);
+if (!defined('OPENAI_API_KEY') || trim(OPENAI_API_KEY) === '' || trim(OPENAI_API_KEY) === 'sua_chave_aqui') {
+    echo json_encode(['status' => 'error', 'message' => 'A chave da API da OpenAI (OPENAI_API_KEY) não está configurada.']);
     exit;
 }
 
@@ -133,7 +133,7 @@ Você pode sugerir dinâmicas, analisar o cenário dessas turmas e ajudar a plan
     // Chamada à OpenAI
     $url = 'https://api.openai.com/v1/chat/completions';
     $data = [
-        'model' => 'gpt-3.5-turbo',
+        'model' => 'gpt-4o-mini',
         'messages' => $apiMessages,
         'temperature' => 0.7,
         'max_tokens' => 1200

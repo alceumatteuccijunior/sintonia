@@ -46,16 +46,32 @@ if ($student_id) {
         $sprint_ids = array_column($sprints, 'id');
         $inQuery = implode(',', array_fill(0, count($sprint_ids), '?'));
         
-        // Fetch all answers for this student in these sprints
+        try {
+            $pdo->exec("
+                CREATE TABLE IF NOT EXISTS course_capacities (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    course_id INT NOT NULL,
+                    capacity_code VARCHAR(50) NOT NULL,
+                    description TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE KEY uq_course_cap (course_id, capacity_code)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            ");
+        } catch (Exception $e) {}
+
+        // Fetch all answers for this student in these sprints (with official capacity description)
         $stmtAnswers = $pdo->prepare("
             SELECT 
                 sa.sprint_id,
                 m.name as module_name,
                 q.capacity as capacity_code,
+                COALESCE(cc.description, mc.description) as capacity_desc,
                 sa.is_correct
             FROM student_answers sa
             JOIN questions q ON sa.question_id = q.id
             JOIN modules m ON q.module_id = m.id
+            LEFT JOIN course_capacities cc ON cc.course_id = m.course_id AND cc.capacity_code = q.capacity
+            LEFT JOIN module_capacities mc ON mc.module_id = q.module_id AND mc.capacity_code = q.capacity
             WHERE sa.student_id = ? AND sa.sprint_id IN ($inQuery)
         ");
         $params = array_merge([$student_id], $sprint_ids);
@@ -68,6 +84,7 @@ if ($student_id) {
         
         $module_stats = []; // module_name => [sprint_id => [correct, total]]
         $capacity_stats = []; // capacity_code => [sprint_id => [correct, total]]
+        $capacity_descs = []; // capacity_code => description
 
         foreach ($sprints as $s) {
             $labels[] = $s['name'] . " (" . date('d/m/Y', strtotime($s['completed_at'])) . ")";
@@ -88,10 +105,14 @@ if ($student_id) {
                     if ($a['is_correct']) $module_stats[$a['module_name']][$s['id']]['c']++;
 
                     // Capacity tracking
-                    if (!isset($capacity_stats[$a['capacity_code']])) $capacity_stats[$a['capacity_code']] = [];
-                    if (!isset($capacity_stats[$a['capacity_code']][$s['id']])) $capacity_stats[$a['capacity_code']][$s['id']] = ['c' => 0, 't' => 0];
-                    $capacity_stats[$a['capacity_code']][$s['id']]['t']++;
-                    if ($a['is_correct']) $capacity_stats[$a['capacity_code']][$s['id']]['c']++;
+                    $cCode = $a['capacity_code'] ?: 'Geral';
+                    if (!empty($a['capacity_desc']) && empty($capacity_descs[$cCode])) {
+                        $capacity_descs[$cCode] = trim($a['capacity_desc']);
+                    }
+                    if (!isset($capacity_stats[$cCode])) $capacity_stats[$cCode] = [];
+                    if (!isset($capacity_stats[$cCode][$s['id']])) $capacity_stats[$cCode][$s['id']] = ['c' => 0, 't' => 0];
+                    $capacity_stats[$cCode][$s['id']]['t']++;
+                    if ($a['is_correct']) $capacity_stats[$cCode][$s['id']]['c']++;
                 }
             }
             
@@ -133,8 +154,13 @@ if ($student_id) {
                     $data[] = null;
                 }
             }
+            $cFullDesc = $capacity_descs[$cName] ?? '';
+            $cLabel = $cFullDesc !== ''
+                ? ($cName . ' — ' . (mb_strlen($cFullDesc, 'UTF-8') > 55 ? mb_substr($cFullDesc, 0, 55, 'UTF-8') . '...' : $cFullDesc))
+                : $cName;
             $datasets_capacities[] = [
-                'label' => $cName,
+                'label' => $cLabel,
+                'full_label' => $cFullDesc !== '' ? ($cName . ' — ' . $cFullDesc) : $cName,
                 'data' => $data,
                 'borderColor' => $colors[$cIdx % count($colors)],
                 'backgroundColor' => $colors[$cIdx % count($colors)],
@@ -288,6 +314,16 @@ if ($student_id) {
                             <div class="h-[350px] w-full">
                                 <canvas id="chartCapacities"></canvas>
                             </div>
+                            <?php if (!empty($capacity_descs)): ?>
+                            <div class="mt-4 pt-3 border-t border-slate-200/70 space-y-1.5 max-h-40 overflow-y-auto pr-1">
+                                <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Descrição Oficial das Capacidades Avaliadas:</p>
+                                <?php foreach ($capacity_descs as $cCode => $cDesc): ?>
+                                    <div class="text-xs text-slate-600 leading-snug bg-white/70 px-2.5 py-1.5 rounded-lg border border-slate-100">
+                                        <strong class="text-senai-blue"><?= htmlspecialchars($cCode) ?>:</strong> <?= htmlspecialchars($cDesc) ?>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                            <?php endif; ?>
                         </div>
                     </div>
 

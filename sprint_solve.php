@@ -77,23 +77,106 @@ $time_min_minutes = $sprint['time_min_minutes'] ?? 0;
 $time_min_seconds = $time_min_minutes * 60;
 $min_time_remaining = $time_min_seconds - $diff_seconds;
 
+/**
+ * Monta e dispara o e-mail de devolutiva ao aluno incluindo o resumo por Capacidade (Código + Descrição Oficial)
+ */
+function sendStudentSprintReportEmail($pdo, $attemptId, $sprint, $studentId, $studentName) {
+    require_once 'includes/mailer.php';
+
+    try {
+        $pdo->exec("
+            CREATE TABLE IF NOT EXISTS course_capacities (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                course_id INT NOT NULL,
+                capacity_code VARCHAR(50) NOT NULL,
+                description TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE KEY uq_course_cap (course_id, capacity_code)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        ");
+    } catch (Exception $e) {}
+
+    $stmtEmail = $pdo->prepare("SELECT email FROM users WHERE id = ?");
+    $stmtEmail->execute([$studentId]);
+    $studentEmail = $stmtEmail->fetchColumn();
+    if (!$studentEmail) {
+        return;
+    }
+
+    $stmtAns = $pdo->prepare("
+        SELECT q.capacity AS capacity_code,
+               COALESCE(cc.description, mc.description) AS capacity_desc,
+               sa.is_correct
+        FROM student_answers sa
+        JOIN questions q ON sa.question_id = q.id
+        JOIN modules m ON q.module_id = m.id
+        LEFT JOIN course_capacities cc ON cc.course_id = m.course_id AND cc.capacity_code = q.capacity
+        LEFT JOIN module_capacities mc ON mc.module_id = q.module_id AND mc.capacity_code = q.capacity
+        WHERE sa.student_id = ? AND sa.sprint_id = ?
+    ");
+    $stmtAns->execute([$studentId, $sprint['id']]);
+    $ansRows = $stmtAns->fetchAll();
+
+    $totalAns = count($ansRows);
+    $correctAns = 0;
+    $capStats = [];
+    foreach ($ansRows as $ar) {
+        if ($ar['is_correct']) $correctAns++;
+        $cCode = trim((string)($ar['capacity_code'] ?? '')) ?: 'Geral';
+        $cDesc = trim((string)($ar['capacity_desc'] ?? ''));
+        if (!isset($capStats[$cCode])) {
+            $capStats[$cCode] = ['c' => 0, 't' => 0, 'desc' => $cDesc];
+        } elseif ($capStats[$cCode]['desc'] === '' && $cDesc !== '') {
+            $capStats[$cCode]['desc'] = $cDesc;
+        }
+        $capStats[$cCode]['t']++;
+        if ($ar['is_correct']) $capStats[$cCode]['c']++;
+    }
+
+    $capHtml = '';
+    if ($totalAns > 0) {
+        $overallPct = round(($correctAns / $totalAns) * 100, 1);
+        uasort($capStats, function ($a, $b) {
+            return ($a['c'] / max(1, $a['t'])) <=> ($b['c'] / max(1, $b['t']));
+        });
+
+        $capHtml .= "<div style='margin:18px 0; padding:14px; background-color:#f8fafc; border:1px solid #e2e8f0; border-radius:8px;'>";
+        $capHtml .= "<p style='margin:0 0 10px 0; font-size:14px; color:#1e293b;'><strong>Resumo Geral:</strong> {$correctAns} de {$totalAns} acertos (<strong>{$overallPct}%</strong>)</p>";
+        $capHtml .= "<p style='margin:10px 0 8px 0; font-size:13px; font-weight:bold; color:#1A428A; text-transform:uppercase;'>Desempenho por Capacidade Avaliada:</p>";
+        $capHtml .= "<ul style='margin:0; padding-left:18px; font-size:13px; color:#334155; line-height:1.5;'>";
+        foreach ($capStats as $code => $st) {
+            $pct = round(($st['c'] / max(1, $st['t'])) * 100);
+            $color = $pct >= 70 ? '#16a34a' : ($pct >= 40 ? '#ea580c' : '#dc2626');
+            $label = htmlspecialchars($code);
+            if ($st['desc'] !== '') {
+                $label .= ' — ' . htmlspecialchars($st['desc']);
+            }
+            $capHtml .= "<li style='margin-bottom:8px;'><strong>{$label}</strong><br><span style='color:{$color}; font-weight:bold;'>{$pct}% de aproveitamento ({$st['c']}/{$st['t']} acertos)</span></li>";
+        }
+        $capHtml .= "</ul></div>";
+    }
+
+    $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http";
+    $host = $_SERVER['HTTP_HOST'];
+    $uri = rtrim(dirname($_SERVER['REQUEST_URI']), '/\\');
+    $reportLink = "$protocol://$host$uri/sprint_report_pdf.php?attempt_id=" . $attemptId;
+
+    $emailBody = "Olá <strong>" . htmlspecialchars($studentName) . "</strong>,<br><br>"
+        . "Você acabou de finalizar a Sprint <strong>" . htmlspecialchars($sprint['name']) . "</strong>!<br>"
+        . $capHtml
+        . "Seu relatório individual completo já está disponível. Clique no botão abaixo para visualizá-lo e salvá-lo em PDF:<br><br>"
+        . "<a href='{$reportLink}' style='display:inline-block; padding:10px 20px; background-color:#4f46e5; color:white; text-decoration:none; border-radius:5px; font-weight:bold;'>Ver Devolutiva Completa em PDF</a>";
+
+    send_system_email($studentEmail, "Devolutiva: {$sprint['name']}", $emailBody);
+}
+
 if ($time_remaining <= 0) {
     // Tempo esgotou, finaliza a prova
     $stmtComplete = $pdo->prepare("UPDATE sprint_attempts SET completed_at = NOW() WHERE id = ?");
     $stmtComplete->execute([$attempt['id']]);
     
-    // Disparo de E-mail
-    require_once 'includes/mailer.php';
-    $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http";
-    $host = $_SERVER['HTTP_HOST'];
-    $uri = rtrim(dirname($_SERVER['REQUEST_URI']), '/\\');
-    $reportLink = "$protocol://$host$uri/sprint_report_pdf.php?attempt_id=" . $attempt['id'];
-    $emailBody = "Olá <strong>{$_SESSION['user_name']}</strong>,<br><br>Você acabou de finalizar a Sprint <strong>{$sprint['name']}</strong>!<br><br>Seu relatório individual de desempenho já está disponível. Clique no botão abaixo para visualizá-lo e salvá-lo em PDF.<br><br><a href='{$reportLink}' style='display:inline-block; padding:10px 20px; background-color:#4f46e5; color:white; text-decoration:none; border-radius:5px;'>Ver Devolutiva em PDF</a>";
-    $stmtEmail = $pdo->prepare("SELECT email FROM users WHERE id = ?");
-    $stmtEmail->execute([$student_id]);
-    if ($student_email = $stmtEmail->fetchColumn()) {
-        send_system_email($student_email, "Devolutiva: {$sprint['name']}", $emailBody);
-    }
+    // Disparo de E-mail com capacidades e descrições
+    sendStudentSprintReportEmail($pdo, $attempt['id'], $sprint, $student_id, $_SESSION['user_name']);
 
     header("Location: student_dashboard.php");
     exit;
@@ -165,18 +248,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmtComplete = $pdo->prepare("UPDATE sprint_attempts SET completed_at = NOW() WHERE id = ?");
             $stmtComplete->execute([$attempt['id']]);
             
-            // Disparo de E-mail
-            require_once 'includes/mailer.php';
-            $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http";
-            $host = $_SERVER['HTTP_HOST'];
-            $uri = rtrim(dirname($_SERVER['REQUEST_URI']), '/\\');
-            $reportLink = "$protocol://$host$uri/sprint_report_pdf.php?attempt_id=" . $attempt['id'];
-            $emailBody = "Olá <strong>{$_SESSION['user_name']}</strong>,<br><br>Você acabou de finalizar a Sprint <strong>{$sprint['name']}</strong>!<br><br>Seu relatório individual de desempenho já está disponível. Clique no botão abaixo para visualizá-lo e salvá-lo em PDF.<br><br><a href='{$reportLink}' style='display:inline-block; padding:10px 20px; background-color:#4f46e5; color:white; text-decoration:none; border-radius:5px;'>Ver Devolutiva em PDF</a>";
-            $stmtEmail = $pdo->prepare("SELECT email FROM users WHERE id = ?");
-            $stmtEmail->execute([$student_id]);
-            if ($student_email = $stmtEmail->fetchColumn()) {
-                send_system_email($student_email, "Devolutiva: {$sprint['name']}", $emailBody);
-            }
+            // Disparo de E-mail com capacidades e descrições
+            sendStudentSprintReportEmail($pdo, $attempt['id'], $sprint, $student_id, $_SESSION['user_name']);
 
             header("Location: student_dashboard.php");
             exit;

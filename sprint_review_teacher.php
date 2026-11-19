@@ -52,12 +52,24 @@ if (!empty($qIds)) {
     }
 }
 
-// Pega as descrições de capacidade
-$stmtCap = $pdo->query("SELECT capacity_code, description FROM module_capacities");
+// Pega as descrições de capacidade (priorizando a Matriz Oficial do Curso da turma)
 $capDescriptions = [];
-while ($row = $stmtCap->fetch()) {
-    $capDescriptions[$row['capacity_code']] = $row['description'];
-}
+try {
+    $stmtCapMod = $pdo->query("SELECT capacity_code, description FROM module_capacities");
+    while ($row = $stmtCapMod->fetch()) {
+        $capDescriptions[$row['capacity_code']] = $row['description'];
+    }
+    $stmtCapCourse = $pdo->prepare("
+        SELECT cc.capacity_code, cc.description
+        FROM course_capacities cc
+        JOIN classes c ON c.course_id = cc.course_id
+        WHERE c.id = ?
+    ");
+    $stmtCapCourse->execute([$sprint['class_id']]);
+    while ($rowC = $stmtCapCourse->fetch()) {
+        $capDescriptions[$rowC['capacity_code']] = $rowC['description'];
+    }
+} catch (Exception $e) {}
 
 $questionsJson = json_encode($questions);
 $optionsJson = json_encode($optionsByQ);

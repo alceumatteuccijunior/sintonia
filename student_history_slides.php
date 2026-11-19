@@ -43,16 +43,32 @@ if (count($sprints) == 0) {
 $sprint_ids = array_column($sprints, 'id');
 $inQuery = implode(',', array_fill(0, count($sprint_ids), '?'));
 
-// Fetch all answers for this student in these sprints
+try {
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS course_capacities (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            course_id INT NOT NULL,
+            capacity_code VARCHAR(50) NOT NULL,
+            description TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY uq_course_cap (course_id, capacity_code)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
+} catch (Exception $e) {}
+
+// Fetch all answers for this student in these sprints (with official capacity description)
 $stmtAnswers = $pdo->prepare("
     SELECT 
         sa.sprint_id,
         m.name as module_name,
         q.capacity as capacity_code,
+        COALESCE(cc.description, mc.description) as capacity_desc,
         sa.is_correct
     FROM student_answers sa
     JOIN questions q ON sa.question_id = q.id
     JOIN modules m ON q.module_id = m.id
+    LEFT JOIN course_capacities cc ON cc.course_id = m.course_id AND cc.capacity_code = q.capacity
+    LEFT JOIN module_capacities mc ON mc.module_id = q.module_id AND mc.capacity_code = q.capacity
     WHERE sa.student_id = ? AND sa.sprint_id IN ($inQuery)
 ");
 $params = array_merge([$student_id], $sprint_ids);
@@ -66,6 +82,7 @@ $sprints_summary = [];
 
 $module_stats = []; 
 $capacity_stats = []; 
+$capacity_descs = []; 
 
 // For AI processing (get stats of the last sprint)
 $last_sprint_id = end($sprints)['id'];
@@ -91,10 +108,14 @@ foreach ($sprints as $s) {
             if ($a['is_correct']) $module_stats[$a['module_name']][$s['id']]['c']++;
 
             // Capacity tracking
-            if (!isset($capacity_stats[$a['capacity_code']])) $capacity_stats[$a['capacity_code']] = [];
-            if (!isset($capacity_stats[$a['capacity_code']][$s['id']])) $capacity_stats[$a['capacity_code']][$s['id']] = ['c' => 0, 't' => 0];
-            $capacity_stats[$a['capacity_code']][$s['id']]['t']++;
-            if ($a['is_correct']) $capacity_stats[$a['capacity_code']][$s['id']]['c']++;
+            $cCode = $a['capacity_code'] ?: 'Geral';
+            if (!empty($a['capacity_desc']) && empty($capacity_descs[$cCode])) {
+                $capacity_descs[$cCode] = trim($a['capacity_desc']);
+            }
+            if (!isset($capacity_stats[$cCode])) $capacity_stats[$cCode] = [];
+            if (!isset($capacity_stats[$cCode][$s['id']])) $capacity_stats[$cCode][$s['id']] = ['c' => 0, 't' => 0];
+            $capacity_stats[$cCode][$s['id']]['t']++;
+            if ($a['is_correct']) $capacity_stats[$cCode][$s['id']]['c']++;
         }
     }
     
@@ -141,18 +162,23 @@ foreach ($module_stats as $mName => $mSprints) {
 $datasets_capacities = [];
 $cIdx = 0;
 foreach ($capacity_stats as $cName => $cSprints) {
+    $cFullDesc = $capacity_descs[$cName] ?? '';
+    $cShortLabel = $cFullDesc !== ''
+        ? ($cName . ' — ' . (mb_strlen($cFullDesc, 'UTF-8') > 55 ? mb_substr($cFullDesc, 0, 55, 'UTF-8') . '...' : $cFullDesc))
+        : $cName;
+    $cFullLabel = $cFullDesc !== '' ? ($cName . ' — ' . $cFullDesc) : $cName;
     $data = [];
     foreach ($sprints as $s) {
         if (isset($cSprints[$s['id']]) && $cSprints[$s['id']]['t'] > 0) {
             $r = round(($cSprints[$s['id']]['c'] / $cSprints[$s['id']]['t']) * 100, 1);
             $data[] = $r;
-            if ($s['id'] == $last_sprint_id) $last_cap_perf[$cName] = $r;
+            if ($s['id'] == $last_sprint_id) $last_cap_perf[$cFullLabel] = $r;
         } else {
             $data[] = null;
         }
     }
     $datasets_capacities[] = [
-        'label' => $cName,
+        'label' => $cShortLabel,
         'data' => $data,
         'borderColor' => $colors[$cIdx % count($colors)],
         'backgroundColor' => $colors[$cIdx % count($colors)],

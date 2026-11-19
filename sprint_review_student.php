@@ -34,12 +34,27 @@ if (!$sprint['feedback_released']) {
     die("O professor ainda não liberou o gabarito desta prova.");
 }
 
-// Busca as questões e a resposta do aluno
+try {
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS course_capacities (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            course_id INT NOT NULL,
+            capacity_code VARCHAR(50) NOT NULL,
+            description TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY uq_course_cap (course_id, capacity_code)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
+} catch (Exception $e) {}
+
+// Busca as questões e a resposta do aluno com a descrição oficial da capacidade
 $stmtQ = $pdo->prepare("
-    SELECT q.*, sq.order_num, mc.description as capacity_desc,
+    SELECT q.*, sq.order_num, COALESCE(cc.description, mc.description) as capacity_desc,
            sa.selected_option_id, sa.is_correct as student_is_correct
     FROM sprint_questions sq
     JOIN questions q ON sq.question_id = q.id
+    JOIN modules m ON q.module_id = m.id
+    LEFT JOIN course_capacities cc ON cc.course_id = m.course_id AND cc.capacity_code = q.capacity
     LEFT JOIN module_capacities mc ON mc.capacity_code = q.capacity AND mc.module_id = q.module_id
     LEFT JOIN student_answers sa ON sa.question_id = q.id AND sa.sprint_id = sq.sprint_id AND sa.student_id = ?
     WHERE sq.sprint_id = ?
@@ -106,9 +121,11 @@ include 'includes/header.php';
                 <!-- Status lateral -->
                 <div class="absolute top-0 left-0 w-2 h-full <?= $q['student_is_correct'] ? 'bg-green-500' : 'bg-red-500' ?>"></div>
                 
-                <div class="flex items-center gap-3 mb-6">
-                    <span class="bg-slate-100 text-slate-600 px-3 py-1 rounded-lg text-sm font-bold">Questão <?= $index + 1 ?></span>
-                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wider" title="<?= htmlspecialchars($q['capacity_desc'] ?? '') ?>">Capacidade: <?= htmlspecialchars($q['capacity']) ?></span>
+                <div class="flex flex-wrap items-center gap-3 mb-6">
+                    <span class="bg-slate-100 text-slate-600 px-3 py-1 rounded-lg text-sm font-bold shrink-0">Questão <?= $index + 1 ?></span>
+                    <span class="text-xs font-bold text-slate-600 bg-slate-50 border border-slate-200 px-3 py-1 rounded-lg leading-snug" title="<?= htmlspecialchars($q['capacity_desc'] ?? '') ?>">
+                        <strong class="text-senai-blue">Capacidade <?= htmlspecialchars($q['capacity']) ?></strong><?= !empty($q['capacity_desc']) ? ' — ' . htmlspecialchars($q['capacity_desc']) : '' ?>
+                    </span>
                 </div>
                 
                 <div class="text-slate-500 text-sm mb-4 leading-relaxed font-medium"><?= nl2br(htmlspecialchars($q['context'])) ?></div>

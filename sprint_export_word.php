@@ -26,12 +26,27 @@ if (!$sprint) {
     die("Sprint não encontrada.");
 }
 
-// 2. Busca as Questões da Sprint em ordem
+try {
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS course_capacities (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            course_id INT NOT NULL,
+            capacity_code VARCHAR(50) NOT NULL,
+            description TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY uq_course_cap (course_id, capacity_code)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
+} catch (Exception $e) {}
+
+// 2. Busca as Questões da Sprint em ordem (incluindo descrição oficial da capacidade)
 $stmtQ = $pdo->prepare("
-    SELECT q.*, m.name as module_name
+    SELECT q.*, m.name as module_name, COALESCE(cc.description, mc.description) as capacity_desc
     FROM sprint_questions sq
     JOIN questions q ON sq.question_id = q.id
     LEFT JOIN modules m ON q.module_id = m.id
+    LEFT JOIN course_capacities cc ON cc.course_id = m.course_id AND cc.capacity_code = q.capacity
+    LEFT JOIN module_capacities mc ON mc.module_id = q.module_id AND mc.capacity_code = q.capacity
     WHERE sq.sprint_id = ?
     ORDER BY sq.order_num ASC
 ");
@@ -202,10 +217,14 @@ header("Expires: 0");
         </ul>
     </div>
     <?php 
-        // Salva dados pro gabarito
+        // Salva dados pro gabarito (com código e descrição da capacidade)
+        $capLabel = $q['capacity'] ?: '-';
+        if (!empty($q['capacity_desc'])) {
+            $capLabel .= ' — ' . $q['capacity_desc'];
+        }
         $gabarito[] = [
             'num' => $q_number,
-            'cap' => $q['capacity'] ?: '-',
+            'cap' => $capLabel,
             'diff' => $q['difficulty'] ?: 'Normal',
             'correct' => $correct_letter
         ];

@@ -85,32 +85,48 @@ $stmtMod = $pdo->prepare("
 $stmtMod->execute([$sprint_id]);
 $modules_perf = $stmtMod->fetchAll();
 
-// 4. Desempenho por Capacidade (Com Descrição e Módulo)
+// Garante tabela course_capacities para busca oficial da Matriz
+try {
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS course_capacities (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            course_id INT NOT NULL,
+            capacity_code VARCHAR(50) NOT NULL,
+            description TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY uq_course_cap (course_id, capacity_code)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
+} catch (Exception $e) {}
+
+// 4. Desempenho por Capacidade (Com Descrição Oficial da Matriz ou Módulo)
 $stmtCap = $pdo->prepare("
     SELECT q.capacity as capacity_code, 
-           mc.description as capacity_desc,
+           COALESCE(cc.description, mc.description) as capacity_desc,
            m.name as module_name,
            COUNT(sa.id) as total_answers,
            SUM(IF(sa.is_correct = 1, 1, 0)) as correct_answers
     FROM sprint_questions sq
     JOIN questions q ON sq.question_id = q.id
     JOIN modules m ON q.module_id = m.id
+    LEFT JOIN course_capacities cc ON cc.course_id = m.course_id AND cc.capacity_code = q.capacity
     LEFT JOIN module_capacities mc ON mc.capacity_code = q.capacity AND mc.module_id = q.module_id
     LEFT JOIN student_answers sa ON sa.question_id = q.id AND sa.sprint_id = sq.sprint_id
     WHERE sq.sprint_id = ?
-    GROUP BY q.capacity, mc.description, m.name
+    GROUP BY q.capacity, COALESCE(cc.description, mc.description), m.name
 ");
 $stmtCap->execute([$sprint_id]);
 $capacities = $stmtCap->fetchAll();
 
 // 5. Desempenho por Questões Detalhado
 $stmtQ = $pdo->prepare("
-    SELECT q.id, q.command, q.capacity, mc.description as capacity_desc, m.name as module_name,
+    SELECT q.id, q.command, q.capacity, COALESCE(cc.description, mc.description) as capacity_desc, m.name as module_name,
            COUNT(sa.id) as total_answers,
            SUM(IF(sa.is_correct = 1, 1, 0)) as correct_answers
     FROM sprint_questions sq
     JOIN questions q ON sq.question_id = q.id
     JOIN modules m ON q.module_id = m.id
+    LEFT JOIN course_capacities cc ON cc.course_id = m.course_id AND cc.capacity_code = q.capacity
     LEFT JOIN module_capacities mc ON mc.capacity_code = q.capacity AND mc.module_id = q.module_id
     LEFT JOIN student_answers sa ON sa.question_id = q.id AND sa.sprint_id = sq.sprint_id
     WHERE sq.sprint_id = ?
@@ -152,9 +168,11 @@ $capacities_processed = [];
 foreach ($capacities as $c) {
     $cap_code = $c['capacity_code'] ?: 'Geral';
     $mod = $c['module_name'] ?: 'Geral';
-    $desc_text = $c['capacity_desc'] ? substr($c['capacity_desc'], 0, 50) . '...' : $cap_code;
+    $desc_text = $c['capacity_desc']
+        ? ($cap_code . ' — ' . mb_substr($c['capacity_desc'], 0, 55, 'UTF-8') . (mb_strlen($c['capacity_desc'], 'UTF-8') > 55 ? '...' : ''))
+        : $cap_code;
     
-    // Label do gráfico agora inclui o módulo
+    // Label do gráfico agora inclui o módulo, código e descrição da capacidade
     $chart_label = "[$mod] $desc_text";
     $labels[] = (string)$chart_label;
     
@@ -564,10 +582,13 @@ include 'includes/header.php';
                                     $barColor = $cRate >= 70 ? 'bg-green-500' : ($cRate >= 50 ? 'bg-yellow-500' : 'bg-red-500');
                                     $textColor = $cRate >= 70 ? 'text-green-600' : ($cRate >= 50 ? 'text-yellow-600' : 'text-red-500');
                                 ?>
-                                    <div class="bg-white border border-slate-100 p-3 rounded-xl flex items-center gap-4 shadow-sm hover:bg-slate-50 transition-colors">
-                                        <div class="w-1/3 pr-4">
+                                    <div class="bg-white border border-slate-100 p-3.5 rounded-xl flex items-center gap-4 shadow-sm hover:bg-slate-50 transition-colors">
+                                        <div class="w-3/5 pr-4">
                                             <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-0.5"><?= htmlspecialchars($c['module_name'] ?: 'Geral') ?></p>
-                                            <p class="font-bold text-slate-700 text-sm line-clamp-2" title="<?= htmlspecialchars($c['capacity_desc'] ?? $c['capacity_code']) ?>"><?= htmlspecialchars($c['capacity_code']) ?> - <?= htmlspecialchars($c['capacity_desc'] ?? '') ?></p>
+                                            <p class="font-bold text-slate-700 text-xs md:text-sm leading-snug" title="<?= htmlspecialchars($c['capacity_desc'] ?? $c['capacity_code']) ?>">
+                                                <span class="inline-block px-2 py-0.5 rounded bg-senai-blue text-white text-xs font-black mr-1"><?= htmlspecialchars($c['capacity_code']) ?></span>
+                                                <?= htmlspecialchars($c['capacity_desc'] ?? '') ?>
+                                            </p>
                                         </div>
                                         <div class="flex-1 bg-slate-100 h-3 rounded-full overflow-hidden">
                                             <div class="<?= $barColor ?> h-full transition-all duration-1000" style="width: <?= $cRate ?>%"></div>
@@ -652,8 +673,8 @@ include 'includes/header.php';
                                         <p class="font-bold text-slate-700 mb-2 leading-relaxed" title="<?= htmlspecialchars($q['command']) ?>"><?= nl2br(htmlspecialchars($q['command'])) ?></p>
                                         <div class="text-xs text-slate-500 font-medium flex flex-wrap items-center gap-2">
                                             <span class="bg-slate-200 px-2 py-1 rounded text-senai-blue font-bold"><?= htmlspecialchars($q['module_name'] ?: 'Geral') ?></span>
-                                            <span class="font-bold text-slate-700"><?= htmlspecialchars($q['capacity']) ?></span>
-                                            <span class="text-slate-400 text-[10px] uppercase line-clamp-1 flex-1"><?= htmlspecialchars($q['capacity_desc'] ?? 'Sem descrição') ?></span>
+                                            <span class="font-bold text-slate-800 bg-senai-cyan/15 px-2 py-0.5 rounded"><?= htmlspecialchars($q['capacity']) ?></span>
+                                            <span class="text-slate-600 text-xs leading-snug flex-1"><?= htmlspecialchars($q['capacity_desc'] ?? 'Sem descrição cadastrada') ?></span>
                                         </div>
 
                                         <!-- Pegadinha (Distrator) -->

@@ -35,15 +35,32 @@ if ($_SESSION['user_role'] === 'student' && $attempt['student_id'] != $_SESSION[
     die("Acesso negado. Você só pode visualizar os seus próprios relatórios.");
 }
 
-// Busca as respostas
+// Garante tabela course_capacities para leitura segura da descrição oficial
+try {
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS course_capacities (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            course_id INT NOT NULL,
+            capacity_code VARCHAR(50) NOT NULL,
+            description TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY uq_course_cap (course_id, capacity_code)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
+} catch (Exception $e) {}
+
+// Busca as respostas com a descrição oficial da capacidade (da Matriz do Curso ou do Módulo)
 $stmtAnswers = $pdo->prepare("
     SELECT 
         m.name as module_name,
         q.capacity as capacity_code,
+        COALESCE(cc.description, mc.description) as capacity_desc,
         sa.is_correct
     FROM student_answers sa
     JOIN questions q ON sa.question_id = q.id
     JOIN modules m ON q.module_id = m.id
+    LEFT JOIN course_capacities cc ON cc.course_id = m.course_id AND cc.capacity_code = q.capacity
+    LEFT JOIN module_capacities mc ON mc.module_id = q.module_id AND mc.capacity_code = q.capacity
     WHERE sa.student_id = ? AND sa.sprint_id = ?
 ");
 $stmtAnswers->execute([$attempt['student_id'], $attempt['sprint_id']]);
@@ -68,8 +85,13 @@ foreach ($answers as $a) {
     if ($a['is_correct']) $module_stats[$mod]['c']++;
     
     // Capacidade
-    $cap = $a['capacity_code'];
-    if (!isset($capacity_stats[$cap])) $capacity_stats[$cap] = ['c' => 0, 't' => 0, 'mod' => $mod];
+    $cap = $a['capacity_code'] ?: 'Geral';
+    $capDesc = trim((string)($a['capacity_desc'] ?? ''));
+    if (!isset($capacity_stats[$cap])) {
+        $capacity_stats[$cap] = ['c' => 0, 't' => 0, 'mod' => $mod, 'desc' => $capDesc];
+    } elseif ($capacity_stats[$cap]['desc'] === '' && $capDesc !== '') {
+        $capacity_stats[$cap]['desc'] = $capDesc;
+    }
     $capacity_stats[$cap]['t']++;
     if ($a['is_correct']) $capacity_stats[$cap]['c']++;
 }
@@ -231,7 +253,7 @@ $date_str = date('d/m/Y \à\s H:i', strtotime($attempt['completed_at']));
                 <i class="ph-bold ph-crosshair text-[#1A428A]"></i> Pontos de Atenção (Capacidades)
             </h3>
             
-            <div class="grid grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 gap-3.5">
                 <?php 
                 // Ordenar para mostrar as piores capacidades primeiro
                 uasort($capacity_stats, function($a, $b) {
@@ -243,14 +265,19 @@ $date_str = date('d/m/Y \à\s H:i', strtotime($attempt['completed_at']));
                     $icon = $cpct >= 70 ? 'ph-check-circle text-green-500' : ($cpct >= 40 ? 'ph-warning-circle text-orange-500' : 'ph-x-circle text-red-500');
                     $bg = $cpct >= 70 ? 'bg-green-50' : ($cpct >= 40 ? 'bg-orange-50' : 'bg-red-50');
                 ?>
-                    <div class="<?= $bg ?> border border-white p-4 rounded-xl flex items-start gap-3">
-                        <i class="ph-fill <?= $icon ?> text-xl mt-0.5 shrink-0"></i>
-                        <div>
-                            <p class="font-bold text-slate-800 text-sm mb-1"><?= htmlspecialchars($cName) ?></p>
-                            <p class="text-xs text-slate-500 font-medium line-clamp-1" title="<?= htmlspecialchars($cSt['mod']) ?>"><?= htmlspecialchars($cSt['mod']) ?></p>
-                            <div class="mt-2 text-xs font-black px-2 py-1 bg-white inline-block rounded-md text-slate-700 shadow-sm">
-                                <?= $cpct ?>% Aproveitamento
+                    <div class="<?= $bg ?> border border-white p-4 rounded-xl flex items-start justify-between gap-4">
+                        <div class="flex items-start gap-3 flex-1">
+                            <i class="ph-fill <?= $icon ?> text-xl mt-0.5 shrink-0"></i>
+                            <div class="flex-1">
+                                <p class="font-bold text-slate-800 text-sm leading-snug mb-1">
+                                    <span class="inline-block px-2 py-0.5 rounded bg-slate-800 text-white text-xs font-black mr-1.5"><?= htmlspecialchars($cName) ?></span>
+                                    <?= !empty($cSt['desc']) ? htmlspecialchars($cSt['desc']) : '<span class="text-slate-400 italic font-normal">Capacidade avaliada</span>' ?>
+                                </p>
+                                <p class="text-xs text-slate-500 font-medium"><?= htmlspecialchars($cSt['mod']) ?> • <?= $cSt['c'] ?> de <?= $cSt['t'] ?> acertos</p>
                             </div>
+                        </div>
+                        <div class="text-xs font-black px-2.5 py-1.5 bg-white rounded-lg text-slate-700 shadow-sm shrink-0 self-center">
+                            <?= $cpct ?>% Aproveitamento
                         </div>
                     </div>
                 <?php endforeach; ?>

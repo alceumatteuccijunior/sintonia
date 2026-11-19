@@ -13,7 +13,7 @@ if (!$capacity || $capacity === 'N/A') {
     exit;
 }
 
-if (!defined('OPENAI_API_KEY') || OPENAI_API_KEY === '') {
+if (!defined('OPENAI_API_KEY') || trim(OPENAI_API_KEY) === '' || trim(OPENAI_API_KEY) === 'sua_chave_aqui') {
     echo json_encode(['error' => 'Chave da API da OpenAI não configurada.']);
     exit;
 }
@@ -21,7 +21,7 @@ if (!defined('OPENAI_API_KEY') || OPENAI_API_KEY === '') {
 // Chamar a API da OpenAI via cURL
 $url = 'https://api.openai.com/v1/chat/completions';
 $data = [
-    'model' => 'gpt-3.5-turbo', // Usando 3.5 turbo para rapidez/custo, ou pode ser gpt-4
+    'model' => 'gpt-4o-mini',
     'messages' => [
         [
             'role' => 'system',

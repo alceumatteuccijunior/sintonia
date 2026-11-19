@@ -216,13 +216,30 @@ $stmtMod = $pdo->prepare("
 $stmtMod->execute($params_analytics);
 $modData = $stmtMod->fetchAll();
 
-// Gráfico 3: Desempenho por Capacidade
+try {
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS course_capacities (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            course_id INT NOT NULL,
+            capacity_code VARCHAR(50) NOT NULL,
+            description TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY uq_course_cap (course_id, capacity_code)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
+} catch (Exception $e) {}
+
+// Gráfico 3: Desempenho por Capacidade (com descrição oficial)
 $stmtCap = $pdo->prepare("
     SELECT q.capacity as capacity_code,
+           MAX(COALESCE(cc.description, mc.description)) as capacity_desc,
            SUM(CASE WHEN sa.is_correct = 1 THEN 1 ELSE 0 END) as correct_answers,
            COUNT(sa.id) as total_answers
     FROM student_answers sa
     JOIN questions q ON sa.question_id = q.id
+    JOIN modules m ON q.module_id = m.id
+    LEFT JOIN course_capacities cc ON cc.course_id = m.course_id AND cc.capacity_code = q.capacity
+    LEFT JOIN module_capacities mc ON mc.module_id = q.module_id AND mc.capacity_code = q.capacity
     JOIN sprints s ON sa.sprint_id = s.id
     JOIN classes c ON s.class_id = c.id
     $where_analytics AND q.capacity IS NOT NULL AND q.capacity != ''
@@ -565,8 +582,13 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Preparar Dados (Capacidades)
-    const capLabels = <?= json_encode(array_column($capData, 'capacity_code')) ?>;
+    // Preparar Dados (Capacidades com Descrição)
+    const capLabels = <?= json_encode(array_map(function($d) {
+        $code = $d['capacity_code'];
+        $desc = trim((string)($d['capacity_desc'] ?? ''));
+        if ($desc === '') return $code;
+        return $code . ' — ' . (mb_strlen($desc, 'UTF-8') > 45 ? mb_substr($desc, 0, 45, 'UTF-8') . '...' : $desc);
+    }, $capData), JSON_UNESCAPED_UNICODE) ?>;
     const capData = <?= json_encode(array_map(function($d) { return round(($d['correct_answers'] / $d['total_answers']) * 100, 1); }, $capData)) ?>;
     
     new Chart(document.getElementById('chartCap').getContext('2d'), {

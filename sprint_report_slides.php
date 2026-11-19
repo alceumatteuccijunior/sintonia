@@ -85,18 +85,33 @@ usort($modules_processed, function($a, $b) { return $b['rate'] <=> $a['rate']; }
 $top_modules = array_slice($modules_processed, 0, 3);
 $bottom_modules = array_slice(array_reverse($modules_processed), 0, 3);
 
+try {
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS course_capacities (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            course_id INT NOT NULL,
+            capacity_code VARCHAR(50) NOT NULL,
+            description TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY uq_course_cap (course_id, capacity_code)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
+} catch (Exception $e) {}
+
 // 4. Capacidades
 $stmtCap = $pdo->prepare("
     SELECT q.capacity as capacity_code, 
-           mc.description as capacity_desc,
+           COALESCE(cc.description, mc.description) as capacity_desc,
            COUNT(sa.id) as total_answers,
            SUM(IF(sa.is_correct = 1, 1, 0)) as correct_answers
     FROM sprint_questions sq
     JOIN questions q ON sq.question_id = q.id
+    JOIN modules m ON q.module_id = m.id
+    LEFT JOIN course_capacities cc ON cc.course_id = m.course_id AND cc.capacity_code = q.capacity
     LEFT JOIN module_capacities mc ON mc.capacity_code = q.capacity AND mc.module_id = q.module_id
     LEFT JOIN student_answers sa ON sa.question_id = q.id AND sa.sprint_id = sq.sprint_id
     WHERE sq.sprint_id = ?
-    GROUP BY q.capacity, mc.description
+    GROUP BY q.capacity, COALESCE(cc.description, mc.description)
 ");
 $stmtCap->execute([$sprint_id]);
 $capacities = $stmtCap->fetchAll();
@@ -112,12 +127,14 @@ $bottom_capacities = array_slice(array_reverse($capacities_processed), 0, 3);
 
 // 5. Questões
 $stmtQ = $pdo->prepare("
-    SELECT q.id, q.command, q.capacity, q.image_url, m.name as module_name,
+    SELECT q.id, q.command, q.capacity, COALESCE(cc.description, mc.description) as capacity_desc, q.image_url, m.name as module_name,
            COUNT(sa.id) as total_answers,
            SUM(IF(sa.is_correct = 1, 1, 0)) as correct_answers
     FROM sprint_questions sq
     JOIN questions q ON sq.question_id = q.id
     JOIN modules m ON q.module_id = m.id
+    LEFT JOIN course_capacities cc ON cc.course_id = m.course_id AND cc.capacity_code = q.capacity
+    LEFT JOIN module_capacities mc ON mc.capacity_code = q.capacity AND mc.module_id = q.module_id
     LEFT JOIN student_answers sa ON sa.question_id = q.id AND sa.sprint_id = sq.sprint_id
     WHERE sq.sprint_id = ?
     GROUP BY q.id
@@ -425,27 +442,29 @@ $slideNumber = 1;
             
             <div class="flex gap-6 mt-2">
                 <!-- Top 3 -->
-                <div class="flex-1 space-y-4">
+                <div class="flex-1 space-y-3">
                     <h3 class="font-bold text-green-700 uppercase text-xs tracking-wider flex items-center gap-1 border-b border-green-200 pb-2"><i class="ph-fill ph-check-circle"></i> Top 3 Capacidades (Força)</h3>
                     <?php foreach($top_capacities as $c): ?>
-                    <div class="bg-green-50 border border-green-100 p-3 rounded-lg flex items-center justify-between">
-                        <div class="font-bold text-green-900 text-sm truncate max-w-[250px]" title="<?= htmlspecialchars($c['capacity_desc'] ?: $c['capacity_code']) ?>">
-                            <?= htmlspecialchars($c['capacity_code']) ?>
+                    <div class="bg-green-50 border border-green-100 p-3 rounded-lg flex items-center justify-between gap-3">
+                        <div class="font-bold text-green-900 text-xs leading-snug flex-1" title="<?= htmlspecialchars($c['capacity_desc'] ?: $c['capacity_code']) ?>">
+                            <span class="inline-block px-1.5 py-0.5 rounded bg-green-700 text-white text-[11px] font-black mr-1"><?= htmlspecialchars($c['capacity_code']) ?></span>
+                            <?= htmlspecialchars($c['capacity_desc'] ?: '') ?>
                         </div>
-                        <div class="font-black text-green-600 text-lg"><?= round($c['rate'],1) ?>%</div>
+                        <div class="font-black text-green-600 text-lg shrink-0"><?= round($c['rate'],1) ?>%</div>
                     </div>
                     <?php endforeach; ?>
                 </div>
 
                 <!-- Bottom 3 -->
-                <div class="flex-1 space-y-4">
+                <div class="flex-1 space-y-3">
                     <h3 class="font-bold text-red-700 uppercase text-xs tracking-wider flex items-center gap-1 border-b border-red-200 pb-2"><i class="ph-fill ph-warning-circle"></i> Top 3 Capacidades (Atenção)</h3>
                     <?php foreach($bottom_capacities as $c): ?>
-                    <div class="bg-red-50 border border-red-100 p-3 rounded-lg flex items-center justify-between">
-                        <div class="font-bold text-red-900 text-sm truncate max-w-[250px]" title="<?= htmlspecialchars($c['capacity_desc'] ?: $c['capacity_code']) ?>">
-                            <?= htmlspecialchars($c['capacity_code']) ?>
+                    <div class="bg-red-50 border border-red-100 p-3 rounded-lg flex items-center justify-between gap-3">
+                        <div class="font-bold text-red-900 text-xs leading-snug flex-1" title="<?= htmlspecialchars($c['capacity_desc'] ?: $c['capacity_code']) ?>">
+                            <span class="inline-block px-1.5 py-0.5 rounded bg-red-700 text-white text-[11px] font-black mr-1"><?= htmlspecialchars($c['capacity_code']) ?></span>
+                            <?= htmlspecialchars($c['capacity_desc'] ?: '') ?>
                         </div>
-                        <div class="font-black text-red-600 text-lg"><?= round($c['rate'],1) ?>%</div>
+                        <div class="font-black text-red-600 text-lg shrink-0"><?= round($c['rate'],1) ?>%</div>
                     </div>
                     <?php endforeach; ?>
                 </div>
@@ -476,9 +495,10 @@ $slideNumber = 1;
                     $cRate = round($c['rate'], 1);
                     $barColor = $cRate >= 70 ? 'bg-green-500' : ($cRate >= 50 ? 'bg-yellow-500' : 'bg-red-500');
                 ?>
-                <div class="flex items-center gap-3 bg-slate-50 px-4 py-3 rounded-lg border border-slate-100">
-                    <div class="w-1/3 font-bold text-slate-700 text-sm truncate" title="<?= htmlspecialchars($c['capacity_desc'] ?: $c['capacity_code']) ?>">
-                        <?= htmlspecialchars($c['capacity_code'] . ($c['capacity_desc'] ? ' - ' . substr($c['capacity_desc'], 0, 40) : '')) ?>
+                <div class="flex items-center gap-3 bg-slate-50 px-4 py-2.5 rounded-lg border border-slate-100">
+                    <div class="w-3/5 font-bold text-slate-700 text-xs leading-snug" title="<?= htmlspecialchars($c['capacity_desc'] ?: $c['capacity_code']) ?>">
+                        <span class="inline-block px-1.5 py-0.5 rounded bg-[#0038A8] text-white text-[11px] font-black mr-1"><?= htmlspecialchars($c['capacity_code']) ?></span>
+                        <?= htmlspecialchars($c['capacity_desc'] ?: '') ?>
                     </div>
                     <div class="flex-1 bg-slate-200 h-4 rounded-full overflow-hidden">
                         <div class="<?= $barColor ?> h-full" style="width: <?= $cRate ?>%"></div>
@@ -545,7 +565,7 @@ $slideNumber = 1;
                     <div class="flex justify-between items-start border-b border-slate-100 pb-2">
                         <div class="flex gap-2 items-center">
                             <span class="text-[9px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-600 uppercase">Q<?= $q['id'] ?></span>
-                            <span class="text-[9px] font-bold px-2 py-0.5 rounded bg-senai-cyan/10 text-senai-cyan uppercase">CAP: <?= htmlspecialchars($q['capacity']) ?></span>
+                            <span class="text-[9px] font-bold px-2 py-0.5 rounded bg-senai-cyan/10 text-senai-cyan">CAP: <?= htmlspecialchars($q['capacity'] . (!empty($q['capacity_desc']) ? ' — ' . mb_substr($q['capacity_desc'], 0, 75, 'UTF-8') . (mb_strlen($q['capacity_desc'], 'UTF-8') > 75 ? '...' : '') : '')) ?></span>
                             <span class="text-[9px] font-bold text-slate-500 uppercase max-w-[200px] truncate" title="<?= htmlspecialchars($q['module_name']) ?>"><?= htmlspecialchars($q['module_name']) ?></span>
                             <?php if (!empty($q['image_url'])): ?>
                                 <span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 flex items-center gap-0.5" title="Possui Imagem de Apoio">

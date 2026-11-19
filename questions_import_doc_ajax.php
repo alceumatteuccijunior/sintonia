@@ -753,7 +753,7 @@ PROMPT;
 
     $decoded = json_decode($response, true);
 
-    // Fallback automático para gpt-3.5-turbo caso a chave não tenha acesso ao gpt-4o-mini
+    // Fallback automático para gpt-4o caso ocorra falha de parâmetro com gpt-4o-mini
     if (isset($decoded['error'])) {
         $errCode = $decoded['error']['code'] ?? '';
         $errMsg  = $decoded['error']['message'] ?? '';
@@ -766,8 +766,8 @@ PROMPT;
             exit;
         }
 
-        $payload['model'] = 'gpt-3.5-turbo';
-        $payload['max_tokens'] = 4000;
+        $payload['model'] = 'gpt-4o';
+        $payload['max_tokens'] = 4096;
         unset($payload['response_format']);
 
         $ch = curl_init($url);

@@ -7,7 +7,7 @@ if (!isset($_SESSION['user_id']) || !in_array($_SESSION['user_role'], ['admin', 
 
 require_once 'config.php';
 
-if (!defined('OPENAI_API_KEY') || OPENAI_API_KEY === '') {
+if (!defined('OPENAI_API_KEY') || trim(OPENAI_API_KEY) === '' || trim(OPENAI_API_KEY) === 'sua_chave_aqui') {
     echo json_encode(['error' => 'Chave da API da OpenAI não configurada.']);
     exit;
 }
@@ -33,7 +33,7 @@ $prompt .= "\nEscreva um RESUMO EXECUTIVO (em no máximo 3 parágrafos curtos) f
 
 $url = 'https://api.openai.com/v1/chat/completions';
 $postData = [
-    'model' => 'gpt-3.5-turbo',
+    'model' => 'gpt-4o-mini',
     'messages' => [
         [
             'role' => 'system',
