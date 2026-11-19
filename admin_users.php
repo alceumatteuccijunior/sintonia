@@ -288,13 +288,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Filtros
-$search = $_GET['search'] ?? '';
-$roleFilter = $_GET['role'] ?? '';
+// Dados auxiliares para os filtros avançados (Regionais, Unidades, Cursos)
+$allRegionals = $pdo->query("SELECT id, name FROM regionals ORDER BY name ASC")->fetchAll();
+$allUnitsList = $pdo->query("
+    SELECT u.id, u.name as unit_name, u.regional_id, r.name as regional_name
+    FROM units u
+    LEFT JOIN regionals r ON u.regional_id = r.id
+    ORDER BY r.name ASC, u.name ASC
+")->fetchAll();
+$allCoursesList = $pdo->query("SELECT id, name FROM courses ORDER BY name ASC")->fetchAll();
+
+// Contadores rápidos por perfil para os cards/atalhos de filtro
+$roleCounts = ['total' => 0, 'student' => 0, 'teacher' => 0, 'admin' => 0, 'no_class' => 0];
+try {
+    $stmtCounts = $pdo->query("
+        SELECT u.role,
+               COUNT(*) as total,
+               SUM(CASE WHEN u.role = 'student' AND NOT EXISTS (SELECT 1 FROM class_students cs WHERE cs.student_id = u.id) THEN 1 ELSE 0 END) as without_class
+        FROM users u
+        GROUP BY u.role
+    ");
+    foreach ($stmtCounts->fetchAll() as $rc) {
+        $rKey = $rc['role'];
+        $cnt  = (int)$rc['total'];
+        $roleCounts['total'] += $cnt;
+        if (isset($roleCounts[$rKey])) {
+            $roleCounts[$rKey] = $cnt;
+        }
+        $roleCounts['no_class'] += (int)$rc['without_class'];
+    }
+} catch (Exception $e) {}
+
+// Filtros Avançados
+$search         = trim($_GET['search'] ?? '');
+$roleFilter     = trim($_GET['role'] ?? '');
+$classFilter    = trim($_GET['class_id'] ?? '');
+$courseFilter   = !empty($_GET['course_id']) ? (int)$_GET['course_id'] : 0;
+$unitFilter     = trim($_GET['unit_id'] ?? '');
+$regionalFilter = !empty($_GET['regional_id']) ? (int)$_GET['regional_id'] : 0;
 
 $sql = "SELECT u.id, u.unit_id, u.name, u.email, u.role, u.created_at, 
-               un.name as unit_name, r.name as regional_name,
-               cs.class_id, c.name as class_name, co.name as course_name
+               un.name as unit_name, un.regional_id, r.name as regional_name,
+               cs.class_id, c.name as class_name, c.course_id, co.name as course_name
         FROM users u 
         LEFT JOIN units un ON u.unit_id = un.id 
         LEFT JOIN regionals r ON un.regional_id = r.id 
@@ -308,20 +343,52 @@ $sql = "SELECT u.id, u.unit_id, u.name, u.email, u.role, u.created_at,
         WHERE 1=1";
 $params = [];
 
-if ($search) {
-    $sql .= " AND (u.name LIKE ? OR u.email LIKE ?)";
+if ($search !== '') {
+    $sql .= " AND (u.name LIKE ? OR u.email LIKE ? OR c.name LIKE ? OR co.name LIKE ?)";
+    $params[] = "%$search%";
+    $params[] = "%$search%";
     $params[] = "%$search%";
     $params[] = "%$search%";
 }
-if ($roleFilter) {
+if ($roleFilter !== '') {
     $sql .= " AND u.role = ?";
     $params[] = $roleFilter;
 }
+if ($classFilter !== '') {
+    if ($classFilter === '__none__') {
+        $sql .= " AND u.role = 'student' AND cs.class_id IS NULL";
+    } elseif ($classFilter === '__with_class__') {
+        $sql .= " AND u.role = 'student' AND cs.class_id IS NOT NULL";
+    } elseif (is_numeric($classFilter)) {
+        $sql .= " AND cs.class_id = ?";
+        $params[] = (int)$classFilter;
+    }
+}
+if ($courseFilter > 0) {
+    $sql .= " AND c.course_id = ?";
+    $params[] = $courseFilter;
+}
+if ($unitFilter !== '') {
+    if ($unitFilter === '__none__') {
+        $sql .= " AND u.unit_id IS NULL";
+    } elseif (is_numeric($unitFilter)) {
+        $sql .= " AND (u.unit_id = ? OR c.unit_id = ?)";
+        $params[] = (int)$unitFilter;
+        $params[] = (int)$unitFilter;
+    }
+}
+if ($regionalFilter > 0) {
+    $sql .= " AND un.regional_id = ?";
+    $params[] = $regionalFilter;
+}
+
 $sql .= " ORDER BY u.name ASC";
 
 $stmtUsers = $pdo->prepare($sql);
 $stmtUsers->execute($params);
 $users = $stmtUsers->fetchAll();
+
+$hasActiveFilters = ($search !== '' || $roleFilter !== '' || $classFilter !== '' || $courseFilter > 0 || $unitFilter !== '' || $regionalFilter > 0);
 
 $currentPage = 'admin_users';
 include 'includes/header.php';
@@ -379,35 +446,158 @@ include 'includes/header.php';
                     </div>
                 <?php endif; ?>
 
-                <div class="glass-panel p-6 mb-8 flex flex-col md:flex-row gap-4">
-                    <form method="GET" class="flex-1 flex gap-2">
-                        <div class="relative flex-1">
-                            <i class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                            <input type="text" name="search" value="<?= htmlspecialchars($search) ?>" placeholder="Buscar por nome ou email..." class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-senai-blue focus:ring-1 focus:ring-senai-blue transition-all">
+                <!-- Atalhos Rápidos por Tipo de Usuário (Role) e Situação de Turma -->
+                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-5">
+                    <a href="admin_users.php" class="p-3.5 rounded-2xl border transition-all flex items-center justify-between <?= ($roleFilter === '' && $classFilter === '') ? 'bg-slate-800 text-white border-slate-800 shadow-md' : 'bg-white/80 hover:bg-white text-slate-700 border-slate-200/80 shadow-sm' ?>">
+                        <div class="flex items-center gap-2.5">
+                            <i class="ph-fill ph-users-three text-lg <?= ($roleFilter === '' && $classFilter === '') ? 'text-senai-cyan' : 'text-slate-400' ?>"></i>
+                            <span class="text-xs font-bold">Todos</span>
                         </div>
-                        <select name="role" class="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-senai-blue transition-all">
-                            <option value="">Todos os Perfis</option>
-                            <option value="admin" <?= $roleFilter === 'admin' ? 'selected' : '' ?>>Administradores</option>
-                            <option value="teacher" <?= $roleFilter === 'teacher' ? 'selected' : '' ?>>Professores</option>
-                            <option value="student" <?= $roleFilter === 'student' ? 'selected' : '' ?>>Alunos</option>
-                        </select>
-                        <button type="submit" class="px-5 py-2.5 bg-slate-800 text-white rounded-xl font-bold text-sm hover:bg-slate-700 transition-colors">
-                            Filtrar
-                        </button>
-                        <?php if($search || $roleFilter): ?>
-                            <a href="admin_users.php" class="px-4 py-2.5 bg-slate-100 text-slate-500 rounded-xl font-bold text-sm hover:bg-slate-200 transition-colors flex items-center">
-                                Limpar
-                            </a>
-                        <?php endif; ?>
+                        <span class="text-xs font-black px-2 py-0.5 rounded-lg <?= ($roleFilter === '' && $classFilter === '') ? 'bg-white/15 text-white' : 'bg-slate-100 text-slate-700' ?>"><?= $roleCounts['total'] ?></span>
+                    </a>
+
+                    <a href="admin_users.php?role=student" class="p-3.5 rounded-2xl border transition-all flex items-center justify-between <?= ($roleFilter === 'student' && $classFilter !== '__none__') ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' : 'bg-white/80 hover:bg-white text-slate-700 border-slate-200/80 shadow-sm' ?>">
+                        <div class="flex items-center gap-2.5">
+                            <i class="ph-fill ph-student text-lg <?= ($roleFilter === 'student' && $classFilter !== '__none__') ? 'text-white' : 'text-indigo-500' ?>"></i>
+                            <span class="text-xs font-bold">Alunos</span>
+                        </div>
+                        <span class="text-xs font-black px-2 py-0.5 rounded-lg <?= ($roleFilter === 'student' && $classFilter !== '__none__') ? 'bg-white/20 text-white' : 'bg-indigo-50 text-indigo-700' ?>"><?= $roleCounts['student'] ?></span>
+                    </a>
+
+                    <a href="admin_users.php?role=teacher" class="p-3.5 rounded-2xl border transition-all flex items-center justify-between <?= $roleFilter === 'teacher' ? 'bg-senai-blue text-white border-senai-blue shadow-md' : 'bg-white/80 hover:bg-white text-slate-700 border-slate-200/80 shadow-sm' ?>">
+                        <div class="flex items-center gap-2.5">
+                            <i class="ph-fill ph-chalkboard-teacher text-lg <?= $roleFilter === 'teacher' ? 'text-white' : 'text-senai-blue' ?>"></i>
+                            <span class="text-xs font-bold">Professores</span>
+                        </div>
+                        <span class="text-xs font-black px-2 py-0.5 rounded-lg <?= $roleFilter === 'teacher' ? 'bg-white/20 text-white' : 'bg-blue-50 text-senai-blue' ?>"><?= $roleCounts['teacher'] ?></span>
+                    </a>
+
+                    <a href="admin_users.php?role=admin" class="p-3.5 rounded-2xl border transition-all flex items-center justify-between <?= $roleFilter === 'admin' ? 'bg-senai-orange text-white border-senai-orange shadow-md' : 'bg-white/80 hover:bg-white text-slate-700 border-slate-200/80 shadow-sm' ?>">
+                        <div class="flex items-center gap-2.5">
+                            <i class="ph-fill ph-shield-star text-lg <?= $roleFilter === 'admin' ? 'text-white' : 'text-senai-orange' ?>"></i>
+                            <span class="text-xs font-bold">Admins</span>
+                        </div>
+                        <span class="text-xs font-black px-2 py-0.5 rounded-lg <?= $roleFilter === 'admin' ? 'bg-white/20 text-white' : 'bg-orange-50 text-senai-orange' ?>"><?= $roleCounts['admin'] ?></span>
+                    </a>
+
+                    <a href="admin_users.php?role=student&class_id=__none__" class="p-3.5 rounded-2xl border transition-all flex items-center justify-between <?= $classFilter === '__none__' ? 'bg-amber-600 text-white border-amber-600 shadow-md' : 'bg-white/80 hover:bg-white text-slate-700 border-slate-200/80 shadow-sm' ?>">
+                        <div class="flex items-center gap-2.5">
+                            <i class="ph-fill ph-warning-circle text-lg <?= $classFilter === '__none__' ? 'text-white' : 'text-amber-500' ?>"></i>
+                            <span class="text-xs font-bold">Sem Turma</span>
+                        </div>
+                        <span class="text-xs font-black px-2 py-0.5 rounded-lg <?= $classFilter === '__none__' ? 'bg-white/20 text-white' : 'bg-amber-50 text-amber-700' ?>"><?= $roleCounts['no_class'] ?></span>
+                    </a>
+                </div>
+
+                <!-- Painel Completo de Filtros -->
+                <div class="glass-panel p-5 mb-6">
+                    <form method="GET" action="admin_users.php" class="space-y-3">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                            <!-- Busca textual -->
+                            <div class="sm:col-span-2">
+                                <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Buscar Usuário / E-mail / Turma</label>
+                                <div class="relative">
+                                    <i class="ph ph-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                                    <input type="text" name="search" value="<?= htmlspecialchars($search) ?>" placeholder="Digite nome, e-mail, turma ou curso..." class="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs md:text-sm focus:outline-none focus:border-senai-blue focus:ring-1 focus:ring-senai-blue transition-all">
+                                </div>
+                            </div>
+
+                            <!-- Tipo de Usuário (Role) -->
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Tipo de Usuário</label>
+                                <select name="role" onchange="this.form.submit()" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs md:text-sm text-slate-700 font-medium focus:outline-none focus:border-senai-blue transition-all">
+                                    <option value="">Todos os Perfis</option>
+                                    <option value="student" <?= $roleFilter === 'student' ? 'selected' : '' ?>>Alunos</option>
+                                    <option value="teacher" <?= $roleFilter === 'teacher' ? 'selected' : '' ?>>Professores</option>
+                                    <option value="admin" <?= $roleFilter === 'admin' ? 'selected' : '' ?>>Administradores</option>
+                                </select>
+                            </div>
+
+                            <!-- Filtro por Turma -->
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Turma</label>
+                                <select name="class_id" onchange="this.form.submit()" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs md:text-sm text-slate-700 font-medium focus:outline-none focus:border-senai-blue transition-all">
+                                    <option value="">Todas as Turmas</option>
+                                    <option value="__none__" <?= $classFilter === '__none__' ? 'selected' : '' ?>>⚠️ Alunos Sem Turma Vinculada</option>
+                                    <option value="__with_class__" <?= $classFilter === '__with_class__' ? 'selected' : '' ?>>✅ Alunos Com Turma Vinculada</option>
+                                    <?php foreach ($allClasses as $c): ?>
+                                        <option value="<?= $c['id'] ?>" <?= (is_numeric($classFilter) && (int)$classFilter === (int)$c['id']) ? 'selected' : '' ?>>
+                                            <?= htmlspecialchars($c['name']) ?><?= !empty($c['course_name']) ? ' — ' . htmlspecialchars($c['course_name']) : '' ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2 border-t border-slate-100 items-end">
+                            <!-- Filtro por Curso -->
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Curso</label>
+                                <select name="course_id" onchange="this.form.submit()" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs md:text-sm text-slate-700 font-medium focus:outline-none focus:border-senai-blue transition-all">
+                                    <option value="">Todos os Cursos</option>
+                                    <?php foreach ($allCoursesList as $coItem): ?>
+                                        <option value="<?= $coItem['id'] ?>" <?= $courseFilter === (int)$coItem['id'] ? 'selected' : '' ?>>
+                                            <?= htmlspecialchars($coItem['name']) ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+
+                            <!-- Filtro por Unidade Escolar -->
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Unidade Escolar</label>
+                                <select name="unit_id" onchange="this.form.submit()" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs md:text-sm text-slate-700 font-medium focus:outline-none focus:border-senai-blue transition-all">
+                                    <option value="">Todas as Unidades</option>
+                                    <option value="__none__" <?= $unitFilter === '__none__' ? 'selected' : '' ?>>Sem Unidade Vinculada</option>
+                                    <?php foreach ($allUnitsList as $unItem): ?>
+                                        <option value="<?= $unItem['id'] ?>" <?= (is_numeric($unitFilter) && (int)$unitFilter === (int)$unItem['id']) ? 'selected' : '' ?>>
+                                            <?= htmlspecialchars($unItem['unit_name']) ?><?= !empty($unItem['regional_name']) ? ' (' . htmlspecialchars($unItem['regional_name']) . ')' : '' ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+
+                            <!-- Filtro por Regional -->
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Regional (DR)</label>
+                                <select name="regional_id" onchange="this.form.submit()" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs md:text-sm text-slate-700 font-medium focus:outline-none focus:border-senai-blue transition-all">
+                                    <option value="">Todas as Regionais</option>
+                                    <?php foreach ($allRegionals as $regItem): ?>
+                                        <option value="<?= $regItem['id'] ?>" <?= $regionalFilter === (int)$regItem['id'] ? 'selected' : '' ?>>
+                                            <?= htmlspecialchars($regItem['name']) ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+
+                            <!-- Botões de Ação do Filtro -->
+                            <div class="flex items-center gap-2 justify-end">
+                                <?php if ($hasActiveFilters): ?>
+                                    <a href="admin_users.php" class="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl font-bold text-xs md:text-sm hover:bg-slate-200 transition-colors flex items-center gap-1.5">
+                                        <i class="ph-bold ph-x"></i> Limpar
+                                    </a>
+                                <?php endif; ?>
+                                <button type="submit" class="flex-1 sm:flex-initial px-5 py-2 bg-slate-800 text-white rounded-xl font-bold text-xs md:text-sm hover:bg-slate-700 transition-colors flex items-center justify-center gap-1.5 shadow-sm">
+                                    <i class="ph-bold ph-funnel"></i> Filtrar
+                                </button>
+                            </div>
+                        </div>
                     </form>
                 </div>
 
                 <div class="glass-panel overflow-hidden">
+                    <div class="px-4 py-3 border-b border-slate-100 bg-white/60 flex items-center justify-between text-xs text-slate-500 font-semibold">
+                        <span>Exibindo <strong class="text-slate-800"><?= count($users) ?></strong> usuário(s) encontrado(s)</span>
+                        <?php if ($hasActiveFilters): ?>
+                            <span class="text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-full text-[11px] font-bold">Filtros ativos</span>
+                        <?php endif; ?>
+                    </div>
                     <div class="overflow-x-auto">
                         <table class="w-full text-left border-collapse">
                             <thead>
                                 <tr class="border-b border-slate-200 text-xs uppercase tracking-widest text-slate-400 bg-slate-50/50">
                                     <th class="p-4 font-semibold">Usuário</th>
+                                    <th class="p-4 font-semibold">Turma / Curso</th>
                                     <th class="p-4 font-semibold">Email</th>
                                     <th class="p-4 font-semibold">Unidade Escolar</th>
                                     <th class="p-4 font-semibold">Perfil (Role)</th>
@@ -417,7 +607,7 @@ include 'includes/header.php';
                             <tbody class="text-sm">
                                 <?php if(empty($users)): ?>
                                 <tr>
-                                    <td colspan="4" class="p-8 text-center text-slate-400 font-medium">Nenhum usuário encontrado.</td>
+                                    <td colspan="6" class="p-8 text-center text-slate-400 font-medium">Nenhum usuário encontrado para os filtros selecionados.</td>
                                 </tr>
                                 <?php endif; ?>
                                 <?php foreach($users as $u): 
@@ -433,18 +623,27 @@ include 'includes/header.php';
                                         </div>
                                         <div class="flex flex-col">
                                             <span class="text-slate-800"><?= htmlspecialchars($u['name']) ?></span>
-                                            <?php if ($u['role'] === 'student'): ?>
-                                                <?php if (!empty($u['class_name'])): ?>
-                                                    <span class="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200/70 px-2 py-0.5 rounded-md w-max mt-1" title="Turma: <?= htmlspecialchars($u['class_name']) ?><?= !empty($u['course_name']) ? ' (' . htmlspecialchars($u['course_name']) . ')' : '' ?>">
-                                                        <i class="ph-bold ph-chalkboard text-indigo-500"></i> <?= htmlspecialchars($u['class_name']) ?>
-                                                    </span>
-                                                <?php else: ?>
-                                                    <span class="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-200/70 px-2 py-0.5 rounded-md w-max mt-1" title="Aluno ainda sem turma vinculada">
-                                                        <i class="ph-bold ph-warning text-amber-500"></i> Sem Turma
-                                                    </span>
-                                                <?php endif; ?>
-                                            <?php endif; ?>
                                         </div>
+                                    </td>
+                                    <td class="p-4 text-xs">
+                                        <?php if ($u['role'] === 'student'): ?>
+                                            <?php if (!empty($u['class_name'])): ?>
+                                                <a href="admin_users.php?class_id=<?= (int)$u['class_id'] ?>" class="inline-flex items-center gap-1 text-[11px] font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200/70 px-2.5 py-1 rounded-lg w-max transition-colors" title="Filtrar por esta turma">
+                                                    <i class="ph-bold ph-chalkboard text-indigo-500"></i> <?= htmlspecialchars($u['class_name']) ?>
+                                                </a>
+                                                <?php if (!empty($u['course_name'])): ?>
+                                                    <div class="text-[11px] text-slate-400 font-medium mt-0.5 truncate max-w-[200px]" title="<?= htmlspecialchars($u['course_name']) ?>">
+                                                        <?= htmlspecialchars($u['course_name']) ?>
+                                                    </div>
+                                                <?php endif; ?>
+                                            <?php else: ?>
+                                                <a href="admin_users.php?role=student&class_id=__none__" class="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200/70 px-2 py-0.5 rounded-md w-max transition-colors" title="Aluno ainda sem turma vinculada">
+                                                    <i class="ph-bold ph-warning text-amber-500"></i> Sem Turma
+                                                </a>
+                                            <?php endif; ?>
+                                        <?php else: ?>
+                                            <span class="text-slate-400 italic">—</span>
+                                        <?php endif; ?>
                                     </td>
                                     <td class="p-4 text-slate-500 font-medium"><?= htmlspecialchars($u['email']) ?></td>
                                     <td class="p-4 text-slate-500 text-xs">
