@@ -78,6 +78,10 @@ $teachers = [];
 $modules = [];
 $classes = [];
 
+// Lista completa de professores e turmas para o modal de edição de Sprint/Diagnóstica
+$allTeachersForEdit = $pdo->query("SELECT id, name, email FROM users WHERE role IN ('teacher', 'admin') ORDER BY name ASC")->fetchAll();
+$allClassesForEdit  = $pdo->query("SELECT c.id, c.name, co.name AS course_name FROM classes c LEFT JOIN courses co ON c.course_id = co.id ORDER BY c.name ASC")->fetchAll();
+
 if ($is_admin) {
     $regionals = $pdo->query("SELECT id, name FROM regionals ORDER BY name ASC")->fetchAll();
     $units = $pdo->query("SELECT id, regional_id, name FROM units ORDER BY name ASC")->fetchAll();
@@ -628,7 +632,11 @@ include 'includes/header.php';
                                         </div>
 
                                         <button onclick="openSprintModal(<?= $s['id'] ?>)" class="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all flex items-center gap-1.5">
-                                            <i class="ph-bold ph-gear"></i> Detalhes / Reagendar
+                                            <i class="ph-bold ph-pencil-simple"></i> Editar / Reagendar
+                                        </button>
+
+                                        <button onclick="deleteScheduledSprint(<?= $s['id'] ?>)" class="px-3 py-2 rounded-xl bg-red-50 hover:bg-red-600 text-red-600 hover:text-white border border-red-200 text-xs font-bold transition-all flex items-center gap-1" title="Cancelar e excluir diagnóstica (avisa professor por e-mail)">
+                                            <i class="ph-bold ph-trash"></i>
                                         </button>
 
                                         <a href="sprint_report.php?id=<?= $s['id'] ?>" class="px-3.5 py-2 rounded-xl bg-senai-blue text-white text-xs font-bold hover:bg-[#153673] transition-all flex items-center gap-1.5 shadow-sm">
@@ -696,14 +704,42 @@ include 'includes/header.php';
                 </div>
             </div>
 
-            <!-- Formulário de Reagendamento / Alteração de Data -->
+            <!-- Formulário Completo de Edição, Professor Responsável e Reagendamento -->
             <form id="form-reschedule" onsubmit="submitReschedule(event)" class="p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100 space-y-3">
                 <input type="hidden" id="modal-sprint-id" name="sprint_id" value="">
                 <input type="hidden" name="action" value="reschedule">
 
-                <h4 class="text-xs font-bold text-indigo-900 uppercase tracking-wider flex items-center gap-1.5">
-                    <i class="ph-bold ph-pencil-simple"></i> Reagendar / Alterar Horário
-                </h4>
+                <div class="flex items-center justify-between">
+                    <h4 class="text-xs font-bold text-indigo-900 uppercase tracking-wider flex items-center gap-1.5">
+                        <i class="ph-bold ph-pencil-simple"></i> Editar Diagnóstica, Professor &amp; Agendamento
+                    </h4>
+                    <span class="text-[10px] font-semibold text-indigo-600 bg-indigo-100/80 px-2 py-0.5 rounded-full">Notifica por e-mail</span>
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-600 mb-1">Nome da Diagnóstica / Sprint</label>
+                    <input type="text" id="modal-input-name" name="name" required class="w-full px-3 py-2 rounded-xl border border-indigo-200 bg-white text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20">
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-600 mb-1">Professor(a) Responsável</label>
+                        <select id="modal-input-teacher" name="teacher_id" required class="w-full px-3 py-2 rounded-xl border border-indigo-200 bg-white text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20">
+                            <?php foreach ($allTeachersForEdit as $tEd): ?>
+                                <option value="<?= $tEd['id'] ?>"><?= htmlspecialchars($tEd['name']) ?><?= !empty($tEd['email']) ? ' (' . htmlspecialchars($tEd['email']) . ')' : '' ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-600 mb-1">Turma Vinculada</label>
+                        <select id="modal-input-class" name="class_id" required class="w-full px-3 py-2 rounded-xl border border-indigo-200 bg-white text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20">
+                            <?php foreach ($allClassesForEdit as $clEd): ?>
+                                <option value="<?= $clEd['id'] ?>"><?= htmlspecialchars($clEd['name']) ?><?= !empty($clEd['course_name']) ? ' — ' . htmlspecialchars($clEd['course_name']) : '' ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div>
@@ -717,12 +753,35 @@ include 'includes/header.php';
                     </div>
                 </div>
 
-                <div class="flex items-center justify-between pt-1">
-                    <span id="reschedule-feedback" class="text-xs font-bold"></span>
-                    <button type="submit" id="btn-save-reschedule" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm">
-                        <i class="ph-bold ph-floppy-disk"></i> Salvar Agendamento
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-600 mb-1">Tempo Limite (min)</label>
+                        <input type="number" min="1" max="999" id="modal-input-timelimit" name="time_limit_minutes" required class="w-full px-3 py-2 rounded-xl border border-indigo-200 bg-white text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20">
+                    </div>
+
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-600 mb-1">Tempo Mínimo (min)</label>
+                        <input type="number" min="0" max="999" id="modal-input-timemin" name="time_min_minutes" placeholder="0 = Livre" class="w-full px-3 py-2 rounded-xl border border-indigo-200 bg-white text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20">
+                    </div>
+
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-600 mb-1">Situação / Status</label>
+                        <select id="modal-input-status" name="status_override" class="w-full px-3 py-2 rounded-xl border border-indigo-200 bg-white text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20">
+                            <option value="auto">Automático (pela data)</option>
+                            <option value="completed">Encerrada / Concluída</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-indigo-100/80">
+                    <button type="button" id="btn-delete-sprint" onclick="deleteScheduledSprint()" class="bg-red-50 hover:bg-red-600 text-red-600 hover:text-white border border-red-200 px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5">
+                        <i class="ph-bold ph-trash"></i> Excluir Diagnóstica
+                    </button>
+                    <button type="submit" id="btn-save-reschedule" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm ml-auto">
+                        <i class="ph-bold ph-floppy-disk"></i> Salvar e Notificar por E-mail
                     </button>
                 </div>
+                <div id="reschedule-feedback" class="text-xs font-bold"></div>
             </form>
 
             <!-- Integração Google Agenda & E-mail de Orientação ao Professor -->
@@ -792,6 +851,20 @@ include 'includes/header.php';
             badge.classList.add('bg-blue-100', 'text-senai-blue');
         }
 
+        // Inputs de edição completa
+        document.getElementById('modal-input-name').value = s.name || '';
+        const teacherSel = document.getElementById('modal-input-teacher');
+        if (teacherSel && s.teacher_id) {
+            teacherSel.value = s.teacher_id;
+        }
+        const classSel = document.getElementById('modal-input-class');
+        if (classSel && s.class_id) {
+            classSel.value = s.class_id;
+        }
+        document.getElementById('modal-input-timelimit').value = s.time_limit_minutes || 60;
+        document.getElementById('modal-input-timemin').value = s.time_min_minutes ? s.time_min_minutes : '';
+        document.getElementById('modal-input-status').value = (s.status === 'completed') ? 'completed' : 'auto';
+
         // Inputs datetime-local
         document.getElementById('modal-input-start').value = s.start_time ? s.start_time.replace(' ', 'T').slice(0, 16) : '';
         document.getElementById('modal-input-end').value = s.end_time ? s.end_time.replace(' ', 'T').slice(0, 16) : '';
@@ -848,24 +921,82 @@ include 'includes/header.php';
         .then(res => res.json())
         .then(data => {
             btn.disabled = false;
-            btn.innerHTML = '<i class="ph-bold ph-floppy-disk"></i> Salvar Agendamento';
+            btn.innerHTML = '<i class="ph-bold ph-floppy-disk"></i> Salvar e Notificar por E-mail';
             
             if (data.success) {
                 feedback.className = 'text-xs font-bold text-green-600';
                 feedback.textContent = '✔ ' + data.message;
                 setTimeout(() => {
                     window.location.reload();
-                }, 900);
+                }, 1100);
             } else {
                 feedback.className = 'text-xs font-bold text-red-500';
-                feedback.textContent = '✖ ' + (data.error || 'Erro ao reagendar.');
+                feedback.textContent = '✖ ' + (data.error || 'Erro ao salvar alterações.');
             }
         })
         .catch(err => {
             btn.disabled = false;
-            btn.innerHTML = '<i class="ph-bold ph-floppy-disk"></i> Salvar Agendamento';
+            btn.innerHTML = '<i class="ph-bold ph-floppy-disk"></i> Salvar e Notificar por E-mail';
             feedback.className = 'text-xs font-bold text-red-500';
             feedback.textContent = 'Erro de comunicação.';
+        });
+    }
+
+    function deleteScheduledSprint(optionalSprintId) {
+        const sprintId = optionalSprintId || document.getElementById('modal-sprint-id').value;
+        const s = sprintsDatabase[sprintId];
+        if (!sprintId || !s) return;
+
+        const msgConfirm = `Tem certeza que deseja CANCELAR e EXCLUIR a diagnóstica "${s.name}" (Turma: ${s.class_name})?\n\n• O professor responsável (${s.teacher_name || 'Docente'}) receberá um e-mail automático avisando do cancelamento para remover da agenda.\n• Esta ação não pode ser desfeita.`;
+        if (!confirm(msgConfirm)) return;
+
+        const btnDel = document.getElementById('btn-delete-sprint');
+        const feedback = document.getElementById('reschedule-feedback');
+        let origDelHtml = '';
+        if (btnDel) {
+            btnDel.disabled = true;
+            origDelHtml = btnDel.innerHTML;
+            btnDel.innerHTML = '<i class="ph-bold ph-spinner animate-spin"></i> Excluindo...';
+        }
+
+        const formData = new FormData();
+        formData.append('action', 'delete_sprint');
+        formData.append('sprint_id', sprintId);
+
+        fetch('agenda_ajax.php', {
+            method: 'POST',
+            body: formData
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (btnDel) {
+                btnDel.disabled = false;
+                btnDel.innerHTML = origDelHtml;
+            }
+            if (data.success) {
+                if (feedback && !optionalSprintId) {
+                    feedback.className = 'text-xs font-bold text-green-600';
+                    feedback.textContent = '✔ ' + data.message;
+                    setTimeout(() => window.location.reload(), 900);
+                } else {
+                    alert(data.message);
+                    window.location.reload();
+                }
+            } else {
+                if (feedback && !optionalSprintId) {
+                    feedback.className = 'text-xs font-bold text-red-500';
+                    feedback.textContent = '✖ ' + (data.error || 'Erro ao excluir diagnóstica.');
+                } else {
+                    alert(data.error || 'Erro ao excluir diagnóstica.');
+                }
+            }
+        })
+        .catch(() => {
+            if (btnDel) {
+                btnDel.disabled = false;
+                btnDel.innerHTML = origDelHtml;
+            }
+            alert('Erro de comunicação ao excluir a diagnóstica.');
         });
     }
 

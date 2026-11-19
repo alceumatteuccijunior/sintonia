@@ -224,9 +224,92 @@ function send_teacher_sprint_schedule_email(PDO $pdo, int $sprintId, bool $isRes
         </p>
     ";
 
-    $subjectPrefix = $isReschedule ? "[Reagendamento] " : "[Agendamento] ";
+    $subjectPrefix = $isReschedule ? "[Atualização / Reagendamento] " : "[Agendamento] ";
     $subject = $subjectPrefix . "Sprint: {$sprint['name']} ({$sprint['class_name']}) — Agenda e Orientações";
 
+    return (bool)send_system_email($sprint['teacher_email'], $subject, $message);
+}
+
+/**
+ * Envia e-mail ao professor anterior avisando que a responsabilidade pela Sprint/Diagnóstica
+ * foi transferida para outro docente.
+ */
+function send_teacher_sprint_reassigned_out_email(
+    string $oldTeacherName,
+    string $oldTeacherEmail,
+    string $newTeacherName,
+    array $sprint,
+    string $changedByName = 'Coordenação / Gestão'
+): bool {
+    if (trim($oldTeacherEmail) === '') {
+        return false;
+    }
+
+    $oldName    = htmlspecialchars($oldTeacherName ?: 'Professor(a)');
+    $newName    = htmlspecialchars($newTeacherName ?: 'outro(a) docente');
+    $authorName = htmlspecialchars($changedByName ?: 'Coordenação');
+    $sprintName = htmlspecialchars($sprint['name'] ?? 'Avaliação');
+    $className  = htmlspecialchars($sprint['class_name'] ?? '');
+    $courseName = htmlspecialchars($sprint['course_name'] ?? '');
+    $startFormatted = !empty($sprint['start_time'])
+        ? date('d/m/Y \à\s H:i', strtotime($sprint['start_time']))
+        : 'Liberação imediata';
+
+    $message = "
+        <p style='margin-top:0;'>Olá, Professor(a) <strong>{$oldName}</strong>,</p>
+        <p>Informamos que a responsabilidade pela aplicação da avaliação diagnóstica (Sprint) abaixo foi transferida por <strong>{$authorName}</strong> para o(a) Professor(a) <strong>{$newName}</strong>:</p>
+
+        <div style='background-color:#fffbeb; border:1px solid #fde68a; border-left:5px solid #f59e0b; border-radius:10px; padding:16px; margin:18px 0;'>
+            <h3 style='margin:0 0 8px 0; color:#92400e; font-size:16px;'>🔄 {$sprintName}</h3>
+            <p style='margin:4px 0; font-size:14px;'><strong>Turma:</strong> {$className}" . ($courseName !== '' ? " ({$courseName})" : "") . "</p>
+            <p style='margin:4px 0; font-size:14px;'><strong>Data/Horário Programado:</strong> {$startFormatted}</p>
+            <p style='margin:4px 0; font-size:14px;'><strong>Novo(a) Professor(a) Responsável:</strong> <span style='color:#166534; font-weight:bold;'>{$newName}</span></p>
+        </div>
+
+        <p style='font-size:13.5px; color:#475569;'>
+            📅 <strong>Lembrete de Agenda:</strong> Caso você já tivesse salvo este evento no seu Google Agenda pessoal, você já pode removê-lo ou desconsiderá-lo. O(a) novo(a) docente responsável já recebeu as instruções e o link de agendamento.
+        </p>
+    ";
+
+    $subject = "[Transferência de Docente] Sprint: " . ($sprint['name'] ?? '') . " (" . ($sprint['class_name'] ?? '') . ")";
+    return (bool)send_system_email($oldTeacherEmail, $subject, $message);
+}
+
+/**
+ * Envia e-mail ao professor responsável avisando que a Sprint/Diagnóstica foi cancelada/excluída.
+ */
+function send_teacher_sprint_cancelled_email(array $sprint, string $cancelledByName = 'Coordenação / Gestão'): bool {
+    if (empty($sprint['teacher_email'])) {
+        return false;
+    }
+
+    $teacherName = htmlspecialchars($sprint['teacher_name'] ?: 'Professor(a)');
+    $authorName  = htmlspecialchars($cancelledByName ?: 'Coordenação');
+    $sprintName  = htmlspecialchars($sprint['name'] ?? 'Avaliação');
+    $className   = htmlspecialchars($sprint['class_name'] ?? '');
+    $courseName  = htmlspecialchars($sprint['course_name'] ?? '');
+    $unitName    = htmlspecialchars($sprint['unit_name'] ?: 'Unidade SENAI');
+    $startFormatted = !empty($sprint['start_time'])
+        ? date('d/m/Y \à\s H:i', strtotime($sprint['start_time']))
+        : (!empty($sprint['created_at']) ? date('d/m/Y \à\s H:i', strtotime($sprint['created_at'])) : 'Data não definida');
+
+    $message = "
+        <p style='margin-top:0;'>Olá, Professor(a) <strong>{$teacherName}</strong>,</p>
+        <p>Informamos que a avaliação diagnóstica (Sprint) abaixo foi <strong>cancelada e excluída</strong> do cronograma por <strong>{$authorName}</strong> em " . date('d/m/Y \à\s H:i') . ":</p>
+
+        <div style='background-color:#fef2f2; border:1px solid #fecaca; border-left:5px solid #dc2626; border-radius:10px; padding:16px; margin:18px 0;'>
+            <h3 style='margin:0 0 8px 0; color:#991b1b; font-size:16px;'>🗑️ Avaliação Cancelada: {$sprintName}</h3>
+            <p style='margin:4px 0; font-size:14px; color:#7f1d1d;'><strong>Turma:</strong> {$className}" . ($courseName !== '' ? " ({$courseName})" : "") . "</p>
+            <p style='margin:4px 0; font-size:14px; color:#7f1d1d;'><strong>Unidade:</strong> {$unitName}</p>
+            <p style='margin:4px 0; font-size:14px; color:#7f1d1d;'><strong>Horário que estava agendado:</strong> {$startFormatted}</p>
+        </div>
+
+        <p style='font-size:13.5px; color:#475569;'>
+            📅 <strong>Lembrete de Agenda:</strong> Caso você tenha adicionado esta aplicação ao seu <strong>Google Agenda</strong> pessoal, lembre-se de remover o evento da sua agenda.
+        </p>
+    ";
+
+    $subject = "[Cancelada] Sprint: " . ($sprint['name'] ?? '') . " (" . ($sprint['class_name'] ?? '') . ") — Remova da sua Agenda";
     return (bool)send_system_email($sprint['teacher_email'], $subject, $message);
 }
 ?>
