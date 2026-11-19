@@ -72,15 +72,38 @@ if ($action === 'reschedule') {
         $stmtUpdate = $pdo->prepare("UPDATE sprints SET start_time = ?, end_time = ?, status = ? WHERE id = ?");
         $stmtUpdate->execute([$start_time, $end_time, $status, $sprint_id]);
 
+        // Envia e-mail atualizado ao professor vinculado com o novo link do Google Agenda e orientações anticola
+        $emailSent = false;
+        try {
+            require_once 'includes/mailer.php';
+            $emailSent = send_teacher_sprint_schedule_email($pdo, (int)$sprint_id, true);
+        } catch (Exception $mailEx) {}
+
         echo json_encode([
             'success' => true,
-            'message' => 'Agendamento atualizado com sucesso!',
+            'message' => 'Agendamento atualizado e e-mail enviado ao professor!',
+            'email_sent' => $emailSent,
             'status' => $status,
             'start_time' => $start_time,
             'end_time' => $end_time
         ]);
     } catch (Exception $e) {
         echo json_encode(['success' => false, 'error' => 'Erro ao atualizar: ' . $e->getMessage()]);
+    }
+    exit;
+}
+
+if ($action === 'send_teacher_email') {
+    try {
+        require_once 'includes/mailer.php';
+        $sent = send_teacher_sprint_schedule_email($pdo, (int)$sprint_id, false);
+        echo json_encode([
+            'success' => true,
+            'email_sent' => $sent,
+            'message' => 'E-mail com link do Google Agenda e instruções (incluindo trava anticola) enviado ao professor vinculado!'
+        ]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'error' => 'Erro ao enviar e-mail: ' . $e->getMessage()]);
     }
     exit;
 }

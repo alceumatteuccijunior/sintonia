@@ -75,11 +75,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 
                 $pdo->commit();
+
+                // Dispara e-mail ao professor vinculado com botão do Google Agenda, guia de acesso e alerta da trava anticola
+                try {
+                    require_once 'includes/mailer.php';
+                    send_teacher_sprint_schedule_email($pdo, (int)$sprint_id, false);
+                } catch (Exception $mailEx) {}
+
                 if ($status === 'scheduled') {
                     $formattedDate = date('d/m/Y \à\s H:i', strtotime($start_time));
-                    $success = "Sprint agendada com sucesso para {$formattedDate}! (" . count($selected_questions) . " questões selecionadas)";
+                    $success = "Sprint agendada com sucesso para {$formattedDate}! (" . count($selected_questions) . " questões selecionadas • E-mail com link do Google Agenda e orientações enviado ao professor)";
                 } else {
-                    $success = "Sprint criada e liberada com sucesso! (" . count($selected_questions) . " questões selecionadas)";
+                    $success = "Sprint criada e liberada com sucesso! (" . count($selected_questions) . " questões selecionadas • E-mail com link do Google Agenda e orientações enviado ao professor)";
                 }
             } catch (Exception $e) {
                 $pdo->rollBack();

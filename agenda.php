@@ -188,6 +188,12 @@ $stmtSprints->execute($params);
 $allSprints = $stmtSprints->fetchAll();
 
 // Agrupa sprints por data (YYYY-MM-DD)
+require_once 'includes/mailer.php';
+$protocol = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? "https" : "http";
+$host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+$uri = isset($_SERVER['REQUEST_URI']) ? rtrim(dirname($_SERVER['REQUEST_URI']), '/\\') : '';
+$baseUrlForGcal = "{$protocol}://{$host}{$uri}/";
+
 $sprintsByDate = [];
 $sprintsJson = [];
 
@@ -201,6 +207,7 @@ foreach ($allSprints as $sp) {
     
     $sp['is_scheduled_future'] = $isScheduled;
     $sp['display_status'] = $isCompleted ? 'Concluída' : ($isScheduled ? 'Agendada' : 'Ativa/Liberada');
+    $sp['gcal_url'] = build_sprint_google_calendar_url($sp, $baseUrlForGcal);
     
     $sprintsByDate[$refDate][] = $sp;
     $sprintsJson[$sp['id']] = $sp;
@@ -718,8 +725,24 @@ include 'includes/header.php';
                 </div>
             </form>
 
+            <!-- Integração Google Agenda & E-mail de Orientação ao Professor -->
+            <div class="p-3.5 bg-emerald-50/60 rounded-2xl border border-emerald-200/80 space-y-2">
+                <p class="text-[11px] font-bold text-emerald-900 uppercase tracking-wider flex items-center gap-1.5">
+                    <i class="ph-fill ph-calendar-plus text-emerald-600 text-sm"></i> Google Agenda &amp; Orientações ao Professor
+                </p>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <a id="modal-link-gcal" href="#" target="_blank" class="px-3 py-2 rounded-xl bg-white hover:bg-emerald-600 text-emerald-800 hover:text-white border border-emerald-300 text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-sm">
+                        <i class="ph-bold ph-google-logo"></i> + Adicionar ao Google Agenda
+                    </a>
+                    <button type="button" id="btn-send-teacher-email" onclick="sendTeacherOrientationEmail()" class="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-sm">
+                        <i class="ph-bold ph-envelope-simple"></i> Enviar E-mail c/ Instruções
+                    </button>
+                </div>
+                <p id="teacher-email-feedback" class="text-[11px] font-bold text-emerald-800 hidden"></p>
+            </div>
+
             <!-- Ações Diretas -->
-            <div class="flex items-center gap-2 pt-2">
+            <div class="flex items-center gap-2 pt-1">
                 <a id="modal-link-report" href="#" class="flex-1 text-center bg-senai-blue hover:bg-[#153673] text-white py-2.5 rounded-xl font-bold text-xs shadow-md transition-all flex items-center justify-center gap-1.5">
                     <i class="ph-bold ph-chart-line-up"></i> Relatório / Raio-X
                 </a>
@@ -776,6 +799,15 @@ include 'includes/header.php';
         // Links
         document.getElementById('modal-link-report').href = 'sprint_report.php?id=' + s.id;
         document.getElementById('modal-link-class').href = 'class_manage.php?id=' + s.class_id;
+        const gcalBtn = document.getElementById('modal-link-gcal');
+        if (gcalBtn) {
+            gcalBtn.href = s.gcal_url || '#';
+        }
+        const emailFb = document.getElementById('teacher-email-feedback');
+        if (emailFb) {
+            emailFb.classList.add('hidden');
+            emailFb.textContent = '';
+        }
 
         document.getElementById('reschedule-feedback').textContent = '';
 
@@ -834,6 +866,51 @@ include 'includes/header.php';
             btn.innerHTML = '<i class="ph-bold ph-floppy-disk"></i> Salvar Agendamento';
             feedback.className = 'text-xs font-bold text-red-500';
             feedback.textContent = 'Erro de comunicação.';
+        });
+    }
+
+    function sendTeacherOrientationEmail() {
+        const sprintId = document.getElementById('modal-sprint-id').value;
+        const btn = document.getElementById('btn-send-teacher-email');
+        const fb = document.getElementById('teacher-email-feedback');
+        if (!sprintId || !btn) return;
+
+        btn.disabled = true;
+        const origHtml = btn.innerHTML;
+        btn.innerHTML = '<i class="ph-bold ph-spinner animate-spin"></i> Enviando...';
+        if (fb) fb.classList.add('hidden');
+
+        const formData = new FormData();
+        formData.append('action', 'send_teacher_email');
+        formData.append('sprint_id', sprintId);
+
+        fetch('agenda_ajax.php', {
+            method: 'POST',
+            body: formData
+        })
+        .then(res => res.json())
+        .then(data => {
+            btn.disabled = false;
+            btn.innerHTML = origHtml;
+            if (fb) {
+                fb.classList.remove('hidden');
+                if (data.success) {
+                    fb.className = 'text-[11px] font-bold text-emerald-700';
+                    fb.textContent = '✔ ' + data.message;
+                } else {
+                    fb.className = 'text-[11px] font-bold text-red-600';
+                    fb.textContent = '✖ ' + (data.error || 'Erro ao enviar e-mail.');
+                }
+            }
+        })
+        .catch(() => {
+            btn.disabled = false;
+            btn.innerHTML = origHtml;
+            if (fb) {
+                fb.classList.remove('hidden');
+                fb.className = 'text-[11px] font-bold text-red-600';
+                fb.textContent = '✖ Erro de comunicação com o servidor.';
+            }
         });
     }
 </script>
