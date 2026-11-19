@@ -25,8 +25,44 @@
         </div>
     </div>
 
+    <!-- Global Blocking Import & Processing Overlay -->
+    <div id="global-import-overlay" class="fixed inset-0 z-[200] hidden items-center justify-center bg-slate-900/65 backdrop-blur-sm p-4 select-none">
+        <div class="bg-white rounded-3xl shadow-2xl border border-slate-100 p-7 md:p-8 max-w-md w-full flex flex-col items-center text-center animate-slide-up">
+            <div class="relative w-16 h-16 mb-5 flex items-center justify-center">
+                <div class="absolute inset-0 rounded-full border-4 border-indigo-100"></div>
+                <div class="absolute inset-0 rounded-full border-4 border-senai-blue border-t-transparent animate-spin"></div>
+                <i class="ph-bold ph-cloud-arrow-up text-2xl text-senai-blue"></i>
+            </div>
+            <h3 id="global-import-overlay-title" class="text-lg font-extrabold text-slate-800 tracking-tight">Processando Importação...</h3>
+            <p id="global-import-overlay-subtitle" class="text-xs md:text-sm text-slate-500 font-medium mt-2 leading-relaxed">
+                Aguarde enquanto os dados são validados e salvos.
+            </p>
+            <div class="mt-5 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-amber-50 border border-amber-200 text-amber-800 text-[11px] font-bold">
+                <i class="ph-fill ph-hand-palm text-amber-600"></i> Por favor, aguarde e não feche nem clique novamente
+            </div>
+        </div>
+    </div>
+
     <!-- Footer Scripts Compartilhados -->
     <script>
+        function showImportOverlay(title, subtitle) {
+            const overlay = document.getElementById('global-import-overlay');
+            const titleEl = document.getElementById('global-import-overlay-title');
+            const subEl = document.getElementById('global-import-overlay-subtitle');
+            if (!overlay) return;
+            if (titleEl && title) titleEl.textContent = title;
+            if (subEl && subtitle) subEl.textContent = subtitle;
+            overlay.classList.remove('hidden');
+            overlay.classList.add('flex');
+        }
+
+        function hideImportOverlay() {
+            const overlay = document.getElementById('global-import-overlay');
+            if (!overlay) return;
+            overlay.classList.add('hidden');
+            overlay.classList.remove('flex');
+        }
+
         function openHelpModal(title, content) {
             document.getElementById('help-modal-title').innerText = title;
             document.getElementById('help-modal-body').innerHTML = content;

@@ -799,7 +799,7 @@ include 'includes/header.php';
             <h3 class="font-bold text-lg text-slate-800 flex items-center gap-2"><i class="ph-bold ph-user-plus text-senai-blue"></i> Novo Usuário</h3>
             <button onclick="closeModal('createModal')" class="text-slate-400 hover:text-red-500 transition-colors"><i class="ph-bold ph-x text-xl"></i></button>
         </div>
-        <form method="POST" class="p-6">
+        <form method="POST" id="createUserForm" class="p-6">
             <input type="hidden" name="action" value="create">
             
             <div class="space-y-4">
@@ -870,7 +870,7 @@ include 'includes/header.php';
             
             <div class="mt-8 flex justify-end gap-3">
                 <button type="button" onclick="closeModal('createModal')" class="px-5 py-2.5 rounded-xl font-bold text-sm text-slate-500 hover:bg-slate-100 transition-colors">Cancelar</button>
-                <button type="submit" class="px-5 py-2.5 rounded-xl font-bold text-sm bg-senai-blue text-white hover:bg-blue-800 transition-all shadow-sm hover:shadow-md">Salvar Usuário</button>
+                <button type="submit" id="btn-create-user-submit" class="px-5 py-2.5 rounded-xl font-bold text-sm bg-senai-blue text-white hover:bg-blue-800 transition-all shadow-sm hover:shadow-md disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2">Salvar Usuário</button>
             </div>
         </form>
     </div>
@@ -883,7 +883,7 @@ include 'includes/header.php';
             <h3 class="font-bold text-lg text-slate-800 flex items-center gap-2"><i class="ph-bold ph-upload-simple text-indigo-500"></i> Importar Alunos</h3>
             <button type="button" onclick="closeModal('importUsersModal')" class="text-slate-400 hover:text-red-500 transition-colors"><i class="ph-bold ph-x text-xl"></i></button>
         </div>
-        <form method="POST" enctype="multipart/form-data" class="p-6">
+        <form method="POST" id="importUsersForm" enctype="multipart/form-data" class="p-6">
             <input type="hidden" name="action" value="import_csv">
             
             <div class="space-y-4">
@@ -940,7 +940,7 @@ include 'includes/header.php';
             
             <div class="mt-8 flex justify-end gap-3">
                 <button type="button" onclick="closeModal('importUsersModal')" class="px-5 py-2.5 rounded-xl font-bold text-sm text-slate-500 hover:bg-slate-100 transition-colors">Cancelar</button>
-                <button type="submit" class="px-5 py-2.5 rounded-xl font-bold text-sm bg-indigo-600 text-white hover:bg-indigo-700 transition-all shadow-sm hover:shadow-md flex items-center gap-2">
+                <button type="submit" id="btn-import-users-submit" class="px-5 py-2.5 rounded-xl font-bold text-sm bg-indigo-600 text-white hover:bg-indigo-700 transition-all shadow-sm hover:shadow-md disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2">
                     <i class="ph-bold ph-upload-simple"></i> Iniciar Importação
                 </button>
             </div>
@@ -955,7 +955,7 @@ include 'includes/header.php';
             <h3 class="font-bold text-lg text-slate-800 flex items-center gap-2"><i class="ph-bold ph-pencil-simple text-indigo-500"></i> Editar Usuário</h3>
             <button onclick="closeModal('editModal')" class="text-slate-400 hover:text-red-500 transition-colors"><i class="ph-bold ph-x text-xl"></i></button>
         </div>
-        <form method="POST" class="p-6">
+        <form method="POST" id="editUserForm" class="p-6">
             <input type="hidden" name="action" value="edit">
             <input type="hidden" name="user_id" id="edit_user_id">
             
@@ -1031,7 +1031,7 @@ include 'includes/header.php';
             
             <div class="mt-8 flex justify-end gap-3">
                 <button type="button" onclick="closeModal('editModal')" class="px-5 py-2.5 rounded-xl font-bold text-sm text-slate-500 hover:bg-slate-100 transition-colors">Cancelar</button>
-                <button type="submit" class="px-5 py-2.5 rounded-xl font-bold text-sm bg-indigo-600 text-white hover:bg-indigo-700 transition-all shadow-sm hover:shadow-md">Salvar Alterações</button>
+                <button type="submit" id="btn-edit-user-submit" class="px-5 py-2.5 rounded-xl font-bold text-sm bg-indigo-600 text-white hover:bg-indigo-700 transition-all shadow-sm hover:shadow-md disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2">Salvar Alterações</button>
             </div>
         </form>
     </div>
@@ -1107,6 +1107,67 @@ include 'includes/header.php';
                 }
             });
         });
+
+        // Bloqueia duplo clique e exibe overlay de carregamento durante a importação de alunos (CSV) e salvamento
+        const importUsersForm = document.getElementById('importUsersForm');
+        if (importUsersForm) {
+            importUsersForm.addEventListener('submit', function(e) {
+                if (this.dataset.submitting === '1') {
+                    e.preventDefault();
+                    return;
+                }
+                this.dataset.submitting = '1';
+                const btn = document.getElementById('btn-import-users-submit');
+                if (btn) {
+                    btn.disabled = true;
+                    btn.innerHTML = '<i class="ph-bold ph-spinner animate-spin"></i> Importando Alunos...';
+                }
+                if (typeof showImportOverlay === 'function') {
+                    showImportOverlay(
+                        'Importando Alunos em Massa (CSV)...',
+                        'Cadastrando usuários, vinculando turmas e enviando credenciais por e-mail. Isso pode levar alguns segundos.'
+                    );
+                }
+            });
+        }
+
+        const createUserForm = document.getElementById('createUserForm');
+        if (createUserForm) {
+            createUserForm.addEventListener('submit', function(e) {
+                if (this.dataset.submitting === '1') {
+                    e.preventDefault();
+                    return;
+                }
+                this.dataset.submitting = '1';
+                const btn = document.getElementById('btn-create-user-submit');
+                if (btn) {
+                    btn.disabled = true;
+                    btn.innerHTML = '<i class="ph-bold ph-spinner animate-spin"></i> Salvando...';
+                }
+                if (typeof showImportOverlay === 'function') {
+                    showImportOverlay(
+                        'Criando Usuário...',
+                        'Gerando credenciais de acesso e enviando e-mail de boas-vindas.'
+                    );
+                }
+            });
+        }
+
+        const editUserForm = document.getElementById('editUserForm');
+        if (editUserForm) {
+            editUserForm.addEventListener('submit', function(e) {
+                if (this.dataset.submitting === '1') {
+                    e.preventDefault();
+                    return;
+                }
+                this.dataset.submitting = '1';
+                const btn = document.getElementById('btn-edit-user-submit');
+                if (btn) {
+                    btn.disabled = true;
+                    btn.innerHTML = '<i class="ph-bold ph-spinner animate-spin"></i> Salvando...';
+                }
+            });
+        }
     });
 </script>
 

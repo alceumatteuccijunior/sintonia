@@ -859,12 +859,16 @@ include 'includes/header.php';
         const file = input.files[0];
         const isXlsxTab = (target === 'xlsx');
         const btn = document.getElementById(isXlsxTab ? 'btn-inline-xlsx-matrix-upload' : 'btn-inline-matrix-upload');
+        if (btn && btn.disabled) return;
         const courseInput = document.getElementById(isXlsxTab ? 'xlsx_course_name' : 'doc_course_name');
         const alertBox = document.getElementById(isXlsxTab ? 'xlsx-import-alert' : 'doc-import-alert');
 
         btn.disabled = true;
         const origHtml = btn.innerHTML;
         btn.innerHTML = '<i class="ph-bold ph-spinner animate-spin"></i> Lendo Matriz .xls...';
+        if (typeof showImportOverlay === 'function') {
+            showImportOverlay('Importando Matriz SAEP (.xls)...', 'Extraindo as capacidades oficiais (C1, C2, C3...) da Matriz Curricular do curso.');
+        }
 
         try {
             const clientParsed = await extractMatrixFromExcelClient(file);
@@ -905,6 +909,7 @@ include 'includes/header.php';
         } catch (err) {
             alert(err.message || 'Erro ao enviar arquivo da Matriz.');
         } finally {
+            if (typeof hideImportOverlay === 'function') hideImportOverlay();
             btn.disabled = false;
             btn.innerHTML = origHtml;
             input.value = '';
@@ -931,12 +936,16 @@ include 'includes/header.php';
         const btn = document.getElementById('btn-save-standalone-matrix');
         const alertBox = document.getElementById('standalone-matrix-alert');
 
+        if (btn.disabled) return;
         if (!fileInput.files || !fileInput.files[0]) return;
         const file = fileInput.files[0];
 
         btn.disabled = true;
         btn.innerHTML = '<i class="ph-bold ph-spinner animate-spin"></i> Extraindo C1..Cn da Matriz...';
         alertBox.classList.add('hidden');
+        if (typeof showImportOverlay === 'function') {
+            showImportOverlay('Importando Matriz Curricular SAEP (.xls)...', 'Extraindo e salvando as capacidades oficiais (C1..Cn) do curso.');
+        }
 
         try {
             const clientParsed = await extractMatrixFromExcelClient(file);
@@ -992,6 +1001,7 @@ include 'includes/header.php';
             alertBox.innerHTML = '<i class="ph-fill ph-warning-circle"></i> ' + (err.message || 'Erro ao importar Matriz.');
             alertBox.classList.remove('hidden');
         } finally {
+            if (typeof hideImportOverlay === 'function') hideImportOverlay();
             btn.disabled = false;
             btn.innerHTML = '<i class="ph-bold ph-check"></i> Extrair e Salvar Matriz do Curso';
         }
@@ -1191,6 +1201,8 @@ include 'includes/header.php';
         const btn = document.getElementById('btn-doc-extract');
         const alertBox = document.getElementById('doc-import-alert');
 
+        if (btn.disabled) return;
+
         if (!courseName) {
             alert('Por favor, informe o Curso de Destino.');
             return;
@@ -1217,6 +1229,9 @@ include 'includes/header.php';
         alertBox.className = 'p-4 rounded-xl text-sm font-medium bg-violet-50 text-violet-800 border border-violet-200';
         alertBox.innerHTML = '<div class="flex items-center gap-2.5"><i class="ph-bold ph-spinner animate-spin text-lg text-violet-600"></i> <span id="doc-progress-msg">Lendo documento...</span></div>';
         alertBox.classList.remove('hidden');
+        if (typeof showImportOverlay === 'function') {
+            showImportOverlay('Analisando Prova (Word / PDF) com IA...', 'Lendo o documento e preparando extração das questões...');
+        }
 
         try {
             let extractedText = manualText;
@@ -1253,6 +1268,9 @@ include 'includes/header.php';
 
             formData.append('raw_text', extractedText);
             document.getElementById('doc-progress-msg').innerHTML = 'A IA está estruturando as questões e classificando cada item nas Capacidades Oficiais da Matriz SAEP... <span class="text-xs opacity-75">(10 a 30s)</span>';
+            if (typeof showImportOverlay === 'function') {
+                showImportOverlay('Classificando Questões com IA...', 'Estruturando enunciados, alternativas e classificando cada item nas Capacidades Oficiais da Matriz SAEP (10 a 30s).');
+            }
 
             const response = await fetch('questions_import_doc_ajax.php', {
                 method: 'POST',
@@ -1285,6 +1303,7 @@ include 'includes/header.php';
             alertBox.className = 'p-4 rounded-xl text-sm font-medium bg-red-50 text-red-700 border border-red-200';
             alertBox.innerHTML = '<div class="flex items-start gap-2"><i class="ph-fill ph-warning-circle text-lg mt-0.5"></i> <div>' + (err.message || 'Erro ao processar documento.') + '</div></div>';
         } finally {
+            if (typeof hideImportOverlay === 'function') hideImportOverlay();
             btn.disabled = false;
         }
     }
@@ -1326,6 +1345,8 @@ include 'includes/header.php';
         const btn = document.getElementById('btn-xlsx-extract');
         const alertBox = document.getElementById('xlsx-import-alert');
 
+        if (btn.disabled) return;
+
         if (!courseName) {
             alert('Por favor, informe o Curso de Destino.');
             return;
@@ -1351,6 +1372,9 @@ include 'includes/header.php';
         alertBox.className = 'p-4 rounded-xl text-sm font-medium bg-sky-50 text-sky-900 border border-sky-200';
         alertBox.innerHTML = '<div class="flex items-center gap-2.5"><i class="ph-bold ph-spinner animate-spin text-lg text-sky-600"></i> <span>Lendo planilha SAEP e baixando imagens dos links (Estratégia Híbrida)...</span></div>';
         alertBox.classList.remove('hidden');
+        if (typeof showImportOverlay === 'function') {
+            showImportOverlay('Importando Planilha SAEP (.xlsx)...', 'Lendo as questões, mapeando as capacidades da Matriz e baixando imagens dos links.');
+        }
 
         try {
             const formData = new FormData();
@@ -1389,6 +1413,7 @@ include 'includes/header.php';
             alertBox.className = 'p-4 rounded-xl text-sm font-medium bg-red-50 text-red-700 border border-red-200';
             alertBox.innerHTML = '<div class="flex items-start gap-2"><i class="ph-fill ph-warning-circle text-lg mt-0.5"></i> <div>' + escapeHtml(err.message || 'Erro ao processar planilha .xlsx.') + '</div></div>';
         } finally {
+            if (typeof hideImportOverlay === 'function') hideImportOverlay();
             btn.disabled = false;
         }
     }
@@ -1729,11 +1754,14 @@ include 'includes/header.php';
         const btn = document.getElementById('btn-save-reviewed');
         const alertBox = document.getElementById('doc-review-alert');
 
-        if (extractedDocQuestions.length === 0) return;
+        if (btn.disabled || extractedDocQuestions.length === 0) return;
 
         btn.disabled = true;
         btn.innerHTML = '<i class="ph-bold ph-spinner animate-spin"></i> Salvando no Banco de Questões...';
         alertBox.classList.add('hidden');
+        if (typeof showImportOverlay === 'function') {
+            showImportOverlay('Salvando Questões no Banco...', 'Gravando enunciados, alternativas, imagens e capacidades oficiais da Matriz SAEP.');
+        }
 
         try {
             const response = await fetch('questions_import_doc_ajax.php', {
@@ -1763,6 +1791,8 @@ include 'includes/header.php';
             alertBox.classList.remove('hidden');
             btn.disabled = false;
             btn.innerHTML = `<i class="ph-bold ph-floppy-disk"></i> Confirmar e Salvar Questões`;
+        } finally {
+            if (typeof hideImportOverlay === 'function') hideImportOverlay();
         }
     }
 
@@ -1772,12 +1802,16 @@ include 'includes/header.php';
         const form = document.getElementById('importForm');
         const btn = document.getElementById('btn-importar');
         const alertBox = document.getElementById('import-alert');
+        if (btn.disabled) return;
         const formData = new FormData(form);
         
         btn.disabled = true;
         btn.innerHTML = '<i class="ph-bold ph-spinner animate-spin"></i> Processando...';
         alertBox.classList.add('hidden');
         alertBox.className = 'mt-4 p-4 rounded-xl text-sm font-medium';
+        if (typeof showImportOverlay === 'function') {
+            showImportOverlay('Importando Planilha de Questões (.csv)...', 'Validando linhas e cadastrando questões em lote no Banco de Questões.');
+        }
         
         try {
             const response = await fetch('questions_import_ajax.php', {
@@ -1791,14 +1825,17 @@ include 'includes/header.php';
                 importedQuestionsGlobal = result.imported_questions || [];
                 
                 if (importedQuestionsGlobal.length > 0) {
+                    if (typeof hideImportOverlay === 'function') hideImportOverlay();
                     showLinkImagesStep(result.count || importedQuestionsGlobal.length);
                 } else {
+                    if (typeof hideImportOverlay === 'function') hideImportOverlay();
                     alertBox.classList.remove('hidden');
                     alertBox.classList.add('bg-green-50', 'text-green-700', 'border', 'border-green-200');
                     alertBox.innerHTML = '<div class="flex items-start gap-2"><i class="ph-fill ph-check-circle text-lg mt-0.5"></i> <div>' + result.message + '</div></div>';
                     setTimeout(() => window.location.reload(), 2000);
                 }
             } else {
+                if (typeof hideImportOverlay === 'function') hideImportOverlay();
                 alertBox.classList.remove('hidden');
                 alertBox.classList.add('bg-red-50', 'text-red-700', 'border', 'border-red-200');
                 alertBox.innerHTML = '<div class="flex items-start gap-2"><i class="ph-fill ph-warning-circle text-lg mt-0.5"></i> <div>' + result.message + '</div></div>';
@@ -1806,6 +1843,7 @@ include 'includes/header.php';
                 btn.innerHTML = '<i class="ph-bold ph-check"></i> Processar Importação';
             }
         } catch (error) {
+            if (typeof hideImportOverlay === 'function') hideImportOverlay();
             alertBox.classList.remove('hidden');
             alertBox.classList.add('bg-red-50', 'text-red-700', 'border', 'border-red-200');
             alertBox.innerHTML = '<div class="flex items-start gap-2"><i class="ph-fill ph-warning-circle text-lg mt-0.5"></i> <div>Erro de comunicação com o servidor.</div></div>';

@@ -667,10 +667,14 @@ include 'includes/header.php';
         if (!input.files || !input.files[0]) return;
         const file = input.files[0];
         const btn = document.getElementById('btn-upload-matrix-view');
+        if (btn && btn.disabled) return;
         const origHtml = btn ? btn.innerHTML : '';
         if (btn) {
             btn.disabled = true;
             btn.innerHTML = '<i class="ph-bold ph-spinner animate-spin"></i> Lendo Matriz .xls...';
+        }
+        if (typeof showImportOverlay === 'function') {
+            showImportOverlay('Importando Matriz SAEP (.xls)...', 'Extraindo e vinculando as capacidades oficiais (C1..Cn) ao curso.');
         }
 
         try {
@@ -716,9 +720,11 @@ include 'includes/header.php';
                 throw new Error(data.message || 'Erro ao processar arquivo da Matriz.');
             }
 
+            if (typeof hideImportOverlay === 'function') hideImportOverlay();
             alert(data.message);
             window.location.reload();
         } catch (err) {
+            if (typeof hideImportOverlay === 'function') hideImportOverlay();
             alert(err.message || 'Erro ao enviar Matriz SAEP.');
             if (btn) {
                 btn.disabled = false;

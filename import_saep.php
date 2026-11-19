@@ -132,9 +132,20 @@ include 'includes/header.php';
         }
     }
 
-    form.addEventListener('submit', () => {
-        if(!submitBtn.disabled) {
-            loadingOverlay.classList.remove('hidden');
+    form.addEventListener('submit', (e) => {
+        if (form.dataset.submitting === '1' || submitBtn.disabled) {
+            e.preventDefault();
+            return;
+        }
+        form.dataset.submitting = '1';
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="ph-bold ph-spinner animate-spin"></i> Processando Importação...';
+        loadingOverlay.classList.remove('hidden');
+        if (typeof showImportOverlay === 'function') {
+            showImportOverlay(
+                'Processando Planilha Oficial do SAEP...',
+                'Criando turmas, alunos, caderno de provas e computando desempenhos. Isso pode levar alguns segundos.'
+            );
         }
     });
 </script>
