@@ -55,8 +55,14 @@ $stmt = $pdo->prepare("
 $stmt->execute([$student_id, $sprint_id]);
 $questions = $stmt->fetchAll();
 
-// Buscar tempo de prova
-$stmtAttempt = $pdo->prepare("SELECT started_at, completed_at FROM sprint_attempts WHERE sprint_id = ? AND student_id = ?");
+// Buscar tempo de prova e aluno
+$stmtAttempt = $pdo->prepare("
+    SELECT a.started_at, a.completed_at, u.name as student_name
+    FROM sprint_attempts a
+    JOIN users u ON a.student_id = u.id
+    WHERE a.sprint_id = ? AND a.student_id = ?
+    ORDER BY a.id DESC LIMIT 1
+");
 $stmtAttempt->execute([$sprint_id, $student_id]);
 $attempt = $stmtAttempt->fetch();
 
@@ -83,11 +89,17 @@ foreach ($questions as $q) {
 $rate = round(($correct_count / count($questions)) * 100, 1);
 ?>
 
-<div class="mb-6 flex items-center justify-between bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+<?php
+$answered_total_modal = count(array_filter(array_column($questions, 'selected_option_id')));
+$total_q_modal = count($questions);
+$stu_name_js = htmlspecialchars($attempt['student_name'] ?? 'Aluno', ENT_QUOTES);
+$is_completed_modal = !empty($attempt['completed_at']);
+?>
+<div class="mb-6 flex flex-wrap items-center justify-between gap-4 bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
     <div class="flex items-center gap-4">
         <div class="text-center px-4 border-r border-slate-100">
             <p class="text-[10px] uppercase font-bold text-slate-400">Respondidas</p>
-            <p class="text-xl font-black text-slate-700"><?= count(array_filter(array_column($questions, 'selected_option_id'))) ?>/<?= count($questions) ?></p>
+            <p class="text-xl font-black text-slate-700"><?= $answered_total_modal ?>/<?= $total_q_modal ?></p>
         </div>
         <div class="text-center px-4 border-r border-slate-100">
             <p class="text-[10px] uppercase font-bold text-slate-400">Acertos</p>
@@ -102,6 +114,17 @@ $rate = round(($correct_count / count($questions)) * 100, 1);
             <p class="text-xl font-black <?= $rate >= 70 ? 'text-green-600' : ($rate >= 50 ? 'text-yellow-600' : 'text-red-500') ?>"><?= $rate ?>%</p>
         </div>
     </div>
+
+    <?php if ($attempt): ?>
+    <div>
+        <button type="button"
+                onclick="if (typeof confirmReopenAttempt === 'function') { confirmReopenAttempt(<?= (int)$student_id ?>, '<?= $stu_name_js ?>', <?= $answered_total_modal ?>, <?= $total_q_modal ?>, <?= $is_completed_modal ? 'true' : 'false' ?>); }"
+                class="px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 shadow-sm transition-all <?= $is_completed_modal ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'bg-amber-500 hover:bg-amber-600 text-white' ?>">
+            <i class="ph-bold ph-arrow-counter-clockwise text-sm"></i>
+            <?= $is_completed_modal ? 'Permitir que o Aluno Retome a Prova' : 'Zerar Avisos Anticola / Destravar Prova' ?>
+        </button>
+    </div>
+    <?php endif; ?>
 </div>
 
 <div class="space-y-3">

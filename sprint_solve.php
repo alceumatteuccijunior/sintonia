@@ -26,8 +26,12 @@ if (!$sprint) {
     exit;
 }
 
-// 1. Busca tentativa do aluno (se já iniciou previamente)
-$stmtAttempt = $pdo->prepare("SELECT * FROM sprint_attempts WHERE sprint_id = ? AND student_id = ?");
+// 1. Garante coluna reopen_count para controle de reabertura pelo professor e busca tentativa do aluno
+try {
+    $pdo->exec("ALTER TABLE sprint_attempts ADD COLUMN reopen_count INT NOT NULL DEFAULT 0");
+} catch (Exception $e) {}
+
+$stmtAttempt = $pdo->prepare("SELECT * FROM sprint_attempts WHERE sprint_id = ? AND student_id = ? ORDER BY id DESC LIMIT 1");
 $stmtAttempt->execute([$sprint_id, $student_id]);
 $attempt = $stmtAttempt->fetch();
 
@@ -198,8 +202,21 @@ if ($total_questions === 0) {
     exit;
 }
 
-// 3. Identifica a questão atual
-$current_q_index = isset($_GET['q']) ? (int)$_GET['q'] - 1 : 0;
+// 3. Identifica a questão atual (se não veio ?q=, posiciona na 1ª questão ainda não respondida ao retomar)
+if (isset($_GET['q'])) {
+    $current_q_index = (int)$_GET['q'] - 1;
+} else {
+    $stmtAnsInit = $pdo->prepare("SELECT question_id FROM student_answers WHERE sprint_id = ? AND student_id = ?");
+    $stmtAnsInit->execute([$sprint_id, $student_id]);
+    $answered_map_init = array_flip($stmtAnsInit->fetchAll(PDO::FETCH_COLUMN));
+    $current_q_index = 0;
+    foreach ($sprint_questions as $idx => $sqItem) {
+        if (!isset($answered_map_init[$sqItem['question_id']])) {
+            $current_q_index = $idx;
+            break;
+        }
+    }
+}
 if ($current_q_index < 0 || $current_q_index >= $total_questions) {
     $current_q_index = 0;
 }
@@ -235,9 +252,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (isset($_POST['finish_sprint'])) {
-        // Verifica tempo minimo no backend
+        // Verifica tempo minimo no backend (exceto quando forçado por tempo esgotado ou limite de saídas de tela)
         $can_finish = true;
-        if (!empty($sprint['time_min_minutes'])) {
+        $force_finish = !empty($_POST['force_finish']);
+        if (!$force_finish && !empty($sprint['time_min_minutes'])) {
             $diff_now = (new DateTime())->getTimestamp() - (new DateTime($attempt['started_at']))->getTimestamp();
             if ($diff_now < ($sprint['time_min_minutes'] * 60)) {
                 $can_finish = false;
@@ -576,7 +594,7 @@ include 'includes/header.php';
     }
 
     // Se ele clicar no modal de finalizar, precisamos capturar o formulário principal para salvar a ultima resposta junto
-    function submitFinal(e) {
+    function submitFinal(e, force = false) {
         if(e) e.preventDefault();
         const mainForm = document.getElementById('question-form');
         // Adiciona um input hidden de finalizar
@@ -585,6 +603,13 @@ include 'includes/header.php';
         finishInput.name = 'finish_sprint';
         finishInput.value = '1';
         mainForm.appendChild(finishInput);
+        if (force) {
+            const forceInput = document.createElement('input');
+            forceInput.type = 'hidden';
+            forceInput.name = 'force_finish';
+            forceInput.value = '1';
+            mainForm.appendChild(forceInput);
+        }
         mainForm.submit();
     }
 
@@ -620,7 +645,7 @@ include 'includes/header.php';
         if (secondsLeft <= 0) {
             clearInterval(timer);
             countdownEl.textContent = "00:00";
-            submitFinal();
+            submitFinal(null, true);
             return;
         }
 
@@ -639,10 +664,19 @@ include 'includes/header.php';
     }, 1000);
 
     // Sistema Anti-Cola
-    const sprintId = <?= $sprint_id ?>;
-    const storageKey = `sprint_warnings_${sprintId}`;
-    let warningCount = parseInt(sessionStorage.getItem(storageKey) || "0");
+    const sprintId = <?= (int)$sprint_id ?>;
+    const reopenCount = <?= (int)($attempt['reopen_count'] ?? 0) ?>;
+    const storageKey = `sprint_warnings_${sprintId}_r${reopenCount}`;
+
+    // Limpa contadores de tentativas anteriores caso o professor tenha reaberto/destravado a prova
+    sessionStorage.removeItem(`sprint_warnings_${sprintId}`);
+    for (let r = 0; r < reopenCount; r++) {
+        sessionStorage.removeItem(`sprint_warnings_${sprintId}_r${r}`);
+    }
+
+    let warningCount = parseInt(sessionStorage.getItem(storageKey) || "0", 10);
     let isUnloading = false;
+    let lastBlurTimestamp = 0;
 
     // Detecta quando a página está sendo descarregada (mudando de questão) para não contar como trapaça
     window.addEventListener('beforeunload', () => {
@@ -651,17 +685,31 @@ include 'includes/header.php';
 
     window.addEventListener('blur', () => {
         // Ignora se a prova já acabou ou se a página está mudando de questão
-        if(secondsLeft <= 0 || isUnloading) return;
+        if (secondsLeft <= 0 || isUnloading) return;
+
+        // Se o modal de aviso anticola já está aberto na tela, não acumula novos avisos em cascata
+        // (evita que notificações seguidas do Windows contem 2 ou 3 saídas antes do aluno voltar à prova)
+        const anticheatModal = document.getElementById('modal-anticheat');
+        if (anticheatModal && !anticheatModal.classList.contains('hidden')) {
+            return;
+        }
+
+        // Cooldown de 3 segundos entre eventos de blur para evitar disparos múltiplos de notificações do sistema
+        const nowMs = Date.now();
+        if (nowMs - lastBlurTimestamp < 3000) {
+            return;
+        }
+        lastBlurTimestamp = nowMs;
         
         warningCount++;
         sessionStorage.setItem(storageKey, warningCount);
         
         if (warningCount >= 3) {
             alert("Você excedeu o limite de saídas da tela. Sua prova será finalizada agora.");
-            submitFinal();
+            submitFinal(null, true);
         } else {
             document.getElementById('warning-count').textContent = warningCount;
-            document.getElementById('modal-anticheat').classList.remove('hidden');
+            if (anticheatModal) anticheatModal.classList.remove('hidden');
         }
     });
 

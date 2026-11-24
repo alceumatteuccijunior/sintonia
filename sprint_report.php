@@ -37,6 +37,66 @@ if (!$sprint) {
     die("Sprint não encontrada ou sem permissão.");
 }
 
+// Garante coluna reopen_count em sprint_attempts para controle de reabertura de prova pelo professor
+try {
+    $pdo->exec("ALTER TABLE sprint_attempts ADD COLUMN reopen_count INT NOT NULL DEFAULT 0");
+} catch (Exception $e) {}
+
+$reopen_success_msg = null;
+$reopen_error_msg = null;
+
+// Permitir que o aluno retome a prova (Reabrir tentativa / Zerar trava anticola)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'reopen_attempt') {
+    $target_student_id = (int)($_POST['student_id'] ?? 0);
+    if ($target_student_id > 0) {
+        $stmtAtt = $pdo->prepare("SELECT * FROM sprint_attempts WHERE sprint_id = ? AND student_id = ? ORDER BY id DESC LIMIT 1");
+        $stmtAtt->execute([$sprint_id, $target_student_id]);
+        $attRow = $stmtAtt->fetch();
+
+        $stmtStu = $pdo->prepare("SELECT name FROM users WHERE id = ?");
+        $stmtStu->execute([$target_student_id]);
+        $stuName = $stmtStu->fetchColumn() ?: 'Aluno';
+
+        if ($attRow) {
+            $time_limit_secs = max(60, ((int)$sprint['time_limit_minutes']) * 60);
+            $started_ts = !empty($attRow['started_at']) ? strtotime($attRow['started_at']) : time();
+            $completed_ts = !empty($attRow['completed_at']) ? strtotime($attRow['completed_at']) : time();
+
+            // Desconta o período em que a prova ficou travada/fechada para que o aluno não perca o tempo restante
+            $spent_secs = max(0, $completed_ts - $started_ts);
+            $remaining_secs = $time_limit_secs - $spent_secs;
+
+            // Garante ao menos 15 minutos restantes (ou o tempo total da prova, se menor que 15 min) para não fechar ao entrar
+            $min_guaranteed_secs = min($time_limit_secs, 15 * 60);
+            if ($remaining_secs < $min_guaranteed_secs) {
+                $remaining_secs = $min_guaranteed_secs;
+            }
+
+            $new_started_at = date('Y-m-d H:i:s', time() - ($time_limit_secs - $remaining_secs));
+
+            $stmtReopen = $pdo->prepare("
+                UPDATE sprint_attempts
+                SET completed_at = NULL,
+                    started_at = ?,
+                    reopen_count = COALESCE(reopen_count, 0) + 1
+                WHERE sprint_id = ? AND student_id = ?
+            ");
+            $stmtReopen->execute([$new_started_at, $sprint_id, $target_student_id]);
+
+            // Se a sprint estava marcada como completed, volta para active para permitir o acesso do aluno
+            if (($sprint['status'] ?? '') === 'completed') {
+                $pdo->prepare("UPDATE sprints SET status = 'active' WHERE id = ?")->execute([$sprint_id]);
+                $sprint['status'] = 'active';
+            }
+
+            $mins_left = ceil($remaining_secs / 60);
+            $reopen_success_msg = "Prova liberada novamente para <strong>" . htmlspecialchars($stuName) . "</strong>! Todas as respostas já salvas foram mantidas, os avisos da trava anticola foram zerados e o aluno possui <strong>{$mins_left} min</strong> restantes. Peça para ele atualizar a página e clicar em <strong>Continuar Prova</strong>.";
+        } else {
+            $reopen_error_msg = "Tentativa do aluno não encontrada nesta avaliação.";
+        }
+    }
+}
+
 // Remoção de Questão da Sprint
 if (isset($_GET['remove_q'])) {
     $remove_q = $_GET['remove_q'];
@@ -59,12 +119,13 @@ $stmtRanking = $pdo->prepare("
            SUM(IF(sa.is_correct = 1, 1, 0)) as total_correct,
            a.started_at,
            a.completed_at,
+           COALESCE(a.reopen_count, 0) as reopen_count,
            a.id as attempt_id
     FROM sprint_attempts a
     JOIN users u ON a.student_id = u.id
     LEFT JOIN student_answers sa ON sa.sprint_id = a.sprint_id AND sa.student_id = a.student_id
     WHERE a.sprint_id = ?
-    GROUP BY u.id, a.started_at, a.completed_at, a.id
+    GROUP BY u.id, a.started_at, a.completed_at, a.reopen_count, a.id
     ORDER BY total_correct DESC, total_answered DESC
 ");
 $stmtRanking->execute([$sprint_id]);
@@ -343,6 +404,20 @@ include 'includes/header.php';
                     </div>
                 </div>
 
+                <?php if ($reopen_success_msg): ?>
+                <div class="mb-6 p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 flex items-start gap-3 shadow-sm animate-slide-up no-print">
+                    <i class="ph-fill ph-check-circle text-2xl text-emerald-600 shrink-0 mt-0.5"></i>
+                    <div class="text-sm leading-relaxed"><?= $reopen_success_msg ?></div>
+                </div>
+                <?php endif; ?>
+
+                <?php if ($reopen_error_msg): ?>
+                <div class="mb-6 p-4 rounded-2xl bg-red-50 border border-red-200 text-red-800 flex items-start gap-3 shadow-sm animate-slide-up no-print">
+                    <i class="ph-fill ph-warning-circle text-2xl text-red-600 shrink-0 mt-0.5"></i>
+                    <div class="text-sm font-semibold"><?= htmlspecialchars($reopen_error_msg) ?></div>
+                </div>
+                <?php endif; ?>
+
                 <!-- Modulo IA -->
                 <div id="ai-module" class="hidden mb-8 animate-slide-up bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200 rounded-3xl p-8 shadow-inner no-print relative overflow-hidden">
                     <div class="absolute top-0 right-0 w-32 h-32 bg-senai-orange/10 rounded-full blur-2xl"></div>
@@ -435,7 +510,7 @@ include 'includes/header.php';
                                             <th class="pb-3 font-semibold text-center">Respondidas</th>
                                             <th class="pb-3 font-semibold text-center">Tempo</th>
                                             <th class="pb-3 font-semibold text-right">Taxa</th>
-                                            <th class="pb-3 font-semibold text-center w-24">Ação</th>
+                                            <th class="pb-3 font-semibold text-center w-52 no-print">Ação</th>
                                         </tr>
                                     </thead>
                                     <tbody class="text-sm">
@@ -462,6 +537,7 @@ include 'includes/header.php';
                                             } elseif ($r['started_at']) {
                                                 $time_str = "Em andamento";
                                             }
+                                            $reopenCountRow = (int)($r['reopen_count'] ?? 0);
                                         ?>
                                         <tr class="border-b border-slate-50 hover:bg-slate-50/50 <?= $isPodium ? 'bg-orange-50/30' : '' ?>">
                                             <td class="py-3 font-bold text-lg text-center <?= $medalColor ?: 'text-slate-400' ?>"><?= $index + 1 ?>º</td>
@@ -469,7 +545,14 @@ include 'includes/header.php';
                                                 <div class="w-8 h-8 rounded-full bg-senai-blue text-white flex items-center justify-center text-xs font-bold shrink-0">
                                                     <?= substr($r['student_name'], 0, 1) ?>
                                                 </div>
-                                                <?= htmlspecialchars($r['student_name']) ?>
+                                                <div class="flex flex-col">
+                                                    <span><?= htmlspecialchars($r['student_name']) ?></span>
+                                                    <?php if ($reopenCountRow > 0): ?>
+                                                        <span class="text-[10px] font-bold text-emerald-600 flex items-center gap-1">
+                                                            <i class="ph-bold ph-arrow-counter-clockwise"></i> Retomada liberada (<?= $reopenCountRow ?>x)
+                                                        </span>
+                                                    <?php endif; ?>
+                                                </div>
                                             </td>
                                             <td class="py-3 text-center font-bold text-senai-blue"><?= $r['total_correct'] ?></td>
                                             <td class="py-3 text-center text-slate-400 font-medium"><?= $r['total_answered'] ?>/<?= $total_qs_possible ?></td>
@@ -480,13 +563,20 @@ include 'includes/header.php';
                                                     <?= $badge ?>
                                                 </div>
                                             </td>
-                                            <td class="py-3 text-center">
-                                                <div class="flex items-center justify-center gap-1">
-                                                    <button type="button" onclick="openStudentModal(<?= $r['student_id'] ?>, '<?= htmlspecialchars($r['student_name'], ENT_QUOTES) ?>')" class="text-senai-blue bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors w-full" title="Ver respostas e Raio-X">Detalhes</button>
+                                            <td class="py-3 text-center no-print">
+                                                <div class="flex items-center justify-center gap-1.5">
+                                                    <button type="button" onclick="openStudentModal(<?= $r['student_id'] ?>, '<?= htmlspecialchars($r['student_name'], ENT_QUOTES) ?>')" class="text-senai-blue bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors" title="Ver respostas e Raio-X">Detalhes</button>
                                                     <?php if ($r['completed_at']): ?>
+                                                    <button type="button" onclick="confirmReopenAttempt(<?= (int)$r['student_id'] ?>, '<?= htmlspecialchars($r['student_name'], ENT_QUOTES) ?>', <?= (int)$r['total_answered'] ?>, <?= (int)$total_qs_possible ?>, true)" class="text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center gap-1 shrink-0 whitespace-nowrap" title="Reabrir prova para o aluno continuar de onde parou (mantém respostas e zera avisos anticola)">
+                                                        <i class="ph-bold ph-arrow-counter-clockwise"></i> Retomar Prova
+                                                    </button>
                                                     <a href="sprint_report_pdf.php?attempt_id=<?= $r['attempt_id'] ?>" target="_blank" class="text-senai-orange bg-orange-50 hover:bg-orange-100 w-8 h-8 flex items-center justify-center rounded-lg transition-colors flex-shrink-0" title="Gerar Relatório A4 em PDF">
                                                         <i class="ph-bold ph-printer text-base"></i>
                                                     </a>
+                                                    <?php else: ?>
+                                                    <button type="button" onclick="confirmReopenAttempt(<?= (int)$r['student_id'] ?>, '<?= htmlspecialchars($r['student_name'], ENT_QUOTES) ?>', <?= (int)$r['total_answered'] ?>, <?= (int)$total_qs_possible ?>, false)" class="text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center gap-1 shrink-0 whitespace-nowrap" title="Zerar avisos anticola e destravar prova em andamento">
+                                                        <i class="ph-bold ph-lock-key-open"></i> Destravar
+                                                    </button>
                                                     <?php endif; ?>
                                                 </div>
                                             </td>
@@ -760,7 +850,28 @@ include 'includes/header.php';
     </div>
 </div>
 
+<!-- Formulário Oculto para Reabrir/Destravar Prova de um Aluno -->
+<form id="reopen-attempt-form" method="POST" action="sprint_report.php?id=<?= (int)$sprint_id ?>" class="hidden">
+    <input type="hidden" name="action" value="reopen_attempt">
+    <input type="hidden" name="student_id" id="reopen-student-id" value="">
+</form>
+
 <script>
+    function confirmReopenAttempt(studentId, studentName, answeredCount, totalQuestions, isCompleted) {
+        const actionLabel = isCompleted ? 'REABRIR a prova' : 'DESTRAVAR a prova e zerar os avisos anticola';
+        const msg = `Deseja ${actionLabel} para o(a) aluno(a) "${studentName}"?\n\n` +
+                    `• Progresso salvo: ${answeredCount} de ${totalQuestions} questão(ões) respondida(s) serão mantidas.\n` +
+                    `• Trava Anticola: o contador de 3 saídas de tela será zerado.\n` +
+                    `• Tempo de Prova: o tempo que ficou fechado será devolvido para o aluno concluir tranquilo.`;
+        if (!confirm(msg)) return;
+
+        document.getElementById('reopen-student-id').value = studentId;
+        if (typeof showImportOverlay === 'function') {
+            showImportOverlay('Liberando Retomada de Prova...', `Reabrindo avaliação e zerando trava anticola para ${studentName}...`);
+        }
+        document.getElementById('reopen-attempt-form').submit();
+    }
+
     function openStudentModal(studentId, studentName) {
         const modal = document.getElementById('student-modal');
         const loader = document.getElementById('modal-loader');
