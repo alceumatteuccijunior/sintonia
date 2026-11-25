@@ -14,10 +14,10 @@ if (!$sprint_id) {
 
 // 1. Dados Básicos da Sprint
 if ($_SESSION['user_role'] === 'admin') {
-    $stmt = $pdo->prepare("SELECT s.*, c.name as class_name FROM sprints s JOIN classes c ON s.class_id = c.id WHERE s.id = ?");
+    $stmt = $pdo->prepare("SELECT s.*, c.name as class_name, co.name as course_name FROM sprints s JOIN classes c ON s.class_id = c.id LEFT JOIN courses co ON c.course_id = co.id WHERE s.id = ?");
     $stmt->execute([$sprint_id]);
 } else {
-    $stmt = $pdo->prepare("SELECT s.*, c.name as class_name FROM sprints s JOIN classes c ON s.class_id = c.id WHERE s.id = ? AND s.teacher_id = ?");
+    $stmt = $pdo->prepare("SELECT s.*, c.name as class_name, co.name as course_name FROM sprints s JOIN classes c ON s.class_id = c.id LEFT JOIN courses co ON c.course_id = co.id WHERE s.id = ? AND s.teacher_id = ?");
     $stmt->execute([$sprint_id, $_SESSION['user_id']]);
 }
 $sprint = $stmt->fetch();
@@ -45,8 +45,14 @@ $stmtRanking->execute([$sprint_id]);
 $ranking = $stmtRanking->fetchAll();
 
 $ranking_processed = [];
+$health_high = 0;
+$health_med = 0;
+$health_low = 0;
 foreach($ranking as $r) {
     $r['rate'] = ($total_qs_possible > 0) ? round(($r['total_correct'] / $total_qs_possible) * 100, 1) : 0;
+    if ($r['rate'] >= 70) $health_high++;
+    elseif ($r['rate'] >= 50) $health_med++;
+    else $health_low++;
     $ranking_processed[] = $r;
 }
 $top_students = array_slice($ranking_processed, 0, 5);
@@ -149,13 +155,75 @@ foreach ($questions_perf as $q) {
     $questions_processed[] = $q;
 }
 
+// Classificação de capacidades por faixa real (sem sobreposição entre boas e críticas)
+$caps_consolidated = [];
+$caps_attention = [];
+$caps_critical = [];
+foreach ($capacities_processed as $cp) {
+    $capItem = [
+        'capacity_code' => $cp['capacity_code'] ?: 'Geral',
+        'capacity_desc' => $cp['capacity_desc'] ?? '',
+        'rate' => round($cp['rate'], 1)
+    ];
+    if ($cp['rate'] >= 70) {
+        $caps_consolidated[] = $capItem;
+    } elseif ($cp['rate'] >= 50) {
+        $caps_attention[] = $capItem;
+    } else {
+        $caps_critical[] = $capItem;
+    }
+}
+
+// Questões com maior índice de erro (< 60%) e principal distrator marcado
+$critical_questions_ai = [];
+try {
+    $stmtDistSlide = $pdo->prepare("
+        SELECT sa.question_id, qo.text as option_text, COUNT(sa.id) as chosen_count
+        FROM student_answers sa
+        JOIN question_options qo ON sa.selected_option_id = qo.id
+        WHERE sa.sprint_id = ? AND sa.is_correct = 0
+        GROUP BY sa.question_id, qo.id
+        ORDER BY sa.question_id, chosen_count DESC
+    ");
+    $stmtDistSlide->execute([$sprint_id]);
+    $distMapSlide = [];
+    foreach ($stmtDistSlide->fetchAll() as $dr) {
+        if (!isset($distMapSlide[$dr['question_id']])) {
+            $distMapSlide[$dr['question_id']] = $dr;
+        }
+    }
+    $qSortedAsc = $questions_processed;
+    usort($qSortedAsc, function($a, $b) { return $a['rate'] <=> $b['rate']; });
+    foreach ($qSortedAsc as $qp) {
+        if ($qp['total_answers'] > 0 && $qp['rate'] < 60 && count($critical_questions_ai) < 3) {
+            $topDist = $distMapSlide[$qp['id']] ?? null;
+            $critical_questions_ai[] = [
+                'capacity_code' => $qp['capacity'] ?: 'Geral',
+                'rate' => round($qp['rate'], 1),
+                'command_short' => mb_substr(preg_replace('/\s+/', ' ', trim((string)$qp['command'])), 0, 140, 'UTF-8'),
+                'top_distractor' => ($topDist && !empty($topDist['option_text'])) ? mb_substr(preg_replace('/\s+/', ' ', trim((string)$topDist['option_text'])), 0, 120, 'UTF-8') : null,
+                'distractor_count' => $topDist ? (int)$topDist['chosen_count'] : 0
+            ];
+        }
+    }
+} catch (Exception $e) {}
+
 // Data For AI
 $ai_data = [
     'sprint_name' => $sprint['name'],
     'class_name' => $sprint['class_name'],
+    'course_name' => $sprint['course_name'] ?? '',
     'avg_score' => $avg_score,
+    'avg_percent' => $avg_percent,
     'total_students' => $total_students_started,
     'total_questions' => $total_qs_possible,
+    'health_high' => $health_high,
+    'health_med' => $health_med,
+    'health_low' => $health_low,
+    'caps_consolidated' => $caps_consolidated,
+    'caps_attention' => $caps_attention,
+    'caps_critical' => $caps_critical,
+    'critical_questions' => $critical_questions_ai,
     'worst_capacities' => $bottom_capacities,
     'best_capacities' => $top_capacities
 ];
@@ -612,8 +680,19 @@ $slideNumber = 1;
             if (data.error) {
                 container.innerHTML = `<div class="text-red-500 font-bold border-l-4 border-red-500 pl-4">${data.error}</div>`;
             } else {
-                const text = data.insight;
-                const formatted = text.split('\n').filter(p => p.trim() !== '').map(p => `<p>${p}</p>`).join('');
+                const escapeHtml = (str) => String(str)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;');
+                const formatParagraph = (p) => escapeHtml(p.trim())
+                    .replace(/\*\*(.+?)\*\*/g, '<strong class="text-[#0038A8] font-extrabold">$1</strong>');
+                const text = data.insight || '';
+                const formatted = text
+                    .split('\n')
+                    .filter(p => p.trim() !== '')
+                    .map(p => `<p class="leading-relaxed">${formatParagraph(p)}</p>`)
+                    .join('');
                 container.innerHTML = formatted;
             }
             
