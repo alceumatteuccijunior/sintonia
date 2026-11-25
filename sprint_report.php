@@ -374,6 +374,13 @@ include 'includes/header.php';
                             </button>
                         </h1>
                         <p class="text-slate-500 font-medium">Sprint: <strong class="text-senai-blue"><?= htmlspecialchars($sprint['name']) ?></strong> • Turma: <strong><?= htmlspecialchars($sprint['class_name']) ?></strong></p>
+                        <div class="mt-2 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-xs font-bold text-emerald-800 no-print shadow-sm">
+                            <span id="live-pulse-dot" class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                            <span id="live-status-text">Ao Vivo (5s) • Atualizado às <?= date('H:i:s') ?></span>
+                            <button type="button" id="btn-toggle-live" onclick="toggleLiveRefresh()" class="ml-1 px-2 py-0.5 rounded-md bg-white hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-[10px] font-extrabold transition-colors">
+                                Pausar
+                            </button>
+                        </div>
                     </div>
                     <div class="flex flex-wrap items-center gap-3 no-print">
                         <button id="expand-all-btn" onclick="document.querySelectorAll('details').forEach(d => d.open = true)" class="bg-slate-200 text-slate-700 hover:bg-slate-300 px-4 py-2 rounded-xl font-bold shadow-sm transition-all text-sm flex items-center gap-2">
@@ -442,7 +449,7 @@ include 'includes/header.php';
                 </div>
 
                 <!-- KPIs (Business Metrics) -->
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8 animate-fade-in delay-200">
+                <div id="live-kpis-panel" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8 animate-fade-in delay-200">
                     <div class="bg-white/80 backdrop-blur-md border border-white/80 p-5 rounded-3xl shadow-sm text-center">
                         <i class="ph-fill ph-users-three text-3xl text-senai-cyan mb-1"></i>
                         <h4 class="text-xs font-bold text-slate-500 uppercase tracking-widest">Participação</h4>
@@ -481,7 +488,7 @@ include 'includes/header.php';
                         </div>
                         <i class="ph-bold ph-caret-down text-slate-400 group-open:rotate-180 transition-transform"></i>
                     </summary>
-                    <div class="p-6 pt-0 border-t border-slate-100 mt-2">
+                    <div id="live-section-ranking-body" class="p-6 pt-0 border-t border-slate-100 mt-2">
                         
                         <!-- Barra de Saúde -->
                         <div class="flex flex-col mb-6 mt-4">
@@ -604,7 +611,7 @@ include 'includes/header.php';
                         </div>
                         <i class="ph-bold ph-caret-down text-slate-400 group-open:rotate-180 transition-transform"></i>
                     </summary>
-                    <div class="p-6 pt-0 border-t border-slate-100 mt-2 overflow-x-auto">
+                    <div id="live-section-modules-body" class="p-6 pt-0 border-t border-slate-100 mt-2 overflow-x-auto">
                         <table class="w-full text-left border-collapse mt-4">
                             <thead>
                                 <tr class="border-b border-slate-200 text-xs uppercase tracking-widest text-slate-400">
@@ -668,7 +675,7 @@ include 'includes/header.php';
                         </div>
                         <i class="ph-bold ph-caret-down text-slate-400 group-open:rotate-180 transition-transform"></i>
                     </summary>
-                    <div class="p-6 pt-0 border-t border-slate-100 mt-2">
+                    <div id="live-section-highlights-body" class="p-6 pt-0 border-t border-slate-100 mt-2">
                         
                         <div class="mb-8 mt-4">
                             <h4 class="font-bold text-slate-800 mb-4 flex items-center gap-2"><i class="ph-bold ph-list-numbers text-senai-blue"></i> Ranking Geral de Capacidades</h4>
@@ -742,7 +749,7 @@ include 'includes/header.php';
                         </div>
                         <i class="ph-bold ph-caret-down text-slate-400 group-open:rotate-180 transition-transform"></i>
                     </summary>
-                    <div class="p-6 pt-0 border-t border-slate-100 mt-2 overflow-x-auto">
+                    <div id="live-section-questions-body" class="p-6 pt-0 border-t border-slate-100 mt-2 overflow-x-auto">
                         <table class="w-full text-left border-collapse mt-4">
                             <thead>
                                 <tr class="border-b border-slate-200 text-xs uppercase tracking-widest text-slate-400">
@@ -916,10 +923,17 @@ include 'includes/header.php';
     }
 </script>
 
+<script id="live-chart-payload" type="application/json"><?= json_encode([
+    'labels' => $labels,
+    'data_correct' => $data_correct,
+    'data_wrong' => $data_wrong,
+    'worst_capacity' => $worst_capacity
+], JSON_INVALID_UTF8_SUBSTITUTE) ?: '{}' ?></script>
+
 <script>
     // Inicializar Gráfico
     const ctx = document.getElementById('capacityChart').getContext('2d');
-    new Chart(ctx, {
+    const capacityChartInstance = new Chart(ctx, {
         type: 'bar',
         data: {
             labels: <?= json_encode($labels, JSON_INVALID_UTF8_SUBSTITUTE) ?: '[]' ?>,
@@ -952,6 +966,8 @@ include 'includes/header.php';
         }
     });
 
+    let currentWorstCapacity = <?= json_encode($worst_capacity, JSON_INVALID_UTF8_SUBSTITUTE) ?>;
+
     // Chamada IA
     function generateAIPlan() {
         const btn = document.getElementById('ai-btn');
@@ -963,7 +979,7 @@ include 'includes/header.php';
         btn.disabled = true;
         btn.classList.add('opacity-50');
 
-        fetch('ai_suggest.php?capacity=<?= urlencode($worst_capacity) ?>')
+        fetch('ai_suggest.php?capacity=' + encodeURIComponent(currentWorstCapacity))
             .then(res => res.json())
             .then(data => {
                 load.classList.add('hidden');
@@ -981,6 +997,92 @@ include 'includes/header.php';
                 cont.innerHTML = `<div class="text-red-500 font-bold">Falha na comunicação com a API.</div>`;
             });
     }
+
+    // =========================================================
+    // ATUALIZAÇÃO AUTOMÁTICA EM TEMPO REAL (A CADA 5 SEGUNDOS)
+    // =========================================================
+    let isLiveRefreshPaused = false;
+    let isLiveRefreshing = false;
+
+    function toggleLiveRefresh() {
+        isLiveRefreshPaused = !isLiveRefreshPaused;
+        const dot = document.getElementById('live-pulse-dot');
+        const txt = document.getElementById('live-status-text');
+        const btn = document.getElementById('btn-toggle-live');
+        if (!dot || !txt || !btn) return;
+
+        if (isLiveRefreshPaused) {
+            dot.className = 'w-2 h-2 rounded-full bg-amber-500';
+            txt.textContent = 'Atualização automática pausada';
+            btn.textContent = 'Retomar';
+        } else {
+            dot.className = 'w-2 h-2 rounded-full bg-emerald-500 animate-ping';
+            btn.textContent = 'Pausar';
+            refreshSprintReportLive();
+        }
+    }
+
+    async function refreshSprintReportLive() {
+        if (isLiveRefreshPaused || isLiveRefreshing || document.hidden) return;
+
+        isLiveRefreshing = true;
+        try {
+            const res = await fetch(`sprint_report.php?id=<?= (int)$sprint_id ?>&_live=${Date.now()}`, {
+                cache: 'no-store',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            });
+            if (!res.ok) return;
+
+            const html = await res.text();
+            const doc = new DOMParser().parseFromString(html, 'text/html');
+
+            const sectionIds = [
+                'live-kpis-panel',
+                'live-section-ranking-body',
+                'live-section-modules-body',
+                'live-section-highlights-body',
+                'live-section-questions-body'
+            ];
+
+            sectionIds.forEach(secId => {
+                const currentEl = document.getElementById(secId);
+                const newEl = doc.getElementById(secId);
+                if (currentEl && newEl && currentEl.innerHTML !== newEl.innerHTML) {
+                    currentEl.innerHTML = newEl.innerHTML;
+                }
+            });
+
+            // Atualiza dados do gráfico sem piscar o canvas
+            const payloadEl = doc.getElementById('live-chart-payload');
+            if (payloadEl && capacityChartInstance) {
+                try {
+                    const chartPayload = JSON.parse(payloadEl.textContent || '{}');
+                    if (Array.isArray(chartPayload.labels)) {
+                        capacityChartInstance.data.labels = chartPayload.labels;
+                        capacityChartInstance.data.datasets[0].data = chartPayload.data_correct || [];
+                        capacityChartInstance.data.datasets[1].data = chartPayload.data_wrong || [];
+                        capacityChartInstance.update('none');
+                    }
+                    if (chartPayload.worst_capacity) {
+                        currentWorstCapacity = chartPayload.worst_capacity;
+                    }
+                } catch (e) {}
+            }
+
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            const statusText = document.getElementById('live-status-text');
+            if (statusText && !isLiveRefreshPaused) {
+                statusText.textContent = `Ao Vivo (5s) • Atualizado às ${timeStr}`;
+            }
+        } catch (err) {
+            // Silencia falhas momentâneas de rede para não interromper a tela do professor
+        } finally {
+            isLiveRefreshing = false;
+        }
+    }
+
+    setInterval(refreshSprintReportLive, 5000);
 </script>
 
 <?php include 'includes/footer.php'; ?>
