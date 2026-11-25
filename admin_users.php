@@ -11,6 +11,37 @@ $pdo = getPDOConnection(true);
 $msg = '';
 $msgType = '';
 
+/**
+ * Padroniza nomes de usuários com a primeira letra de cada palavra em maiúsculo e o restante em minúsculo
+ * Ex: "JOÃO DA SILVA" ou "joão da silva" -> "João Da Silva"
+ */
+function standardizeUserName(string $rawName): string {
+    $clean = preg_replace('/\s+/u', ' ', trim($rawName));
+    if ($clean === '') {
+        return '';
+    }
+    return mb_convert_case($clean, MB_CASE_TITLE, 'UTF-8');
+}
+
+// Padroniza automaticamente nomes já existentes no banco que estejam fora do padrão (ex: CAIXA ALTA ou minúsculo)
+try {
+    $stmtCheckNames = $pdo->query("SELECT id, name FROM users");
+    $stmtFixName = null;
+    while ($uRow = $stmtCheckNames->fetch()) {
+        $origName = (string)($uRow['name'] ?? '');
+        $stdName  = standardizeUserName($origName);
+        if ($stdName !== '' && $stdName !== $origName) {
+            if ($stmtFixName === null) {
+                $stmtFixName = $pdo->prepare("UPDATE users SET name = ? WHERE id = ?");
+            }
+            $stmtFixName->execute([$stdName, $uRow['id']]);
+            if (isset($_SESSION['user_id']) && (int)$_SESSION['user_id'] === (int)$uRow['id']) {
+                $_SESSION['user_name'] = $stdName;
+            }
+        }
+    }
+} catch (Exception $e) {}
+
 // Buscar todas as turmas cadastradas para vínculos e importação (incluindo course_id e regional_id para cascata de filtros)
 $stmtAllClasses = $pdo->query("
     SELECT c.id, c.name, c.year, c.semester, c.unit_id, c.course_id,
@@ -39,7 +70,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'create') {
         require_once 'includes/mailer.php';
         $unit_id = !empty($_POST['unit_id']) ? $_POST['unit_id'] : null;
-        $name = trim($_POST['name'] ?? '');
+        $name = standardizeUserName($_POST['name'] ?? '');
         $email = trim($_POST['email'] ?? '');
         $role = $_POST['role'] ?? 'student';
         $class_id = !empty($_POST['class_id']) ? (int)$_POST['class_id'] : null;
@@ -112,7 +143,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     if (empty($data) || (count($data) === 1 && trim($data[0]) === '')) {
                         continue;
                     }
-                    $name = trim($data[0] ?? '');
+                    $name = standardizeUserName($data[0] ?? '');
                     $email = trim($data[1] ?? '');
                     $csvClass = trim($data[2] ?? '');
                     
@@ -221,7 +252,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif ($action === 'edit') {
         $id = $_POST['user_id'] ?? 0;
         $unit_id = !empty($_POST['unit_id']) ? $_POST['unit_id'] : null;
-        $name = trim($_POST['name'] ?? '');
+        $name = standardizeUserName($_POST['name'] ?? '');
         $email = trim($_POST['email'] ?? '');
         $password = $_POST['password'] ?? '';
         $role = $_POST['role'] ?? 'student';
@@ -804,8 +835,11 @@ include 'includes/header.php';
             
             <div class="space-y-4">
                 <div>
-                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Nome Completo</label>
-                    <input type="text" name="name" required class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-senai-blue focus:ring-1 focus:ring-senai-blue transition-all" placeholder="Ex: João da Silva">
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                        <span>Nome Completo</span>
+                        <span class="text-[10px] text-senai-blue font-semibold normal-case">Iniciais Maiúsculas Automáticas</span>
+                    </label>
+                    <input type="text" name="name" id="create_name" required onblur="this.value = formatUserNameTitleCase(this.value)" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-senai-blue focus:ring-1 focus:ring-senai-blue transition-all" placeholder="Ex: João Da Silva">
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Unidade Escolar</label>
@@ -961,8 +995,11 @@ include 'includes/header.php';
             
             <div class="space-y-4">
                 <div>
-                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Nome Completo</label>
-                    <input type="text" name="name" id="edit_name" required class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all">
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                        <span>Nome Completo</span>
+                        <span class="text-[10px] text-indigo-600 font-semibold normal-case">Iniciais Maiúsculas Automáticas</span>
+                    </label>
+                    <input type="text" name="name" id="edit_name" required onblur="this.value = formatUserNameTitleCase(this.value)" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all">
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Unidade Escolar</label>
@@ -1038,6 +1075,14 @@ include 'includes/header.php';
 </div>
 
 <script>
+    function formatUserNameTitleCase(str) {
+        return String(str || '')
+            .trim()
+            .replace(/\s+/g, ' ')
+            .toLowerCase()
+            .replace(/(^|\s)\S/g, (match) => match.toUpperCase());
+    }
+
     function openModal(id) {
         const modal = document.getElementById(id);
         const content = document.getElementById(id + 'Content');
@@ -1060,7 +1105,7 @@ include 'includes/header.php';
     
     function openEditModal(user) {
         document.getElementById('edit_user_id').value = user.id;
-        document.getElementById('edit_name').value = user.name;
+        document.getElementById('edit_name').value = formatUserNameTitleCase(user.name);
         document.getElementById('edit_email').value = user.email;
         if(user.unit_id) {
             document.getElementById('edit_unit_id').value = user.unit_id;

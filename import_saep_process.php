@@ -67,7 +67,7 @@ try {
         $escola_name = trim($data[$colMap['Escola']] ?? 'Sede');
         $course_name = trim($data[$colMap['Curso']]);
         $class_name = trim($data[$colMap['Turma']]);
-        $student_name = trim($data[$colMap['Aluno']]);
+        $student_name = mb_convert_case(preg_replace('/\s+/u', ' ', trim($data[$colMap['Aluno']])), MB_CASE_TITLE, 'UTF-8');
         $matricula = trim($data[$colMap['Matrícula']]);
         
         $sprint_name = trim($data[$colMap['Avaliação']]);
