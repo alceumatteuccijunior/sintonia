@@ -398,6 +398,9 @@ include 'includes/header.php';
                         <a href="sprint_export_word.php?id=<?= $sprint_id ?>" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl font-bold shadow-sm hover:shadow-md transition-all text-sm flex items-center gap-2">
                             <i class="ph-bold ph-file-doc"></i> Exportar Word (MSEP)
                         </a>
+                        <a href="sprint_report_pdf.php?sprint_id=<?= $sprint_id ?>&auto_print=1" target="_blank" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl font-bold shadow-sm hover:shadow-md transition-all text-sm flex items-center gap-2" title="Abre todas as Devolutivas Individuais dos alunos juntas em um único PDF contínuo">
+                            <i class="ph-bold ph-files"></i> PDF Todos os Alunos
+                        </a>
                         <button id="print-btn" onclick="document.querySelectorAll('details').forEach(d => d.open = true); window.print();" class="bg-slate-700 text-white px-4 py-2 rounded-xl font-bold shadow-sm hover:shadow-md transition-all text-sm flex items-center gap-2">
                             <i class="ph-bold ph-printer"></i> Imprimir PDF
                         </button>

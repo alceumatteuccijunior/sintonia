@@ -1,12 +1,14 @@
 <?php
 session_start();
 
-$attempt_id = $_GET['attempt_id'] ?? '';
-if (!$attempt_id) {
+$attempt_id = isset($_GET['attempt_id']) ? (int)$_GET['attempt_id'] : 0;
+$sprint_id  = isset($_GET['sprint_id']) ? (int)$_GET['sprint_id'] : 0;
+
+if (!$attempt_id && !$sprint_id) {
     die("Relatório não encontrado.");
 }
 
-// Se não estiver logado, redireciona para login e volta para cá
+// Se não estiver logado, redireciona para login
 if (!isset($_SESSION['user_id'])) {
     header("Location: index.php?error=" . urlencode("Por favor, faça login para ver seu relatório."));
     exit;
@@ -14,26 +16,6 @@ if (!isset($_SESSION['user_id'])) {
 
 require_once 'config.php';
 $pdo = getPDOConnection();
-
-// Busca os dados da tentativa e garante segurança (só o próprio aluno ou admin/prof podem ver)
-$stmt = $pdo->prepare("
-    SELECT a.*, s.name as sprint_name, s.class_id, u.name as student_name
-    FROM sprint_attempts a
-    JOIN sprints s ON a.sprint_id = s.id
-    JOIN users u ON a.student_id = u.id
-    WHERE a.id = ?
-");
-$stmt->execute([$attempt_id]);
-$attempt = $stmt->fetch();
-
-if (!$attempt) {
-    die("Relatório não encontrado.");
-}
-
-// Verifica permissão (Student só vê o próprio)
-if ($_SESSION['user_role'] === 'student' && $attempt['student_id'] != $_SESSION['user_id']) {
-    die("Acesso negado. Você só pode visualizar os seus próprios relatórios.");
-}
 
 // Garante tabela course_capacities para leitura segura da descrição oficial
 try {
@@ -49,7 +31,74 @@ try {
     ");
 } catch (Exception $e) {}
 
-// Busca as respostas com a descrição oficial da capacidade (da Matriz do Curso ou do Módulo)
+$is_batch_mode = ($sprint_id > 0 && !$attempt_id);
+$attempts_raw = [];
+$batch_sprint_info = null;
+
+if ($is_batch_mode) {
+    // Modo Unificado (Todos os alunos da turma na Sprint) — restrito a professor e admin
+    if (!in_array($_SESSION['user_role'] ?? '', ['admin', 'teacher'])) {
+        die("Acesso negado.");
+    }
+
+    if ($_SESSION['user_role'] === 'admin') {
+        $stmtSp = $pdo->prepare("SELECT s.*, c.name as class_name FROM sprints s LEFT JOIN classes c ON s.class_id = c.id WHERE s.id = ?");
+        $stmtSp->execute([$sprint_id]);
+    } else {
+        $stmtSp = $pdo->prepare("SELECT s.*, c.name as class_name FROM sprints s LEFT JOIN classes c ON s.class_id = c.id WHERE s.id = ? AND s.teacher_id = ?");
+        $stmtSp->execute([$sprint_id, $_SESSION['user_id']]);
+    }
+    $batch_sprint_info = $stmtSp->fetch();
+    if (!$batch_sprint_info) {
+        die("Avaliação não encontrada ou sem permissão.");
+    }
+
+    // Busca todas as tentativas dos alunos nessa sprint ordenadas por nome do aluno
+    $stmtAll = $pdo->prepare("
+        SELECT a.*, s.name as sprint_name, s.class_id, c.name as class_name, u.name as student_name
+        FROM sprint_attempts a
+        JOIN sprints s ON a.sprint_id = s.id
+        LEFT JOIN classes c ON s.class_id = c.id
+        JOIN users u ON a.student_id = u.id
+        WHERE a.sprint_id = ?
+        ORDER BY u.name ASC, a.id DESC
+    ");
+    $stmtAll->execute([$sprint_id]);
+    $rows = $stmtAll->fetchAll();
+
+    // Evita duplicidade caso algum aluno possua mais de um registro em sprint_attempts
+    $seen_students = [];
+    foreach ($rows as $row) {
+        $sid = (int)$row['student_id'];
+        if (isset($seen_students[$sid])) continue;
+        $seen_students[$sid] = true;
+        $attempts_raw[] = $row;
+    }
+} else {
+    // Modo Individual (1 aluno via attempt_id)
+    $stmt = $pdo->prepare("
+        SELECT a.*, s.name as sprint_name, s.class_id, c.name as class_name, u.name as student_name
+        FROM sprint_attempts a
+        JOIN sprints s ON a.sprint_id = s.id
+        LEFT JOIN classes c ON s.class_id = c.id
+        JOIN users u ON a.student_id = u.id
+        WHERE a.id = ?
+    ");
+    $stmt->execute([$attempt_id]);
+    $single = $stmt->fetch();
+
+    if (!$single) {
+        die("Relatório não encontrado.");
+    }
+
+    if ($_SESSION['user_role'] === 'student' && $single['student_id'] != $_SESSION['user_id']) {
+        die("Acesso negado. Você só pode visualizar os seus próprios relatórios.");
+    }
+
+    $attempts_raw[] = $single;
+}
+
+// Prepara o statement de respostas de cada aluno
 $stmtAnswers = $pdo->prepare("
     SELECT 
         m.name as module_name,
@@ -63,49 +112,81 @@ $stmtAnswers = $pdo->prepare("
     LEFT JOIN module_capacities mc ON mc.module_id = q.module_id AND mc.capacity_code = q.capacity
     WHERE sa.student_id = ? AND sa.sprint_id = ?
 ");
-$stmtAnswers->execute([$attempt['student_id'], $attempt['sprint_id']]);
-$answers = $stmtAnswers->fetchAll();
 
-if (empty($answers)) {
+$student_reports = [];
+foreach ($attempts_raw as $att) {
+    $stmtAnswers->execute([$att['student_id'], $att['sprint_id']]);
+    $answers = $stmtAnswers->fetchAll();
+
+    if (empty($answers)) {
+        continue;
+    }
+
+    $total = count($answers);
+    $correct = 0;
+    $module_stats = [];
+    $capacity_stats = [];
+
+    foreach ($answers as $a) {
+        if ($a['is_correct']) $correct++;
+
+        // Módulo
+        $mod = $a['module_name'];
+        if (!isset($module_stats[$mod])) $module_stats[$mod] = ['c' => 0, 't' => 0];
+        $module_stats[$mod]['t']++;
+        if ($a['is_correct']) $module_stats[$mod]['c']++;
+
+        // Capacidade
+        $cap = $a['capacity_code'] ?: 'Geral';
+        $capDesc = trim((string)($a['capacity_desc'] ?? ''));
+        if (!isset($capacity_stats[$cap])) {
+            $capacity_stats[$cap] = ['c' => 0, 't' => 0, 'mod' => $mod, 'desc' => $capDesc];
+        } elseif ($capacity_stats[$cap]['desc'] === '' && $capDesc !== '') {
+            $capacity_stats[$cap]['desc'] = $capDesc;
+        }
+        $capacity_stats[$cap]['t']++;
+        if ($a['is_correct']) $capacity_stats[$cap]['c']++;
+    }
+
+    // Ordenar para mostrar as piores capacidades primeiro
+    uasort($capacity_stats, function ($a, $b) {
+        return ($a['c'] / max(1, $a['t'])) <=> ($b['c'] / max(1, $b['t']));
+    });
+
+    $score = round(($correct / max(1, $total)) * 100, 1);
+    if (!empty($att['completed_at'])) {
+        $date_str = 'Concluído em ' . date('d/m/Y \à\s H:i', strtotime($att['completed_at']));
+    } elseif (!empty($att['started_at'])) {
+        $date_str = 'Iniciado em ' . date('d/m/Y \à\s H:i', strtotime($att['started_at'])) . ' (Em andamento)';
+    } else {
+        $date_str = 'Realizado em ' . date('d/m/Y');
+    }
+
+    $student_reports[] = [
+        'attempt'        => $att,
+        'total'          => $total,
+        'correct'        => $correct,
+        'score'          => $score,
+        'date_str'       => $date_str,
+        'module_stats'   => $module_stats,
+        'capacity_stats' => $capacity_stats
+    ];
+}
+
+if (empty($student_reports)) {
     die("Não há dados de respostas suficientes para gerar o relatório.");
 }
 
-$total = count($answers);
-$correct = 0;
-$module_stats = [];
-$capacity_stats = [];
-
-foreach ($answers as $a) {
-    if ($a['is_correct']) $correct++;
-    
-    // Módulo
-    $mod = $a['module_name'];
-    if (!isset($module_stats[$mod])) $module_stats[$mod] = ['c' => 0, 't' => 0];
-    $module_stats[$mod]['t']++;
-    if ($a['is_correct']) $module_stats[$mod]['c']++;
-    
-    // Capacidade
-    $cap = $a['capacity_code'] ?: 'Geral';
-    $capDesc = trim((string)($a['capacity_desc'] ?? ''));
-    if (!isset($capacity_stats[$cap])) {
-        $capacity_stats[$cap] = ['c' => 0, 't' => 0, 'mod' => $mod, 'desc' => $capDesc];
-    } elseif ($capacity_stats[$cap]['desc'] === '' && $capDesc !== '') {
-        $capacity_stats[$cap]['desc'] = $capDesc;
-    }
-    $capacity_stats[$cap]['t']++;
-    if ($a['is_correct']) $capacity_stats[$cap]['c']++;
-}
-
-$score = round(($correct / $total) * 100, 1);
-$date_str = date('d/m/Y \à\s H:i', strtotime($attempt['completed_at']));
-
+$page_title = $is_batch_mode
+    ? ('Relatório Unificado (' . count($student_reports) . ' alunos) - ' . ($batch_sprint_info['name'] ?? 'Sprint') . (!empty($batch_sprint_info['class_name']) ? ' - ' . $batch_sprint_info['class_name'] : ''))
+    : ('Relatório Individual - ' . $student_reports[0]['attempt']['student_name']);
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Relatório Individual - <?= htmlspecialchars($attempt['student_name']) ?></title>
+    <title><?= htmlspecialchars($page_title) ?></title>
     <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     
@@ -125,18 +206,32 @@ $date_str = date('d/m/Y \à\s H:i', strtotime($attempt['completed_at']));
             width: 210mm;
             min-height: 297mm;
             background: white;
-            margin: 20mm auto;
+            margin: 14mm auto;
             padding: 20mm;
             box-shadow: 0 10px 25px rgba(0,0,0,0.1);
             position: relative;
             overflow: hidden;
         }
+        .avoid-break {
+            break-inside: avoid;
+            page-break-inside: avoid;
+        }
         
         @media print {
             body { background: white; margin: 0; }
             .a4-page {
-                margin: 0; padding: 15mm;
-                box-shadow: none; width: 100%; min-height: 100vh;
+                margin: 0;
+                padding: 15mm;
+                box-shadow: none;
+                width: 100%;
+                min-height: auto;
+                overflow: visible !important;
+                page-break-after: always;
+                break-after: page;
+            }
+            .a4-page:last-of-type {
+                page-break-after: auto;
+                break-after: auto;
             }
             .no-print { display: none !important; }
         }
@@ -151,6 +246,34 @@ $date_str = date('d/m/Y \à\s H:i', strtotime($attempt['completed_at']));
     </style>
 </head>
 <body>
+
+    <?php if ($is_batch_mode): ?>
+    <!-- Barra de Controle Superior no Modo Unificado (Apenas na Tela) -->
+    <div class="no-print sticky top-0 z-50 bg-slate-900/95 backdrop-blur-md text-white px-6 py-3.5 shadow-lg flex flex-wrap items-center justify-between gap-4 border-b border-slate-700">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-[#F25C27] flex items-center justify-center text-white font-black shadow">
+                <i class="ph-bold ph-files text-xl"></i>
+            </div>
+            <div>
+                <h2 class="text-sm md:text-base font-extrabold leading-tight">
+                    Relatório Unificado da Turma • <?= count($student_reports) ?> Aluno(s)
+                </h2>
+                <p class="text-xs text-slate-300">
+                    <?= htmlspecialchars($batch_sprint_info['name'] ?? '') ?>
+                    <?= !empty($batch_sprint_info['class_name']) ? ' — Turma: ' . htmlspecialchars($batch_sprint_info['class_name']) : '' ?>
+                </p>
+            </div>
+        </div>
+        <div class="flex items-center gap-3">
+            <button onclick="window.print()" class="bg-[#F25C27] hover:bg-orange-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 shadow-md transition-all">
+                <i class="ph-bold ph-printer text-lg"></i> Salvar Tudo em um Único PDF / Imprimir
+            </button>
+            <button onclick="window.close()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2.5 rounded-xl font-bold text-sm flex items-center gap-1.5 border border-slate-700 transition-all">
+                <i class="ph-bold ph-x"></i> Fechar
+            </button>
+        </div>
+    </div>
+    <?php endif; ?>
 
     <!-- Botões Flutuantes (Apenas na Tela) -->
     <div class="no-print fixed bottom-8 right-8 flex flex-col gap-3 z-50">
@@ -168,7 +291,16 @@ $date_str = date('d/m/Y \à\s H:i', strtotime($attempt['completed_at']));
         <?php endif; ?>
     </div>
 
-    <!-- PÁGINA A4 -->
+    <?php foreach ($student_reports as $idx => $rep):
+        $attempt        = $rep['attempt'];
+        $total          = $rep['total'];
+        $correct        = $rep['correct'];
+        $score          = $rep['score'];
+        $date_str       = $rep['date_str'];
+        $module_stats   = $rep['module_stats'];
+        $capacity_stats = $rep['capacity_stats'];
+    ?>
+    <!-- PÁGINA A4 DO ALUNO #<?= $idx + 1 ?> -->
     <div class="a4-page">
         <!-- Detalhes de Fundo (Apenas Visual) -->
         <div class="absolute top-[-5%] right-[-5%] w-64 h-64 bg-slate-100 rounded-full opacity-50 z-0"></div>
@@ -183,18 +315,23 @@ $date_str = date('d/m/Y \à\s H:i', strtotime($attempt['completed_at']));
                 </div>
                 <div class="text-right">
                     <h2 class="text-xl font-bold text-slate-800">Devolutiva Individual</h2>
-                    <p class="text-slate-500 text-sm mt-1">Concluído em <?= $date_str ?></p>
+                    <p class="text-slate-500 text-sm mt-1"><?= htmlspecialchars($date_str) ?></p>
+                    <?php if ($is_batch_mode): ?>
+                        <p class="text-[11px] font-bold text-slate-400 mt-0.5">Aluno <?= $idx + 1 ?> de <?= count($student_reports) ?></p>
+                    <?php endif; ?>
                 </div>
             </div>
 
             <!-- Identificação do Aluno -->
-            <div class="iaS-bg rounded-2xl p-6 mb-8 shadow-md">
+            <div class="iaS-bg rounded-2xl p-6 mb-8 shadow-md avoid-break">
                 <div class="flex items-center gap-6">
-                    <div class="w-20 h-20 rounded-full bg-white/10 flex items-center justify-center border-2 border-white/20">
+                    <div class="w-20 h-20 rounded-full bg-white/10 flex items-center justify-center border-2 border-white/20 shrink-0">
                         <i class="ph-fill ph-student text-4xl text-white"></i>
                     </div>
                     <div>
-                        <p class="text-blue-200 text-sm font-bold uppercase tracking-widest mb-1">Aluno(a)</p>
+                        <p class="text-blue-200 text-sm font-bold uppercase tracking-widest mb-1">
+                            Aluno(a)<?= !empty($attempt['class_name']) ? ' • Turma: ' . htmlspecialchars($attempt['class_name']) : '' ?>
+                        </p>
                         <h3 class="text-2xl font-bold text-white"><?= htmlspecialchars($attempt['student_name']) ?></h3>
                         <p class="text-blue-100 mt-1 flex items-center gap-2">
                             <i class="ph-bold ph-target"></i> Sprint: <?= htmlspecialchars($attempt['sprint_name']) ?>
@@ -204,7 +341,7 @@ $date_str = date('d/m/Y \à\s H:i', strtotime($attempt['completed_at']));
             </div>
 
             <!-- Resumo Global -->
-            <div class="grid grid-cols-2 gap-6 mb-10">
+            <div class="grid grid-cols-2 gap-6 mb-10 avoid-break">
                 <div class="bg-slate-50 border border-slate-200 rounded-2xl p-6 flex items-center justify-between shadow-sm">
                     <div>
                         <p class="text-slate-500 text-sm font-bold uppercase tracking-wider mb-1">Acertos</p>
@@ -232,10 +369,10 @@ $date_str = date('d/m/Y \à\s H:i', strtotime($attempt['completed_at']));
             
             <div class="space-y-4 mb-10">
                 <?php foreach ($module_stats as $mName => $st): 
-                    $pct = round(($st['c'] / $st['t']) * 100);
+                    $pct = round(($st['c'] / max(1, $st['t'])) * 100);
                     $colorClass = $pct >= 70 ? 'bg-green-500' : ($pct >= 40 ? 'bg-orange-500' : 'bg-red-500');
                 ?>
-                    <div class="bg-white border border-slate-100 p-4 rounded-xl shadow-sm">
+                    <div class="bg-white border border-slate-100 p-4 rounded-xl shadow-sm avoid-break">
                         <div class="flex justify-between items-center mb-2">
                             <h4 class="font-bold text-slate-700 truncate mr-4"><?= htmlspecialchars($mName) ?></h4>
                             <span class="font-black text-slate-800"><?= $pct ?>%</span>
@@ -254,18 +391,12 @@ $date_str = date('d/m/Y \à\s H:i', strtotime($attempt['completed_at']));
             </h3>
             
             <div class="grid grid-cols-1 gap-3.5">
-                <?php 
-                // Ordenar para mostrar as piores capacidades primeiro
-                uasort($capacity_stats, function($a, $b) {
-                    return ($a['c']/$a['t']) <=> ($b['c']/$b['t']);
-                });
-                
-                foreach ($capacity_stats as $cName => $cSt): 
-                    $cpct = round(($cSt['c'] / $cSt['t']) * 100);
+                <?php foreach ($capacity_stats as $cName => $cSt): 
+                    $cpct = round(($cSt['c'] / max(1, $cSt['t'])) * 100);
                     $icon = $cpct >= 70 ? 'ph-check-circle text-green-500' : ($cpct >= 40 ? 'ph-warning-circle text-orange-500' : 'ph-x-circle text-red-500');
                     $bg = $cpct >= 70 ? 'bg-green-50' : ($cpct >= 40 ? 'bg-orange-50' : 'bg-red-50');
                 ?>
-                    <div class="<?= $bg ?> border border-white p-4 rounded-xl flex items-start justify-between gap-4">
+                    <div class="<?= $bg ?> border border-white p-4 rounded-xl flex items-start justify-between gap-4 avoid-break">
                         <div class="flex items-start gap-3 flex-1">
                             <i class="ph-fill <?= $icon ?> text-xl mt-0.5 shrink-0"></i>
                             <div class="flex-1">
@@ -291,6 +422,17 @@ $date_str = date('d/m/Y \à\s H:i', strtotime($attempt['completed_at']));
 
         </div>
     </div>
+    <?php endforeach; ?>
+
+    <?php if (!empty($_GET['auto_print'])): ?>
+    <script>
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                window.print();
+            }, 400);
+        });
+    </script>
+    <?php endif; ?>
 
 </body>
 </html>
