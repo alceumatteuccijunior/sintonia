@@ -395,6 +395,9 @@ include 'includes/header.php';
                         <a href="sprint_report_slides.php?id=<?= $sprint_id ?>" target="_blank" class="bg-senai-cyan text-white px-4 py-2 rounded-xl font-bold shadow-sm hover:shadow-md transition-all text-sm flex items-center gap-2">
                             <i class="ph-bold ph-presentation-chart"></i> Slides (IA)
                         </a>
+                        <a href="exam_print_senai.php?sprint_id=<?= $sprint_id ?>" target="_blank" class="bg-[#004b8d] hover:bg-[#003a6e] text-white px-4 py-2 rounded-xl font-bold shadow-sm hover:shadow-md transition-all text-sm flex items-center gap-2" title="Abrir prova formatada para impressão/PDF no padrão oficial SENAI">
+                            <i class="ph-bold ph-file-pdf"></i> Prova PDF (SENAI)
+                        </a>
                         <a href="sprint_export_word.php?id=<?= $sprint_id ?>" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl font-bold shadow-sm hover:shadow-md transition-all text-sm flex items-center gap-2">
                             <i class="ph-bold ph-file-doc"></i> Exportar Word (MSEP)
                         </a>

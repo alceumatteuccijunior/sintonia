@@ -87,6 +87,11 @@ $stmtAllCourseMods = $pdo->prepare("SELECT id, name FROM modules WHERE course_id
 $stmtAllCourseMods->execute([$courseId]);
 $allCourseModules = $stmtAllCourseMods->fetchAll();
 
+// Busca as turmas vinculadas a este curso para sugestão no gerador de prova impressa SENAI
+$stmtCourseClasses = $pdo->prepare("SELECT id, name, year, semester FROM classes WHERE course_id = ? ORDER BY year DESC, semester DESC, name ASC");
+$stmtCourseClasses->execute([$courseId]);
+$courseClassesList = $stmtCourseClasses->fetchAll();
+
 // Buscar todas as questões ativas deste curso com o nome do módulo
 $stmtQs = $pdo->prepare("
     SELECT q.*, m.name as module_name 
@@ -288,10 +293,15 @@ include 'includes/header.php';
                                 <i class="ph-bold ph-x-circle text-base"></i>
                             </button>
                         </div>
-                        <div class="flex items-center justify-between md:justify-end gap-2.5 shrink-0">
+                        <div class="flex flex-wrap items-center justify-between md:justify-end gap-2 shrink-0">
                             <span class="px-3 py-1.5 rounded-xl bg-senai-blue/10 text-senai-blue text-xs font-extrabold whitespace-nowrap">
                                 Exibindo <span id="visible-questions-count"><?= count($questoes) ?></span> de <span id="total-questions-count"><?= count($questoes) ?></span> questões
                             </span>
+                            <?php if (in_array($_SESSION['user_role'], ['admin', 'teacher']) && !empty($questoes)): ?>
+                            <button type="button" onclick="selectAllVisibleForExam()" class="px-3 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-bold transition-all inline-flex items-center gap-1.5 whitespace-nowrap" title="Seleciona todas as questões filtradas na tela para montar uma prova em PDF (Padrão SENAI)">
+                                <i class="ph-bold ph-check-square-offset"></i> Selecionar Visíveis p/ Prova
+                            </button>
+                            <?php endif; ?>
                             <button type="button" id="btn-reset-filters" onclick="resetQuestionFilters()" class="hidden px-3 py-1.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-xs font-bold transition-all items-center gap-1 whitespace-nowrap">
                                 <i class="ph-bold ph-arrow-counter-clockwise"></i> Limpar Filtros
                             </button>
@@ -399,6 +409,10 @@ include 'includes/header.php';
                                     </div>
                                     <div class="flex items-center gap-1">
                                         <?php if (in_array($_SESSION['user_role'], ['admin', 'teacher'])): ?>
+                                        <button type="button" id="btn-select-exam-<?= $q['id'] ?>" onclick="event.stopPropagation(); toggleSelectQuestionForExam(<?= (int)$q['id'] ?>)" class="px-2 py-1 rounded-lg bg-slate-100 hover:bg-senai-blue/15 text-slate-600 hover:text-senai-blue border border-slate-200 text-[10px] font-extrabold flex items-center gap-1 transition-all" title="Selecionar esta questão para montar Prova em PDF (Padrão SENAI)">
+                                            <i id="icon-select-exam-<?= $q['id'] ?>" class="ph-bold ph-square text-xs"></i>
+                                            <span id="txt-select-exam-<?= $q['id'] ?>">Prova</span>
+                                        </button>
                                         <button type="button" onclick="event.stopPropagation(); openEditQuestionModal(<?= $q['id'] ?>)" class="w-7 h-7 rounded-full bg-emerald-50 hover:bg-emerald-100 text-emerald-700 flex items-center justify-center transition-colors" title="Editar Questão, Contexto e Capacidade da Matriz">
                                             <i class="ph-bold ph-pencil-simple"></i>
                                         </button>
@@ -679,6 +693,127 @@ include 'includes/header.php';
     </div>
 </div>
 
+<!-- Barra Flutuante Inferior de Montagem de Prova Impressa (Padrão SENAI) -->
+<div id="exam-builder-floating-bar" class="fixed bottom-5 left-1/2 -translate-x-1/2 z-40 hidden items-center justify-between gap-4 bg-slate-900/95 backdrop-blur-md text-white px-5 py-3.5 rounded-2xl shadow-2xl border border-slate-700 w-[94%] max-w-3xl animate-slide-up">
+    <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-senai-orange text-white flex items-center justify-center font-black text-base shadow">
+            <span id="exam-selected-count">0</span>
+        </div>
+        <div>
+            <h4 class="text-xs md:text-sm font-extrabold leading-tight">Questão(ões) selecionada(s) para Prova Impressa</h4>
+            <p class="text-[11px] text-slate-300">Gere a Avaliação Objetiva pronta para imprimir/PDF no padrão oficial SENAI</p>
+        </div>
+    </div>
+    <div class="flex items-center gap-2.5 shrink-0">
+        <button type="button" onclick="clearExamSelection()" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 text-xs font-bold transition-colors">
+            Limpar
+        </button>
+        <button type="button" onclick="openExamBuilderModal()" class="px-4 py-2.5 rounded-xl bg-senai-blue hover:bg-blue-700 text-white text-xs md:text-sm font-extrabold shadow-lg flex items-center gap-2 transition-all">
+            <i class="ph-bold ph-printer text-base"></i> Montar Prova PDF (SENAI)
+        </button>
+    </div>
+</div>
+
+<!-- Modal Montar Avaliação Objetiva para Impressão / PDF (Padrão SENAI) -->
+<div id="examBuilderModal" class="fixed inset-0 bg-slate-900/65 backdrop-blur-sm z-[65] hidden items-center justify-center p-4">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-3xl overflow-hidden scale-95 opacity-0 transition-all duration-300 flex flex-col max-h-[92vh]" id="examBuilderModalContent">
+        <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/80 shrink-0">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-senai-blue text-white flex items-center justify-center shadow-sm">
+                    <i class="ph-bold ph-file-pdf text-xl"></i>
+                </div>
+                <div>
+                    <h3 class="font-extrabold text-base md:text-lg text-slate-800 leading-tight">
+                        Gerar Prova em PDF para Impressão (Padrão SENAI)
+                    </h3>
+                    <p class="text-xs text-slate-500">Configure os dados do cabeçalho institucional e a ordem dos itens selecionados</p>
+                </div>
+            </div>
+            <button type="button" onclick="closeExamBuilderModal()" class="text-slate-400 hover:text-red-500 transition-colors bg-white rounded-full p-1.5 shadow-sm border border-slate-200">
+                <i class="ph-bold ph-x text-lg"></i>
+            </button>
+        </div>
+
+        <form id="examBuilderForm" method="POST" action="exam_print_senai.php" target="_blank" class="p-6 overflow-y-auto flex-1 space-y-5">
+            <input type="hidden" name="question_ids" id="exam_builder_qids_input" value="">
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Título da Avaliação</label>
+                    <input type="text" name="exam_title" value="AVALIAÇÃO OBJETIVA" required class="w-full px-3.5 py-2 bg-slate-50 focus:bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 outline-none focus:border-senai-blue">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Data da Prova</label>
+                    <input type="text" name="exam_date" value="<?= date('d/m/Y') ?>" placeholder="dd/mm/aaaa" class="w-full px-3.5 py-2 bg-slate-50 focus:bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 outline-none focus:border-senai-blue">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Departamento Regional / Estado</label>
+                    <input type="text" name="state_name" value="Santa Catarina" class="w-full px-3.5 py-2 bg-slate-50 focus:bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 outline-none focus:border-senai-blue">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Docente</label>
+                    <input type="text" name="teacher_name" value="<?= htmlspecialchars($_SESSION['user_name'] ?? '') ?>" class="w-full px-3.5 py-2 bg-slate-50 focus:bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 outline-none focus:border-senai-blue">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Curso Técnico em</label>
+                    <input type="text" name="course_name" value="<?= htmlspecialchars($curso['name']) ?>" required class="w-full px-3.5 py-2 bg-slate-50 focus:bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 outline-none focus:border-senai-blue">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Turma</label>
+                    <input type="text" name="class_name" list="course-classes-datalist" placeholder="Ex: T TIIN ou 2026/1" class="w-full px-3.5 py-2 bg-slate-50 focus:bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 outline-none focus:border-senai-blue">
+                    <datalist id="course-classes-datalist">
+                        <?php foreach ($courseClassesList as $clItem): ?>
+                            <option value="<?= htmlspecialchars($clItem['name']) ?>"></option>
+                        <?php endforeach; ?>
+                    </datalist>
+                </div>
+                <div class="sm:col-span-2 lg:col-span-3">
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Unidade Curricular</label>
+                    <input type="text" name="module_name" id="exam_builder_module_name" list="course-modules-datalist" placeholder="Ex: Codificação para Back-End" required class="w-full px-3.5 py-2 bg-slate-50 focus:bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 outline-none focus:border-senai-blue">
+                    <datalist id="course-modules-datalist">
+                        <?php foreach ($allCourseModules as $mItem): ?>
+                            <option value="<?= htmlspecialchars($mItem['name']) ?>"></option>
+                        <?php endforeach; ?>
+                    </datalist>
+                </div>
+            </div>
+
+            <div class="flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-2xl bg-indigo-50/70 border border-indigo-200">
+                <label class="flex items-center gap-2.5 cursor-pointer text-xs font-bold text-indigo-950">
+                    <input type="checkbox" name="include_gabarito" value="1" checked class="w-4 h-4 rounded text-senai-blue focus:ring-senai-blue">
+                    <span>Incluir folha de Gabarito Oficial do Docente na última página</span>
+                </label>
+                <label class="flex items-center gap-2.5 cursor-pointer text-xs font-bold text-indigo-950">
+                    <input type="checkbox" name="auto_print" value="1" checked class="w-4 h-4 rounded text-senai-blue focus:ring-senai-blue">
+                    <span>Abrir janela de impressão/PDF automaticamente</span>
+                </label>
+            </div>
+
+            <!-- Lista Ordenável dos Itens Selecionados -->
+            <div>
+                <div class="flex items-center justify-between mb-2">
+                    <label class="text-xs font-extrabold text-slate-700 uppercase tracking-wider">
+                        Ordem dos Itens na Prova (<span id="exam-modal-items-count">0</span>)
+                    </label>
+                    <span class="text-[11px] text-slate-400 font-medium">Use as setas para reordenar os itens</span>
+                </div>
+                <div id="exam-builder-items-list" class="space-y-2 max-h-60 overflow-y-auto pr-1">
+                    <!-- Preenchido via JS -->
+                </div>
+            </div>
+
+            <div class="pt-4 border-t border-slate-100 flex justify-end gap-3">
+                <button type="button" onclick="closeExamBuilderModal()" class="px-5 py-2.5 rounded-xl font-bold text-xs md:text-sm text-slate-500 hover:bg-slate-100 transition-colors">
+                    Cancelar
+                </button>
+                <button type="submit" id="btn-generate-exam-pdf" class="px-6 py-2.5 rounded-xl font-extrabold text-xs md:text-sm bg-[#004b8d] hover:bg-[#003a6e] text-white shadow-md flex items-center gap-2 transition-all">
+                    <i class="ph-bold ph-printer text-base"></i> Gerar Prova no Padrão SENAI
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <!-- Lightbox Modal para Zoom -->
 <div id="lightboxModal" class="fixed inset-0 z-[70] bg-slate-950/85 backdrop-blur-md hidden items-center justify-center p-4 cursor-zoom-out" onclick="closeLightbox()">
     <div class="relative max-w-5xl max-h-[92vh] flex items-center justify-center" onclick="event.stopPropagation()">
@@ -698,6 +833,194 @@ include 'includes/header.php';
     let currentDetailsQuestionId = null;
     let currentManageQuestionId = null;
     let currentEditOptions = [];
+    let selectedExamQuestionIds = [];
+
+    function updateExamCardVisual(qId) {
+        const isSelected = selectedExamQuestionIds.includes(Number(qId));
+        const card = document.getElementById(`q-card-${qId}`);
+        const btn = document.getElementById(`btn-select-exam-${qId}`);
+        const icon = document.getElementById(`icon-select-exam-${qId}`);
+        const txt = document.getElementById(`txt-select-exam-${qId}`);
+
+        if (card) {
+            if (isSelected) {
+                card.classList.add('ring-2', 'ring-senai-blue', 'bg-blue-50/20');
+            } else {
+                card.classList.remove('ring-2', 'ring-senai-blue', 'bg-blue-50/20');
+            }
+        }
+        if (btn && icon && txt) {
+            if (isSelected) {
+                btn.className = 'px-2.5 py-1 rounded-lg bg-senai-blue text-white border border-senai-blue text-[10px] font-extrabold flex items-center gap-1 transition-all shadow-sm';
+                icon.className = 'ph-bold ph-check-square text-xs';
+                txt.textContent = 'Na Prova';
+            } else {
+                btn.className = 'px-2 py-1 rounded-lg bg-slate-100 hover:bg-senai-blue/15 text-slate-600 hover:text-senai-blue border border-slate-200 text-[10px] font-extrabold flex items-center gap-1 transition-all';
+                icon.className = 'ph-bold ph-square text-xs';
+                txt.textContent = 'Prova';
+            }
+        }
+    }
+
+    function updateExamFloatingBar() {
+        const bar = document.getElementById('exam-builder-floating-bar');
+        const countEl = document.getElementById('exam-selected-count');
+        if (!bar || !countEl) return;
+        countEl.textContent = selectedExamQuestionIds.length;
+        if (selectedExamQuestionIds.length > 0) {
+            bar.classList.remove('hidden');
+            bar.classList.add('flex');
+        } else {
+            bar.classList.add('hidden');
+            bar.classList.remove('flex');
+        }
+    }
+
+    function toggleSelectQuestionForExam(qId) {
+        qId = Number(qId);
+        const idx = selectedExamQuestionIds.indexOf(qId);
+        if (idx >= 0) {
+            selectedExamQuestionIds.splice(idx, 1);
+        } else {
+            selectedExamQuestionIds.push(qId);
+        }
+        updateExamCardVisual(qId);
+        updateExamFloatingBar();
+    }
+
+    function selectAllVisibleForExam() {
+        let addedAny = false;
+        cards.forEach(card => {
+            if (card.style.display !== 'none') {
+                const qId = Number(card.dataset.qid);
+                if (qId && !selectedExamQuestionIds.includes(qId)) {
+                    selectedExamQuestionIds.push(qId);
+                    updateExamCardVisual(qId);
+                    addedAny = true;
+                }
+            }
+        });
+        if (!addedAny) {
+            // Se todas as visíveis já estavam selecionadas, desmarca as visíveis
+            cards.forEach(card => {
+                if (card.style.display !== 'none') {
+                    const qId = Number(card.dataset.qid);
+                    const idx = selectedExamQuestionIds.indexOf(qId);
+                    if (idx >= 0) {
+                        selectedExamQuestionIds.splice(idx, 1);
+                        updateExamCardVisual(qId);
+                    }
+                }
+            });
+        }
+        updateExamFloatingBar();
+    }
+
+    function clearExamSelection() {
+        const prev = [...selectedExamQuestionIds];
+        selectedExamQuestionIds = [];
+        prev.forEach(id => updateExamCardVisual(id));
+        updateExamFloatingBar();
+    }
+
+    function renderExamBuilderItemsList() {
+        const listEl = document.getElementById('exam-builder-items-list');
+        const countEl = document.getElementById('exam-modal-items-count');
+        const hiddenInput = document.getElementById('exam_builder_qids_input');
+        const btnGen = document.getElementById('btn-generate-exam-pdf');
+        if (!listEl) return;
+
+        hiddenInput.value = selectedExamQuestionIds.join(',');
+        if (countEl) countEl.textContent = selectedExamQuestionIds.length;
+        if (btnGen) btnGen.disabled = (selectedExamQuestionIds.length === 0);
+
+        if (selectedExamQuestionIds.length === 0) {
+            listEl.innerHTML = '<div class="text-center py-6 text-slate-400 text-xs font-semibold">Nenhuma questão selecionada.</div>';
+            return;
+        }
+
+        listEl.innerHTML = selectedExamQuestionIds.map((qId, idx) => {
+            const q = questionsData[qId] || {};
+            const cap = q.capacity || '-';
+            const diff = q.difficulty || 'Médio';
+            const cmd = (q.command || '').trim();
+            return `
+                <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between gap-3">
+                    <div class="flex items-center gap-2.5 min-w-0 flex-1">
+                        <span class="px-2.5 py-1 rounded-lg bg-[#004b8d] text-white font-black text-[11px] shrink-0">ITEM ${idx + 1}</span>
+                        <span class="px-2 py-0.5 rounded bg-senai-cyan/15 text-senai-blue font-extrabold text-[10px] shrink-0">${escapeHtml(cap)}</span>
+                        <span class="px-2 py-0.5 rounded bg-slate-200 text-slate-700 font-bold text-[10px] shrink-0">${escapeHtml(diff)}</span>
+                        <p class="text-xs font-semibold text-slate-700 truncate" title="${escapeHtml(cmd)}">${escapeHtml(cmd)}</p>
+                    </div>
+                    <div class="flex items-center gap-1 shrink-0">
+                        <button type="button" onclick="moveExamItem(${idx}, -1)" ${idx === 0 ? 'disabled' : ''} class="w-7 h-7 rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-30 flex items-center justify-center" title="Subir item">
+                            <i class="ph-bold ph-arrow-up text-xs"></i>
+                        </button>
+                        <button type="button" onclick="moveExamItem(${idx}, 1)" ${idx === selectedExamQuestionIds.length - 1 ? 'disabled' : ''} class="w-7 h-7 rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-30 flex items-center justify-center" title="Descer item">
+                            <i class="ph-bold ph-arrow-down text-xs"></i>
+                        </button>
+                        <button type="button" onclick="removeExamItemAt(${idx})" class="w-7 h-7 rounded-lg bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 flex items-center justify-center" title="Remover da prova">
+                            <i class="ph-bold ph-trash text-xs"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function moveExamItem(idx, dir) {
+        const target = idx + dir;
+        if (target < 0 || target >= selectedExamQuestionIds.length) return;
+        const tmp = selectedExamQuestionIds[idx];
+        selectedExamQuestionIds[idx] = selectedExamQuestionIds[target];
+        selectedExamQuestionIds[target] = tmp;
+        renderExamBuilderItemsList();
+    }
+
+    function removeExamItemAt(idx) {
+        const removedId = selectedExamQuestionIds[idx];
+        selectedExamQuestionIds.splice(idx, 1);
+        if (removedId) updateExamCardVisual(removedId);
+        updateExamFloatingBar();
+        renderExamBuilderItemsList();
+    }
+
+    function openExamBuilderModal() {
+        if (selectedExamQuestionIds.length === 0) return;
+
+        // Preenche automaticamente a Unidade Curricular com os módulos das questões selecionadas
+        const modNames = [];
+        selectedExamQuestionIds.forEach(qId => {
+            const q = questionsData[qId];
+            if (q && q.module_name && !modNames.includes(q.module_name)) {
+                modNames.push(q.module_name);
+            }
+        });
+        const modInput = document.getElementById('exam_builder_module_name');
+        if (modInput && modNames.length > 0) {
+            modInput.value = modNames.join(' / ');
+        }
+
+        renderExamBuilderItemsList();
+
+        const modal = document.getElementById('examBuilderModal');
+        const content = document.getElementById('examBuilderModalContent');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        setTimeout(() => {
+            content.classList.remove('scale-95', 'opacity-0');
+        }, 10);
+    }
+
+    function closeExamBuilderModal() {
+        const modal = document.getElementById('examBuilderModal');
+        const content = document.getElementById('examBuilderModalContent');
+        content.classList.add('scale-95', 'opacity-0');
+        setTimeout(() => {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }, 300);
+    }
 
     function escapeHtml(str) {
         return String(str ?? '')
