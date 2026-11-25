@@ -99,17 +99,40 @@ $stmtQs->execute([$courseId]);
 $questoes = $stmtQs->fetchAll();
 
 $modulos_unicos = [];
+$modulos_counts = [];
 $capacidades_unicas = [];
+$capacidades_counts = [];
+$tags_unicas = [];
+$tags_counts = [];
+$unlinked_cap_count = 0;
+$with_image_count = 0;
+$without_image_count = 0;
 $questoes_json = [];
 
 foreach ($officialCapMap as $cCode => $cDesc) {
     $capacidades_unicas[$cCode] = $cCode;
+    $capacidades_counts[$cCode] = 0;
 }
 
 foreach ($questoes as &$q) {
     $modulos_unicos[$q['module_id']] = $q['module_name'];
-    if (!empty($q['capacity'])) {
-        $capacidades_unicas[$q['capacity']] = $q['capacity'];
+    $modulos_counts[$q['module_id']] = ($modulos_counts[$q['module_id']] ?? 0) + 1;
+
+    $qCap = trim((string)($q['capacity'] ?? ''));
+    if ($qCap !== '') {
+        $capacidades_unicas[$qCap] = $qCap;
+        $capacidades_counts[$qCap] = ($capacidades_counts[$qCap] ?? 0) + 1;
+    }
+    if ($qCap === '' || (!empty($officialCapMap) && !isset($officialCapMap[$qCap]))) {
+        $unlinked_cap_count++;
+    }
+
+    $qTag = trim((string)($q['import_tag'] ?? ''));
+    if ($qTag !== '') {
+        $tags_unicas[$qTag] = $qTag;
+        $tags_counts[$qTag] = ($tags_counts[$qTag] ?? 0) + 1;
+    } else {
+        $tags_counts['__none__'] = ($tags_counts['__none__'] ?? 0) + 1;
     }
 
     // Buscar alternativas (incluindo ID e image_url para edição segura sem quebrar respostas históricas)
@@ -123,12 +146,27 @@ foreach ($questoes as &$q) {
     $stmtOpt->execute([$q['id']]);
     $q['options'] = $stmtOpt->fetchAll();
 
+    $hasOptImg = false;
+    foreach ($q['options'] as $optItem) {
+        if (!empty($optItem['image_url'])) {
+            $hasOptImg = true;
+            break;
+        }
+    }
+    $q['has_any_image'] = (!empty($q['image_url']) || $hasOptImg);
+    if ($q['has_any_image']) {
+        $with_image_count++;
+    } else {
+        $without_image_count++;
+    }
+
     $questoes_json[$q['id']] = $q;
 }
 unset($q);
 
 asort($modulos_unicos);
 uksort($capacidades_unicas, 'strnatcasecmp');
+natcasesort($tags_unicas);
 
 include 'includes/header.php';
 ?>
@@ -239,36 +277,86 @@ include 'includes/header.php';
                 </div>
                 <?php endif; ?>
 
-                <!-- Barra de Filtros -->
-                <div class="bg-white/80 backdrop-blur-md border border-slate-200 rounded-2xl p-4 shadow-sm mb-6 animate-fade-in sticky top-0 z-30">
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div>
-                            <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Módulo/Unidade</label>
-                            <select id="filter-module" class="w-full bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-lg px-3 py-2 focus:ring-1 focus:ring-senai-blue outline-none transition-all">
-                                <option value="all">Todos os módulos</option>
-                                <?php foreach($modulos_unicos as $id => $mName): ?>
-                                    <option value="<?= $id ?>"><?= htmlspecialchars($mName) ?></option>
-                                <?php endforeach; ?>
-                            </select>
+                <!-- Barra de Filtros Avançados do Curso -->
+                <div class="bg-white/90 backdrop-blur-md border border-slate-200 rounded-2xl p-4 md:p-5 shadow-sm mb-6 animate-fade-in sticky top-2 z-30">
+                    <!-- Linha 1: Busca Rápida + Contador + Botão Limpar -->
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-3.5 pb-3.5 border-b border-slate-100">
+                        <div class="relative flex-1">
+                            <i class="ph-bold ph-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-base"></i>
+                            <input type="text" id="filter-search" placeholder="Buscar por palavra-chave no enunciado, contexto, alternativas, código SAEP (ex: SAEP_96306) ou #ID..." class="w-full pl-10 pr-9 py-2.5 bg-slate-50 focus:bg-white border border-slate-200 focus:border-senai-blue rounded-xl text-xs md:text-sm text-slate-700 font-medium outline-none focus:ring-2 focus:ring-senai-blue/20 transition-all">
+                            <button type="button" id="btn-clear-search-input" onclick="document.getElementById('filter-search').value=''; applyFilters();" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                                <i class="ph-bold ph-x-circle text-base"></i>
+                            </button>
                         </div>
+                        <div class="flex items-center justify-between md:justify-end gap-2.5 shrink-0">
+                            <span class="px-3 py-1.5 rounded-xl bg-senai-blue/10 text-senai-blue text-xs font-extrabold whitespace-nowrap">
+                                Exibindo <span id="visible-questions-count"><?= count($questoes) ?></span> de <span id="total-questions-count"><?= count($questoes) ?></span> questões
+                            </span>
+                            <button type="button" id="btn-reset-filters" onclick="resetQuestionFilters()" class="hidden px-3 py-1.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-xs font-bold transition-all items-center gap-1 whitespace-nowrap">
+                                <i class="ph-bold ph-arrow-counter-clockwise"></i> Limpar Filtros
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Linha 2: 5 Filtros Combináveis -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
                         <div>
-                            <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Capacidade da Matriz</label>
-                            <select id="filter-capacity" class="w-full bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-lg px-3 py-2 focus:ring-1 focus:ring-senai-blue outline-none transition-all">
-                                <option value="all">Todas as capacidades</option>
+                            <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">1. Capacidade da Matriz</label>
+                            <select id="filter-capacity" class="w-full bg-slate-50 border border-slate-200 text-slate-700 text-xs font-semibold rounded-xl px-3 py-2 focus:ring-1 focus:ring-senai-blue focus:bg-white outline-none transition-all">
+                                <option value="all">Todas as capacidades (<?= count($capacidades_unicas) ?>)</option>
+                                <?php if ($unlinked_cap_count > 0): ?>
+                                    <option value="__unlinked__">⚠️ Sem Capacidade / Fora da Matriz (<?= $unlinked_cap_count ?>)</option>
+                                <?php endif; ?>
                                 <?php foreach($capacidades_unicas as $cap): 
-                                    $capTitle = isset($officialCapMap[$cap]) ? ($cap . ' — ' . mb_substr($officialCapMap[$cap], 0, 55) . '...') : $cap;
+                                    $cQty = $capacidades_counts[$cap] ?? 0;
+                                    $capTitle = isset($officialCapMap[$cap])
+                                        ? ($cap . ' (' . $cQty . ') — ' . mb_substr($officialCapMap[$cap], 0, 50) . '...')
+                                        : ($cap . ' (' . $cQty . ')');
                                 ?>
                                     <option value="<?= htmlspecialchars($cap) ?>"><?= htmlspecialchars($capTitle) ?></option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
+
                         <div>
-                            <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Dificuldade</label>
-                            <select id="filter-difficulty" class="w-full bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-lg px-3 py-2 focus:ring-1 focus:ring-senai-blue outline-none transition-all">
+                            <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">2. Módulo / UC</label>
+                            <select id="filter-module" class="w-full bg-slate-50 border border-slate-200 text-slate-700 text-xs font-semibold rounded-xl px-3 py-2 focus:ring-1 focus:ring-senai-blue focus:bg-white outline-none transition-all">
+                                <option value="all">Todos os módulos (<?= count($modulos_unicos) ?>)</option>
+                                <?php foreach($modulos_unicos as $id => $mName): ?>
+                                    <option value="<?= $id ?>"><?= htmlspecialchars($mName) ?> (<?= $modulos_counts[$id] ?? 0 ?>)</option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">3. Tag / Lote Importado</label>
+                            <select id="filter-tag" class="w-full bg-slate-50 border border-slate-200 text-slate-700 text-xs font-semibold rounded-xl px-3 py-2 focus:ring-1 focus:ring-senai-blue focus:bg-white outline-none transition-all">
+                                <option value="all">Todos os lotes / tags</option>
+                                <?php foreach($tags_unicas as $tName): ?>
+                                    <option value="<?= htmlspecialchars($tName) ?>"><?= htmlspecialchars($tName) ?> (<?= $tags_counts[$tName] ?? 0 ?>)</option>
+                                <?php endforeach; ?>
+                                <?php if (!empty($tags_counts['__none__'])): ?>
+                                    <option value="__none__">Sem Tag (<?= $tags_counts['__none__'] ?>)</option>
+                                <?php endif; ?>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">4. Dificuldade</label>
+                            <select id="filter-difficulty" class="w-full bg-slate-50 border border-slate-200 text-slate-700 text-xs font-semibold rounded-xl px-3 py-2 focus:ring-1 focus:ring-senai-blue focus:bg-white outline-none transition-all">
                                 <option value="all">Todas as dificuldades</option>
                                 <option value="Fácil">Fácil</option>
                                 <option value="Médio">Médio</option>
                                 <option value="Difícil">Difícil</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">5. Figuras / Imagens</label>
+                            <select id="filter-image" class="w-full bg-slate-50 border border-slate-200 text-slate-700 text-xs font-semibold rounded-xl px-3 py-2 focus:ring-1 focus:ring-senai-blue focus:bg-white outline-none transition-all">
+                                <option value="all">Com ou sem imagem</option>
+                                <option value="with_image">📷 Com Imagem (<?= $with_image_count ?>)</option>
+                                <option value="without_image">📝 Sem Imagem (<?= $without_image_count ?>)</option>
                             </select>
                         </div>
                     </div>
@@ -291,6 +379,7 @@ include 'includes/header.php';
                             $capTooltip = $isCapOfficial ? ($q['capacity'] . ': ' . $officialCapMap[$q['capacity']]) : 'Clique no lápis para vincular uma capacidade oficial da Matriz SAEP';
                         ?>
                             <div id="q-card-<?= $q['id'] ?>" class="question-card bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:shadow-md hover:border-senai-cyan/40 transition-all group relative flex flex-col cursor-pointer"
+                                 data-qid="<?= (int)$q['id'] ?>"
                                  data-module="<?= $q['module_id'] ?>"
                                  data-capacity="<?= htmlspecialchars($q['capacity']) ?>"
                                  data-difficulty="<?= htmlspecialchars($q['difficulty']) ?>"
@@ -619,28 +708,115 @@ include 'includes/header.php';
     }
 
     // Elementos de Filtro
+    const fSearch = document.getElementById('filter-search');
     const fModule = document.getElementById('filter-module');
     const fCapacity = document.getElementById('filter-capacity');
+    const fTag = document.getElementById('filter-tag');
     const fDifficulty = document.getElementById('filter-difficulty');
+    const fImage = document.getElementById('filter-image');
     const cards = document.querySelectorAll('.question-card');
     const noResults = document.getElementById('no-results');
+    const visibleCountEl = document.getElementById('visible-questions-count');
+    const btnResetFilters = document.getElementById('btn-reset-filters');
+    const btnClearSearchInput = document.getElementById('btn-clear-search-input');
+
+    function questionHasAnyImage(q) {
+        if (!q) return false;
+        if (q.image_url && String(q.image_url).trim() !== '') return true;
+        if (Array.isArray(q.options)) {
+            return q.options.some(o => o && o.image_url && String(o.image_url).trim() !== '');
+        }
+        return false;
+    }
 
     function applyFilters() {
-        if(!fModule) return;
-        
+        if (!fModule) return;
+
+        const searchTerm = (fSearch ? fSearch.value : '').trim().toLowerCase();
         const mod = fModule.value;
         const cap = fCapacity.value;
+        const tag = fTag ? fTag.value : 'all';
         const diff = fDifficulty.value;
-        
+        const imgFilter = fImage ? fImage.value : 'all';
+
+        if (btnClearSearchInput) {
+            btnClearSearchInput.classList.toggle('hidden', searchTerm === '');
+        }
+
+        const hasActiveFilter = (
+            searchTerm !== '' ||
+            mod !== 'all' ||
+            cap !== 'all' ||
+            tag !== 'all' ||
+            diff !== 'all' ||
+            imgFilter !== 'all'
+        );
+        if (btnResetFilters) {
+            btnResetFilters.classList.toggle('hidden', !hasActiveFilter);
+            btnResetFilters.classList.toggle('inline-flex', hasActiveFilter);
+        }
+
         let visibleCount = 0;
 
         cards.forEach(card => {
+            const qId = card.dataset.qid;
+            const q = questionsData[qId] || {};
             let show = true;
-            
-            if (mod !== 'all' && card.dataset.module !== mod) show = false;
-            if (cap !== 'all' && card.dataset.capacity !== cap) show = false;
-            if (diff !== 'all' && card.dataset.difficulty !== diff) show = false;
-            
+
+            const qMod = String(q.module_id ?? card.dataset.module ?? '');
+            const qCap = String(q.capacity ?? card.dataset.capacity ?? '').trim();
+            const qDiff = String(q.difficulty ?? card.dataset.difficulty ?? '');
+            const qTag = String(q.import_tag ?? '').trim();
+            const hasImg = questionHasAnyImage(q);
+
+            if (mod !== 'all' && qMod !== mod) show = false;
+
+            if (show && cap !== 'all') {
+                if (cap === '__unlinked__') {
+                    const hasOfficialMatrix = Object.keys(officialCapacitiesMap || {}).length > 0;
+                    const isLinked = qCap !== '' && (!hasOfficialMatrix || !!officialCapacitiesMap[qCap]);
+                    if (isLinked) show = false;
+                } else if (qCap !== cap) {
+                    show = false;
+                }
+            }
+
+            if (show && tag !== 'all') {
+                if (tag === '__none__') {
+                    if (qTag !== '') show = false;
+                } else if (qTag !== tag) {
+                    show = false;
+                }
+            }
+
+            if (show && diff !== 'all' && qDiff !== diff) show = false;
+
+            if (show && imgFilter !== 'all') {
+                if (imgFilter === 'with_image' && !hasImg) show = false;
+                if (imgFilter === 'without_image' && hasImg) show = false;
+            }
+
+            if (show && searchTerm !== '') {
+                const capDesc = (qCap && officialCapacitiesMap && officialCapacitiesMap[qCap]) ? officialCapacitiesMap[qCap] : '';
+                const optsText = Array.isArray(q.options) ? q.options.map(o => o.text || '').join(' ') : '';
+                const haystack = [
+                    '#' + qId,
+                    qId,
+                    q.external_code || '',
+                    q.command || '',
+                    q.context || '',
+                    qCap,
+                    capDesc,
+                    q.module_name || '',
+                    qTag,
+                    optsText
+                ].join(' ').toLowerCase();
+
+                if (!haystack.includes(searchTerm)) {
+                    show = false;
+                }
+            }
+
             if (show) {
                 card.style.display = 'flex';
                 visibleCount++;
@@ -649,6 +825,10 @@ include 'includes/header.php';
             }
         });
 
+        if (visibleCountEl) {
+            visibleCountEl.textContent = visibleCount;
+        }
+
         if (visibleCount === 0 && noResults) {
             noResults.classList.remove('hidden');
         } else if (noResults) {
@@ -656,10 +836,23 @@ include 'includes/header.php';
         }
     }
 
-    if(fModule) {
+    function resetQuestionFilters() {
+        if (fSearch) fSearch.value = '';
+        if (fCapacity) fCapacity.value = 'all';
+        if (fModule) fModule.value = 'all';
+        if (fTag) fTag.value = 'all';
+        if (fDifficulty) fDifficulty.value = 'all';
+        if (fImage) fImage.value = 'all';
+        applyFilters();
+    }
+
+    if (fModule) {
+        if (fSearch) fSearch.addEventListener('input', applyFilters);
         fModule.addEventListener('change', applyFilters);
         fCapacity.addEventListener('change', applyFilters);
+        if (fTag) fTag.addEventListener('change', applyFilters);
         fDifficulty.addEventListener('change', applyFilters);
+        if (fImage) fImage.addEventListener('change', applyFilters);
     }
 
     // Upload da Matriz SAEP (.xls) direto na tela do Curso
@@ -1126,6 +1319,7 @@ include 'includes/header.php';
                 showQuestionDetails(qId);
             }
 
+            applyFilters();
             closeEditQuestionModal();
 
         } catch (err) {
